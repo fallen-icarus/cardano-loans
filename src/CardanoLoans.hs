@@ -208,7 +208,7 @@ parseLoanDatum d = case d of
 -- 
 -- If there is ever a datum present WITHOUT a phase token, the staking credential of the address
 -- has custody rights. This is to protect the address owner from malicious datums. It is therefore
--- up to the lenders to ensure proper use of this validator.
+-- up to the lenders to ensure proper usage of this validator.
 --
 -- It is technically possible for a malicious user to create their own phase beacon policy for use
 -- with this validator. However, this would be an entirely different token than the actual beacons
@@ -241,18 +241,29 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       else 
         -- | The staking credential must signal approval.
         traceIfFalse "Staking credential did not approve" stakingCredApproves'
-    AcceptOffer -> True
+    AcceptOffer ->
       -- | There must only be two inputs from this address:
       --     - one ask input signified by the AskDatum
       --     - one offer input signified by the OfferDatum
+      -- ** This is checked implicitly by the following check.
       -- | The ask input must have the ask phase beacon.
+      traceIfFalse "Ask beacon not present in input" 
+        (uncurry (valueOf askVal) (askBeacon askDatum) == 1) &&
       -- | The offer input must have the offer phase beacon.
+      traceIfFalse "Offer beacon not present in input" 
+        (uncurry (valueOf offerVal) (offerBeacon offerDatum) == 1) &&
       -- | The ask phase beacon must have the same currency symbol as the offer phase beacon.
+      traceIfFalse "Ask input has a different beacon policy-id than the offer input"
+        (fst (askBeacon askDatum) == fst (offerBeacon offerDatum)) &&
       -- | There must only be one output to this address.
+      -- ** This is checked implicitly by the next check.
       -- | The output to this address must have an active phase beacon with the same currency symbol
       -- as the ask and offer phase beacons - this requirement delegates a lot of the datum checking 
       -- to the phase beacon policy.
+      traceIfFalse "Output to address is missing an active phase beacon"
+        (valueOf (txOutValue output) (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
       -- | The staking credential must signal approval.
+      traceIfFalse "Staking credential did not approve" stakingCredApproves'
     RepayLoan ->
       -- | The input must have an ActiveDatum.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
@@ -379,6 +390,19 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- | New total of loan outstanding.
     newOutstanding :: Integer
     newOutstanding = loanOutstanding loanDatum - repaidAmount
+
+    -- | This will throw an error if there are not only two inputs and those two inputs are
+    -- an ask input and an offer input.
+    (askVal,askDatum,offerVal,offerDatum) =
+      case allInputs of
+        [x@TxOut{txOutDatum=xd,txOutValue=xVal},y@TxOut{txOutDatum=yd,txOutValue=yVal}] ->
+          let xd' = parseLoanDatum xd
+              yd' = parseLoanDatum yd
+          in if encodeDatum xd' == 0 && encodeDatum yd' == 1 then (xVal,xd',yVal,yd')
+             else if encodeDatum xd' == 1 && encodeDatum yd' == 0 then (yVal,yd',xVal,xd')
+             else traceError "Inputs are not the right phases"
+        _ -> traceError "There must be two and only two inputs from this address"
+        
 
     
 
