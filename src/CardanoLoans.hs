@@ -43,6 +43,7 @@ import qualified Plutonomy
 import Ledger.Value (valueOf,flattenValue)
 import PlutusTx.Numeric as Num
 import PlutusTx.Ratio (fromGHC,recip)
+import PlutusTx.Ratio as Ratio
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
 
@@ -83,6 +84,17 @@ data LoanDatum
       , loanExpiration :: POSIXTime
       , loanOutstanding :: Integer
       }
+
+instance Eq LoanDatum where
+  {-# INLINABLE (==) #-}
+  (AskDatum a b c d e f) == (AskDatum a' b' c' d' e' f') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f'
+  (OfferDatum a b c d e f g h) == (OfferDatum a' b' c' d' e' f' g' h') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h'
+  (ActiveDatum a b c d e f g h i j) == (ActiveDatum a' b' c' d' e' f' g' h' i' j') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h' && 
+    i == i' && j == j'
+  _ == _ = False
 
 data LoanRedeemer
   = CloseAsk
@@ -182,6 +194,12 @@ getScriptInput ((TxInInfo iRef ot) : tl) ref
   | iRef == ref = ot
   | otherwise = getScriptInput tl ref
 
+{-# INLINABLE parseLoanDatum #-}
+parseLoanDatum :: OutputDatum -> LoanDatum
+parseLoanDatum d = case d of
+  (OutputDatum (Datum d')) -> unsafeFromBuiltinData d'
+  _ -> traceError "All loan datums must be inline datums."
+
 -------------------------------------------------
 -- On-Chain Loan Validator
 -------------------------------------------------
@@ -244,17 +262,31 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       if uncurry (valueOf inputValue) (offerBeacon loanDatum) == 1
       then
         -- | The loan must not be expired.
-        traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum)
-        -- | There can only be one output to the address.
-        -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+        traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
+        -- | repaymentCheck ensures:
+        --     - there can only be one output to the address.
+        --     - sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+        traceIfFalse "Fail: collateralTaken / collateralization * (1 + interest) <= loanRepaid"
+          repaymentCheck &&
         -- | The output must have the proper datum
         --     - same as input datum except must subtract loan repaid from loanOutstanding.
-        -- | If new loanOutstanding == 0
-        --     - the borrower ID must be burned
+        traceIfFalse "Output to address has wrong datum" 
+          (parseLoanDatum (txOutDatum output) == loanDatum{loanOutstanding = newOutstanding}) &&
+        -- | If new loanOutstanding <= 0, the borrower ID must be burned
+        if newOutstanding <= 0
+        then uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum) == -1
+        else True
       else
         -- | The staking credential must signal approval.
-        traceIfFalse "Staking credential did not approve" stakingCredApproves'
+        traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
         -- | The borrower and lender IDs must be burned.
+        traceIfFalse "IDs not burned" 
+          ( uncurry (valueOf inputValue) (borrowerId loanDatum) == 
+             Num.negate (uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum)) &&
+
+            uncurry (valueOf inputValue) (lenderId loanDatum) == 
+             Num.negate (uncurry (valueOf $ txInfoMint info) (lenderId loanDatum))
+          )
     Claim ->
       -- | The datum must be an ActiveDatum.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
@@ -324,15 +356,29 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
             else acc
       in head $ foo inputCredentials [] outputs
 
-    repaidAmount :: Integer
-    repaidAmount = 
-      let i = uncurry (valueOf inputValue) (loanAsset loanDatum)
-          o = uncurry (valueOf $ txOutValue output) (loanAsset loanDatum)
-      in i - o
+    -- | The value flux of this address.
+    -- Positive values mean the address gained the asset.
+    -- Negative values mean the address lost the asset.
+    addrDiff :: Value
+    addrDiff = txOutValue output <> Num.negate inputValue
 
-    -- -- | This is converted into units of the loan asset.
-    -- collateralReclaimed :: Integer
-    -- collateralReclaimed = 0
+    repaidAmount :: Integer
+    repaidAmount = uncurry (valueOf addrDiff) $ loanAsset loanDatum
+
+    -- | This is converted into units of the loan asset by dividing by the collateral rates.
+    collateralReclaimed :: Rational
+    collateralReclaimed = 
+      let foo val !acc ((collatAsset,price):xs) = 
+            acc + Ratio.negate (fromInteger $ uncurry (valueOf val) collatAsset) * recip price 
+      in foo addrDiff (fromInteger 0) (collateralRates loanDatum)
+
+    repaymentCheck :: Bool
+    repaymentCheck = 
+      collateralReclaimed * (fromInteger 1 + loanInterest loanDatum) <= fromInteger repaidAmount
+
+    -- | New total of loan outstanding.
+    newOutstanding :: Integer
+    newOutstanding = loanOutstanding loanDatum - repaidAmount
 
     
 
