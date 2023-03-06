@@ -1,0 +1,203 @@
+-- Custom repository for cardano haskell packages
+-- See https://github.com/input-output-hk/cardano-haskell-packages on how to use CHaP in a Haskell project.
+repository cardano-haskell-packages
+  url: https://input-output-hk.github.io/cardano-haskell-packages
+  secure: True
+  root-keys:
+    3e0cce471cf09815f930210f7827266fd09045445d65923e6d0238a6cd15126f
+    443abb7fb497a134c343faf52f0b659bd7999bc06b7f63fa76dc99d631f9bea1
+    a86a1f6ce86c449c46666bda44268677abf29b5b2d2eb5ec7af903ec2f117a82
+    bcec67e8e99cabfa7764d75ad9b158d72bfacf70ca1d0ec8bc6b4406d1bf8413
+    c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
+    d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
+
+-- See CONTRIBUTING.adoc for how to update index-state
+index-state:
+  , hackage.haskell.org 2022-11-14T00:20:02Z
+  , cardano-haskell-packages 2022-11-17T04:56:26Z
+
+extra-packages:
+  cardano-crypto-class
+
+packages: ./.
+
+with-compiler: ghc-8.10.7
+
+-- You never, ever, want this.
+write-ghc-environment-files: never
+
+-- Always build tests and benchmarks.
+tests: true
+benchmarks: true
+
+-- The only sensible test display option.
+test-show-details: direct
+
+allow-newer:
+  -- cardano-ledger packages need aeson >2, the following packages have a
+  -- too restictive upper bounds on aeson, so we relax them here. The hackage
+  -- trustees can make a revision to these packages cabal file to solve the
+  -- issue permanently.
+  , ekg:aeson
+  , ekg-json:aeson
+  , openapi3:aeson
+  , servant:aeson
+  , servant-client-core:aeson
+  , servant-server:aeson
+
+constraints:
+  -- cardano-prelude-0.1.0.0 needs
+  , protolude <0.3.1
+
+  -- cardano-ledger-byron-0.1.0.0 needs
+  , cardano-binary <1.5.0.1
+
+  -- plutus-core-1.0.0.1 needs
+  , cardano-crypto-class >2.0.0.0
+  , algebraic-graphs <0.7
+
+  -- cardano-ledger-core-0.1.0.0 needs
+  , cardano-crypto-class <2.0.0.1
+
+  -- cardano-crypto-class-2.0.0.0.1 needs
+  , cardano-prelude <0.1.0.1
+
+  -- dbvar from cardano-wallet needs
+  , io-classes <0.3.0.0
+
+  -- newer typed-protocols need io-classes>=0.3.0.0 which is incompatible with dbvar's constraint above
+  , typed-protocols==0.1.0.0
+
+-- These packages appear in our dependency tree and are very slow to build.
+-- Empirically, turning off optimization shaves off ~50% build time.
+-- It also mildly improves recompilation avoidance.
+-- For deve work we don't care about performance so much, so this is okay.
+package cardano-ledger-alonzo
+  optimization: False
+package ouroboros-consensus-shelley
+  optimization: False
+package ouroboros-consensus-cardano
+  optimization: False
+package cardano-api
+  optimization: False
+package cardano-wallet
+  optimization: False
+package cardano-wallet-core
+  optimization: False
+package cardano-wallet-cli
+  optimization: False
+package cardano-wallet-launcher
+  optimization: False
+package cardano-wallet-core-integration
+  optimization: False
+
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/plutus-apps.git
+  tag: v1.0.0
+  subdir:
+    cardano-streaming
+    doc
+    freer-extras
+    marconi
+    marconi-mamba
+    playground-common
+    pab-blockfrost
+    plutus-chain-index
+    plutus-chain-index-core
+    plutus-contract
+    plutus-contract-certification
+    plutus-example
+    plutus-ledger
+    plutus-ledger-constraints
+    plutus-pab
+    plutus-pab-executables
+    plutus-script-utils
+    plutus-tx-constraints
+    plutus-use-cases
+    rewindable-index
+
+-- The current version is dated 2022/08/10
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-wallet
+    tag: 18a931648550246695c790578d4a55ee2f10463e
+    subdir:
+      lib/cli
+      lib/core
+      lib/core-integration
+      lib/dbvar
+      lib/launcher
+      lib/numeric
+      lib/shelley
+      lib/strict-non-empty-containers
+      lib/test-utils
+      lib/text-class
+
+-- Direct dependency.
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/servant-purescript
+    tag: 44e7cacf109f84984cd99cd3faf185d161826963
+
+-- Direct dependency.
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/purescript-bridge
+    tag: 47a1f11825a0f9445e0f98792f79172efef66c00
+
+-- Direct dependency.
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/quickcheck-dynamic
+    tag: c272906361471d684440f76c297e29ab760f6a1e
+
+-- Should follow cardano-wallet.
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-addresses
+    tag: b7273a5d3c21f1a003595ebf1e1f79c28cd72513
+    subdir:
+      -- cardano-addresses-cli
+      command-line
+      -- cardano-addresses
+      core
+
+-- This is needed because we rely on an unreleased feature
+-- https://github.com/input-output-hk/cardano-ledger/pull/3111
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-ledger
+    tag: da3e9ae10cf9ef0b805a046c84745f06643583c2
+    subdir:
+      eras/alonzo/impl
+      eras/alonzo/test-suite
+      eras/babbage/impl
+      eras/babbage/test-suite
+      eras/byron/chain/executable-spec
+      eras/byron/crypto
+      eras/byron/crypto/test
+      eras/byron/ledger/executable-spec
+      eras/byron/ledger/impl
+      eras/byron/ledger/impl/test
+      eras/shelley/impl
+      eras/shelley/test-suite
+      eras/shelley-ma/impl
+      eras/shelley-ma/test-suite
+      libs/cardano-ledger-core
+      libs/cardano-ledger-pretty
+      libs/cardano-protocol-tpraos
+      libs/cardano-data
+      libs/vector-map
+      libs/set-algebra
+      libs/small-steps
+      libs/small-steps-test
+      libs/non-integral
+
+source-repository-package
+  type: git
+  location: https://github.com/well-typed/plutonomy.git
+  tag: 6c01302ba8cf3be4f71617e106cd5ef7ed10fc63
+
+package plutonomy
+  flags: +plutus-f680ac697
