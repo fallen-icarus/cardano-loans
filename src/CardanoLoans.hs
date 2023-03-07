@@ -18,6 +18,17 @@
 
 module CardanoLoans
 (
+  LoanDatum(..),
+  LoanRedeemer(..),
+  BeaconRedeemer(..),
+  CurrencySymbol(..),
+  TokenName(..),
+  PaymentPubKeyHash(..),
+  pubKeyAsToken,
+  adaSymbol,
+  adaToken,
+
+
   loanValidator,
   loanValidatorHash,
   loanValidatorScript,
@@ -275,6 +286,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- 2) The output must contain the proper datum.
       traceIfFalse "output datum is incorrect: must be ActiveDatum with correct info" 
         validActiveDatum &&
+      -- | The required amount of collateral must be posted.
+      traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
       -- | The following function checks:
       -- 1) The active beacon must be minted and stored in this address.
       -- 2) The borrower ID is minted.
@@ -417,6 +430,16 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
                 xs
       in foo addrDiff (fromInteger 0) (collateralRates loanDatum)
 
+    -- | This checks that enough collateral is posted when a loan offer is accepted.
+    enoughCollateral :: Bool
+    enoughCollateral =
+      let foo _ acc [] = acc
+          foo val !acc ((collatAsset,price):xs) =
+            foo val
+                (acc + (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
+                xs
+      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanQuantity offerDatum)
+
     repaymentCheck :: Bool
     repaymentCheck = 
       collateralReclaimed * (fromInteger 1 + loanInterest loanDatum) <= repaidAmount
@@ -527,7 +550,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - collateral list not empty
       destinationCheck r &&
       -- | The receiving staking pubkey must sign.
-      signed (txInfoSignatories info) pkh
+      traceIfFalse "Receiving staking pubkey did not sign" (signed (txInfoSignatories info) pkh)
     MintOfferToken (PaymentPubKeyHash pkh) ->
       -- | The following function checks:
       -- 1) Must mint exactly one offer token and exactly one lender ID.
