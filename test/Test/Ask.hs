@@ -560,6 +560,41 @@ receivingAddressDidNotSign = do
       , askAsInline = True
       }
 
+mintMultipleKindsOfTokens :: EmulatorTrace ()
+mintMultipleKindsOfTokens = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
+      askDatum = AskDatum'
+        { askBeacon' = (beaconPolicySymbol,"Ask")
+        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        , loanAsset' = (adaSymbol,adaToken)
+        , loanQuantity' = 100
+        , loanTerm' = 12000
+        , collateral' = [testToken1]
+        }
+      addr = Address (ScriptCredential loanValidatorHash)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1)
+  
+  callEndpoint @"ask" h1 $
+    AskParams
+      { askBeaconsMinted = [("Ask",1),("Other",1)]
+      , askBeaconRedeemer = MintAskToken' borrowerPubKey
+      , askBeaconPolicy = beaconPolicy
+      , askAddress = addr
+      , askInfo = 
+          [ ( Just askDatum
+            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
+           <> singleton beaconPolicySymbol "Other" 1
+            )
+          ]
+      , askAsInline = True
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -571,6 +606,8 @@ tests = do
         (Test.not assertNoFailedTransactions) mintMultipleAskTokens
     , checkPredicateOptions opts "Fail if ask token has a different token name than 'Ask'"
         (Test.not assertNoFailedTransactions) mintAskTokenWithDifferentName
+    , checkPredicateOptions opts "Fail if multiple kinds of tokens minted in tx"
+        (Test.not assertNoFailedTransactions) mintMultipleKindsOfTokens
     , checkPredicateOptions opts "Fail if ask token minted to payment pubkey address"
         (Test.not assertNoFailedTransactions) mintToPaymentPubKey
     , checkPredicateOptions opts "Fail if ask token minted to different payment script address"
@@ -602,4 +639,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig receivingAddressDidNotSign
+testTrace = runEmulatorTraceIO' def emConfig mintMultipleKindsOfTokens

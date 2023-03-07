@@ -127,6 +127,10 @@ data AskParams = AskParams
   , askAsInline :: Bool
   } deriving (Generic,ToJSON,FromJSON)
 
+-- data OfferParams :: OfferParams
+--   { offerBeaconsMinted :: 
+--   }
+
 type TraceSchema =
       Endpoint "ask" AskParams
 

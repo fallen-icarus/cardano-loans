@@ -4,7 +4,8 @@
 
 ### MintAskBeacon *PaymentPubKeyHash*
 - [x] Only one ask token minted in the tx.
-- [x] The ask token must have the token name "Ask".
+  - [x] Fail if ask token does not have the token name "Ask".
+  - [x] Fail if additional kinds of tokens minted.
 - [x] Must be minted to one of the dapp's addresses.
   - [x] Fail if minted to a pubkey address.
   - [x] Fail if minted to another script address.
