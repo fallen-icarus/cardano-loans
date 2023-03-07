@@ -45,7 +45,8 @@ test-suite cardano-loans-tests
     -threaded -rtsopts -with-rtsopts=-N
   other-modules:
     Test.Common,
-    Test.Ask
+    Test.Ask,
+    Test.Offer
   build-depends:
     cardano-loans,
     cardano-api,

@@ -127,12 +127,18 @@ data AskParams = AskParams
   , askAsInline :: Bool
   } deriving (Generic,ToJSON,FromJSON)
 
--- data OfferParams :: OfferParams
---   { offerBeaconsMinted :: 
---   }
+data OfferParams = OfferParams
+  { offerBeaconsMinted :: [(TokenName,Integer)]
+  , offerBeaconRedeemer :: BeaconRedeemer'
+  , offerBeaconPolicy :: MintingPolicy
+  , offerAddress :: Address
+  , offerInfo :: [(Maybe LoanDatum', Value)]
+  , offerAsInline :: Bool
+  } deriving (Generic,ToJSON,FromJSON)
 
 type TraceSchema =
       Endpoint "ask" AskParams
+  .\/ Endpoint "offer" OfferParams
 
 -------------------------------------------------
 -- Configs
@@ -207,6 +213,38 @@ askForLoan AskParams{..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Asked for a loan"
 
+offerLoan :: OfferParams -> Contract () TraceSchema Text ()
+offerLoan OfferParams{..} = do
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+  let beaconPolicyHash = mintingPolicyHash offerBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer offerBeaconRedeemer
+      
+      toDatum'
+        | offerAsInline = TxOutDatumInline . toDatum . convert2LoanDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2LoanDatum
+      
+      lookups = plutusV2MintingPolicy offerBeaconPolicy
+      
+      tx' =
+        -- | Mint Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          offerBeaconsMinted
+        )
+        -- | Add offer
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith offerAddress (fmap toDatum' d) v)
+              mempty
+              offerInfo
+           )
+        -- | Must be signed by receiving pubkey
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Asked for a loan"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -214,6 +252,8 @@ endpoints :: Contract () TraceSchema Text ()
 endpoints = selectList choices >> endpoints
   where
     askForLoan' = endpoint @"ask" askForLoan
+    offerLoan' = endpoint @"offer" offerLoan
     choices = 
       [ askForLoan'
+      , offerLoan'
       ]

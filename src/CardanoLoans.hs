@@ -571,7 +571,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - all collaterale rates > 0.
       destinationCheck r &&
       -- | The lender pkh must sign the tx.
-      signed (txInfoSignatories info) pkh
+      traceIfFalse "Lender did not sign tx" (signed (txInfoSignatories info) pkh)
     MintActiveToken _ _ ->
       -- | The following function checks:
       -- 1) Both the ask token and the offer token must be burned in the tx.
@@ -620,9 +620,9 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
           traceIfFalse "The lender ID does not have the lender's pubkey as token name" 
             (tn1 == pubKeyAsToken pkh) &&
           traceIfFalse "Only one lender ID can be minted" (n1 == 1)
-        else traceError "The offer beacon and lender ID must be minted"
+        else traceError "Only thhe offer beacon and lender ID can be minted"
       (MintOfferToken _, _) ->
-        traceError "The offer beacon and lender ID must be minted"
+        traceError "Only the offer beacon and lender ID can be minted"
       (MintActiveToken pkh _, xs@[_,_,_,_]) ->
         traceIfFalse "One ask beacon not burned" (mintSatisfied (TokenName "Ask") (-1) xs) &&
         traceIfFalse "One offer beacon not burned" (mintSatisfied (TokenName "Offer") (-1) xs) &&
@@ -696,7 +696,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                         -- unless True.
                         acc && validDestination vh && validDatum r' (parseLoanDatum d)
                       _ -> traceError "Offer beacon must go to a dapp address using a staking pubkey"
-                  else traceError "Offer token and lender ID must be stored together."
+                  else traceError "Offer token and lender ID must be stored in the same utxo."
                 else acc
               MintActiveToken borrowerPkh@(PaymentPubKeyHash pkh) lenderPkh ->
                 if valueOf oVal beaconSym (TokenName "Active") == 1 then 
