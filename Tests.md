@@ -20,6 +20,7 @@
   - [x] Fail if loanTerm <= 0.
   - [x] Fail if collateral list is empty.
   - [x] Fail if datum not inline.
+  - [x] Fail if not an AskDatum.
 - [x] Fail if receiving address' staking credential does not sign.
 
 ### MintOfferBeacon *PaymentPubKeyHash*

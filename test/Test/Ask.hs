@@ -595,6 +595,40 @@ mintMultipleKindsOfTokens = do
       , askAsInline = True
       }
 
+notAnAskDatum :: EmulatorTrace ()
+notAnAskDatum = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
+      askDatum = OfferDatum'
+        { offerBeacon' = (beaconPolicySymbol,"Ask")
+        , lenderId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        , loanAsset' = (adaSymbol,adaToken)
+        , loanQuantity' = 100
+        , loanTerm' = 12000
+        , loanInterest' = unsafeRatio 1 10
+        , collateralRates' = [(testToken1,unsafeRatio 1 1)]
+        }
+      addr = Address (ScriptCredential loanValidatorHash)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1)
+  
+  callEndpoint @"ask" h1 $
+    AskParams
+      { askBeaconsMinted = [("Ask",1)]
+      , askBeaconRedeemer = MintAskToken' borrowerPubKey
+      , askBeaconPolicy = beaconPolicy
+      , askAddress = addr
+      , askInfo = 
+          [ ( Just askDatum
+            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
+          ]
+      , askAsInline = True
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -632,6 +666,8 @@ tests = do
         (Test.not assertNoFailedTransactions) emptyCollateral
     , checkPredicateOptions opts "Fail if output datum is not inline"
         (Test.not assertNoFailedTransactions) notInline
+    , checkPredicateOptions opts "Fail if ask beacon not stored with an AskDatum"
+        (Test.not assertNoFailedTransactions) notAnAskDatum
     , checkPredicateOptions opts "Fail if receiving address did not sign tx"
         (Test.not assertNoFailedTransactions) receivingAddressDidNotSign
     , checkPredicateOptions opts "Successfully create ask"
@@ -639,4 +675,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig mintMultipleKindsOfTokens
+testTrace = runEmulatorTraceIO' def emConfig notAnAskDatum
