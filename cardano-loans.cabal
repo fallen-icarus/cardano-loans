@@ -36,6 +36,36 @@ library
     -fno-omit-interface-pragmas 
     -fno-specialise
 
+test-suite cardano-loans-tests
+  import: lang
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  hs-source-dirs: test
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N
+  other-modules:
+    Test.Common,
+    Test.Ask
+  build-depends:
+    cardano-loans,
+    cardano-api,
+    plutus-contract,
+    plutus-tx,
+    plutus-ledger-api,
+    plutus-ledger,
+    plutus-ledger-constraints,
+    plutus-tx-plugin,
+    aeson,
+    plutus-script-utils,
+    text,
+    playground-common,
+    containers,
+    data-default,
+    tasty,
+    lens,
+    tasty-hunit,
+    plutus-core
+
 executable cardano-loans
     import: lang
     main-is:          Main.hs

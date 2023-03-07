@@ -229,7 +229,7 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- pubkey. However, there is no way to enforce this from the validator's side which means it is
 -- possible to send funds to an address instance for this validator that uses a staking script.
 -- Note that it would be impossible to actually broadcast this address with the beacons. However,
--- the funds would permanently locked unless the validator allowed spending with a staking script
+-- the funds would be permanently locked unless the validator allowed spending with a staking script
 -- as well as a staking pubkey. To prevent this locking, the validator still checks if the staking 
 -- script signals approval, too.
 --
@@ -567,6 +567,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - loanQuantity > 0.
       --     - loanTerm > 0.
       --     - loanInterest > 0.
+      --     - collateralRates not null
       --     - all collaterale rates > 0.
       destinationCheck r &&
       -- | The lender pkh must sign the tx.
@@ -604,7 +605,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     mintCheck :: BeaconRedeemer -> Bool
     mintCheck r' = case (r',beaconMint) of
       (MintAskToken _, [(_,tn,n)]) ->
-        traceIfFalse "Only the ask beacon can be minted" (tn == (TokenName "Ask")) &&
+        traceIfFalse "Only the ask beacon must have the token name 'Ask'" (tn == (TokenName "Ask")) &&
         traceIfFalse "Only one ask beacon can be minted" (n == 1)
       (MintAskToken _, _) -> 
         traceError "Only one beacon can be minted and it must be the ask beacon."
@@ -683,7 +684,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                       -- unless True.
                       acc && validDestination vh && 
                       validDatum r' (parseLoanDatum d) && 
-                      pkh == pkh' 
+                      traceIfFalse "Receiving address does not match redeemer pubkey hash" (pkh == pkh')
                     _ -> traceError "Ask beacon must go to a dapp address using a staking pubkey"
                 else acc
               MintOfferToken pkh ->
