@@ -151,10 +151,20 @@ data AcceptParams = AcceptParams
   , acceptWithTTL :: Bool
   } deriving (Generic,ToJSON,FromJSON)
 
+data CloseAskParams = CloseAskParams
+  { closeAskBeaconsBurned :: [(TokenName,Integer)]
+  , closeAskBeaconRedeemer :: BeaconRedeemer'
+  , closeAskBeaconPolicy :: MintingPolicy
+  , closeAskLoanVal :: Validator
+  , closeAskLoanAddress :: Address
+  , closeAskSpecificUTxOs :: [(LoanDatum',Value)]
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "ask" AskParams
   .\/ Endpoint "offer" OfferParams
   .\/ Endpoint "accept" AcceptParams
+  .\/ Endpoint "close-ask" CloseAskParams
 
 -------------------------------------------------
 -- Configs
@@ -317,6 +327,45 @@ acceptLoan AcceptParams{..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Loan accepted"
 
+closeAsk :: CloseAskParams -> Contract () TraceSchema Text ()
+closeAsk CloseAskParams{..} = do
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+  askUtxos <- utxosAt closeAskLoanAddress
+
+  let beaconPolicyHash = mintingPolicyHash closeAskBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer closeAskBeaconRedeemer
+
+      closeRedeemer = toRedeemer CloseAsk
+      
+      lookups = plutusV2MintingPolicy closeAskBeaconPolicy
+             <> plutusV2OtherScript closeAskLoanVal
+             <> Constraints.unspentOutputs askUtxos
+      
+      tx' =
+        -- | Burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          closeAskBeaconsBurned
+        )
+        -- | Must spend all utxos to be closed
+        <> foldl' (\a (d,v) -> 
+                      a <>
+                      mustSpendScriptOutputWithMatchingDatumAndValue 
+                        (UScripts.validatorHash closeAskLoanVal) 
+                        (== toDatum (convert2LoanDatum d))
+                        (==v) 
+                        closeRedeemer
+                  ) 
+                  mempty 
+                  closeAskSpecificUTxOs
+        -- | Must be signed by receiving pubkey
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Asked for a loan"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -326,8 +375,10 @@ endpoints = selectList choices >> endpoints
     askForLoan' = endpoint @"ask" askForLoan
     offerLoan' = endpoint @"offer" offerLoan
     acceptLoan' = endpoint @"accept" acceptLoan
+    closeAsk' = endpoint @"close-ask" closeAsk
     choices = 
       [ askForLoan'
       , offerLoan'
       , acceptLoan'
+      , closeAsk'
       ]

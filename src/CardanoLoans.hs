@@ -245,31 +245,29 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     CloseAsk ->
       -- | The datum must be an AskDatum.
       traceIfFalse "Datum is not an AskDatum" (encodeDatum loanDatum == 0) &&
-      -- | There can only be one utxo spent from this address in this tx.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allInputs == 1) &&
       -- | The address' staking credential must signal approval.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
-      -- | If the ask beacon is present, it must be burned.
-      traceIfFalse "Ask beacon not burned."
-        (uncurry (valueOf inputValue) (askBeacon loanDatum) == 
+      -- | All ask beacons among tx inputs must be burned.
+      traceIfFalse "Ask beacons not burned."
+        (uncurry (valueOf allVal) (askBeacon loanDatum) == 
            Num.negate (uncurry (valueOf $ txInfoMint info) (askBeacon loanDatum)))
     CloseOffer ->
       -- | The datum must be an OfferDatum.
       traceIfFalse "Datum is not an OfferDatum" (encodeDatum loanDatum == 1) &&
-      -- | There can only be one utxo spent from this address in this tx.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allInputs == 1) &&
       -- | If the offer beacon is present (also means lender ID is present):
       if uncurry (valueOf inputValue) (offerBeacon loanDatum) == 1
       then
         -- | The lender in the lender ID must sign the tx.
         traceIfFalse "Lender did not sign" 
              (signed (txInfoSignatories info) (tokenAsPubKey $ snd $ lenderId loanDatum)) &&
-        -- | The offer beacon must be burned.
-        traceIfFalse "Offer beacon not burned"
-          (uncurry (valueOf $ txInfoMint info) (offerBeacon loanDatum) == -1) &&
-        -- | The lender ID must be burned.
-        traceIfFalse "Lender ID not burned"
-          (uncurry (valueOf $ txInfoMint info) (lenderId loanDatum) == -1)
+        -- | All offer beacons in tx inputs must be burned.
+        traceIfFalse "Offer beacons not burned"
+          (uncurry (valueOf allVal) (offerBeacon loanDatum) == 
+           Num.negate (uncurry (valueOf $ txInfoMint info) (offerBeacon loanDatum))) &&
+        -- | All the lender IDs for this lender in tx inputs must be burned.
+        traceIfFalse "Lender IDs not burned"
+          (uncurry (valueOf allVal) (lenderId loanDatum) == 
+           Num.negate (uncurry (valueOf $ txInfoMint info) (lenderId loanDatum)))
       -- Else (a sign of an invalid offer utxo):
       else
         -- | The staking credential must signal approval.
@@ -307,7 +305,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- | The input must have an ActiveDatum.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
       -- | There can only be one utxo spent from this address.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allInputs == 1) &&
+      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allAddrInputs == 1) &&
       -- | If the input has the active beacon:
       if uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1
       then
@@ -347,7 +345,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
       -- | There can only be one utxo spent from this address. This is due to how
       -- the credit history is updated.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allInputs == 1) &&
+      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allAddrInputs == 1) &&
       -- | The input utxo must have an active beacon. This also ensures a lender ID is present.
       traceIfFalse "UTxO does not have an active beacon" 
         (uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1) &&
@@ -378,10 +376,14 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- needed.
     stakingCredApproves' :: Bool
     !stakingCredApproves' = stakingCredApproves inputCredentials info
+    
+    -- | The total input value for this tx.
+    allVal :: Value
+    allVal = valueSpent info
 
     -- | Returns a list of inputs from this address.
-    allInputs :: [TxOut]
-    allInputs =
+    allAddrInputs :: [TxOut]
+    allAddrInputs =
       let inputs = txInfoInputs info
           foo _ acc [] = acc
           foo iCred !acc (TxInInfo{txInInfoResolved=x@TxOut{txOutAddress=addr}}:xs) =
@@ -461,7 +463,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- | This will throw an error if there are not only two inputs or if the two inputs are not
     -- an ask input and an offer input.
     (askVal,askDatum,offerVal,offerDatum) =
-      case allInputs of
+      case allAddrInputs of
         [TxOut{txOutDatum=xd,txOutValue=xVal},TxOut{txOutDatum=yd,txOutValue=yVal}] ->
           let xd' = parseLoanDatum xd
               yd' = parseLoanDatum yd
@@ -493,8 +495,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     noOtherInputBeacons :: Bool
     noOtherInputBeacons =
-      let allVal = valueSpent info
-          offerBeacon' = offerBeacon offerDatum
+      let offerBeacon' = offerBeacon offerDatum
           askBeacon' = askBeacon askDatum
       in traceIfFalse "No other ask and offer beacons are allowed in tx" $
         uncurry (valueOf allVal) askBeacon' == uncurry (valueOf askVal) askBeacon' &&

@@ -123,3 +123,22 @@
 - [x] The active beacon must be minted and stored in the dapp address.
   - [x] Fail if the active beacon is stored in another address.
 - [x] Fail if TTL not specified.
+
+### CloseAsk
+- [x] The input utxo must have an AskDatum.
+  - [x] Fail if it has a different datum type.
+- [x] The staking credential must approve.
+- [x] All ask beacons among tx inputs must be burned.
+  - [x] Fail if not all ask beacons burned.
+
+### CloseOffer
+- [ ] The input utxo must have an OfferDatum.
+  - [ ] Fail if it has a different datum type.
+- [ ] All offer beacons among tx inputs must be burned.
+- [ ] All lender IDs in tx for the lender must be burned.
+- [ ] If offer beacon is present, the lender must sign.
+- [ ] If offer beacon NOT present, the staking credential must signal approval.
+
+### RepayLoan
+
+### Claim
