@@ -47,4 +47,5 @@
   - [x] Fail if not all collateral rates > 0
   - [x] Fail if datum not OfferDatum.
   - [x] Fail if datum not inline.
+- [x] Offer beacon must be stored with the asked loan amount.
 - [x] The lender must sign the tx.

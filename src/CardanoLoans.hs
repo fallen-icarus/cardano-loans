@@ -569,6 +569,9 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - loanInterest > 0.
       --     - collateralRates not null
       --     - all collaterale rates > 0.
+      -- 5) The offer token must be stored with the amount of the loan asset specified in
+      -- the datum. If the loan asset is ADA, an additional 3 ADA is required to account for
+      -- the presence of the beacon tokens.
       destinationCheck r &&
       -- | The lender pkh must sign the tx.
       traceIfFalse "Lender did not sign tx" (signed (txInfoSignatories info) pkh)
@@ -664,6 +667,12 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     validDatum _ _ = True -- ^ This is to stop the pattern match compile warning. It is not used
                           --   for any other redeemers.
 
+    loanQuantityMet :: Value -> LoanDatum -> Bool
+    loanQuantityMet oVal d
+      | loanAsset d == (adaSymbol,adaToken) = 
+          uncurry (valueOf oVal) (loanAsset d) >= loanQuantity d * 1_000_000 + 3_000_000
+      | otherwise = uncurry (valueOf oVal) (loanAsset d) >= loanQuantity d
+
     -- | Check if the beacons are going to the proper address and are stored properly (together and 
     -- with proper datum). This is only used for MintOfferToken and MintAskToken.
     destinationCheck :: BeaconRedeemer -> Bool
@@ -694,7 +703,11 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                       (ScriptCredential vh, Just (StakingHash (PubKeyCredential _))) ->
                         -- | validDestination and validDatum will both fail with traceError
                         -- unless True.
-                        acc && validDestination vh && validDatum r' (parseLoanDatum d)
+                        let datum = parseLoanDatum d
+                        in 
+                          acc && validDestination vh && validDatum r' datum && 
+                          traceIfFalse "Offer beacon not stored with required loan amount" 
+                            (loanQuantityMet oVal datum)
                       _ -> traceError "Offer beacon must go to a dapp address using a staking pubkey"
                   else traceError "Offer token and lender ID must be stored in the same utxo."
                 else acc

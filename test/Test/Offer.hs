@@ -67,7 +67,7 @@ offerToStakePubKey = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -103,7 +103,7 @@ mintMultipleOfferBeacons = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 2
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 2
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -139,7 +139,7 @@ mintOfferTokenWithWrongName = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offe" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offe" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -175,7 +175,7 @@ mintMultipleLenderIds = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 2
             )
           ]
@@ -211,7 +211,7 @@ mintWrongLenderId = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol ("pubKeyAsToken lenderPubKey") 1
             )
           ]
@@ -247,7 +247,7 @@ mintAdditionalTokens = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol "other" 1
             )
@@ -284,7 +284,7 @@ mintToPaymentPubKey = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -320,7 +320,7 @@ mintToOtherPaymentScript = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -352,7 +352,7 @@ mintToAddressWithoutStaking = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -385,7 +385,7 @@ mintToAddressUsingStakingScript = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -421,7 +421,7 @@ storeOfferBeaconAndLenderIdSeparately = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
             )
           , (Just offerDatum
             , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
@@ -459,7 +459,7 @@ wrongOfferBeacon = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -495,7 +495,7 @@ wrongLenderId = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -531,7 +531,7 @@ negativeQuantity = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -567,7 +567,7 @@ negativeTerm = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -603,7 +603,7 @@ negativeInterest = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -639,7 +639,7 @@ emptyCollateral = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -675,7 +675,7 @@ negativeCollateralRate = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -711,7 +711,7 @@ notInline = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -746,7 +746,7 @@ datumNotOfferDatum = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -782,7 +782,43 @@ lenderDidNotSign = do
       , offerAddress = addr
       , offerInfo = 
           [ ( Just offerDatum
-            , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Offer" 1
+            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
+           <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
+            )
+          ]
+      , offerAsInline = True
+      }
+
+offerUTxODoesntHaveLoanAmount :: EmulatorTrace ()
+offerUTxODoesntHaveLoanAmount = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
+      offerDatum = OfferDatum'
+        { offerBeacon' = (beaconPolicySymbol,"Offer")
+        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        , loanAsset' = (adaSymbol,adaToken)
+        , loanQuantity' = 100
+        , loanTerm' = 12000
+        , loanInterest' = unsafeRatio 1 10
+        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        }
+      addr = Address (ScriptCredential loanValidatorHash)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1)
+  
+  callEndpoint @"offer" h2 $
+    OfferParams
+      { offerBeaconsMinted = [("Offer",1),(pubKeyAsToken lenderPubKey,1)]
+      , offerBeaconRedeemer = MintOfferToken' lenderPubKey
+      , offerBeaconPolicy = beaconPolicy
+      , offerAddress = addr
+      , offerInfo = 
+          [ ( Just offerDatum
+            , lovelaceValueOf 100_000_000 <> singleton beaconPolicySymbol "Offer" 1
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
             )
           ]
@@ -836,9 +872,11 @@ tests = do
         (Test.not assertNoFailedTransactions) datumNotOfferDatum
     , checkPredicateOptions opts "Fail if lender did not sign tx"
         (Test.not assertNoFailedTransactions) lenderDidNotSign
+    , checkPredicateOptions opts "Fail if offer utxo doesn't have loan amount."
+        (Test.not assertNoFailedTransactions) offerUTxODoesntHaveLoanAmount
     , checkPredicateOptions opts "Successfully create loan offer"
         assertNoFailedTransactions offerToStakePubKey
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig lenderDidNotSign
+testTrace = runEmulatorTraceIO' def emConfig offerToStakePubKey
