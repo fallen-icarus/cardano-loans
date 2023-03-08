@@ -169,12 +169,26 @@ data CloseOfferParams = CloseOfferParams
   , closeOfferSpecificUTxOs :: [(LoanDatum',Value)]
   } deriving (Generic,ToJSON,FromJSON)
 
+data RepayLoanParams = RepayLoanParams
+  { repayLoanBeaconsBurned :: [(TokenName,Integer)]
+  , repayLoanBeaconRedeemer :: BeaconRedeemer'
+  , repayLoanBeaconPolicy :: MintingPolicy
+  , repayLoanVal :: Validator
+  , repayLoanAddress :: Address
+  , repayLoanSpecificUTxOs :: [(LoanDatum',Value)]
+  , repayLoanChangeAddress :: Address
+  , repayLoanChangeOutputs :: [(Maybe LoanDatum',Value)]
+  , repayLoanDatumAsInline :: Bool
+  , repayLoanWithTTE :: Bool
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "ask" AskParams
   .\/ Endpoint "offer" OfferParams
   .\/ Endpoint "accept" AcceptParams
   .\/ Endpoint "close-ask" CloseAskParams
   .\/ Endpoint "close-offer" CloseOfferParams
+  .\/ Endpoint "repay-loan" RepayLoanParams
 
 -------------------------------------------------
 -- Configs
@@ -415,6 +429,60 @@ closeOffer CloseOfferParams{..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Closed an offer"
 
+repayLoan :: RepayLoanParams -> Contract () TraceSchema Text ()
+repayLoan RepayLoanParams{..} = do
+  loanUtxos <- utxosAt repayLoanAddress
+  (_,end) <- currentNodeClientTimeRange
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let beaconPolicyHash = mintingPolicyHash repayLoanBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer repayLoanBeaconRedeemer
+      
+      toDatum'
+        | repayLoanDatumAsInline = TxOutDatumInline . toDatum . convert2LoanDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2LoanDatum
+
+      repayRedeemer = toRedeemer RepayLoan
+
+      lookups = Constraints.unspentOutputs loanUtxos
+             <> plutusV2OtherScript repayLoanVal
+             <> plutusV2MintingPolicy repayLoanBeaconPolicy
+      
+      tx' =
+        -- | Burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          repayLoanBeaconsBurned
+        )
+        -- | Must spend all utxos to be repaid
+        <> foldl' (\a (d,v) -> 
+                      a <>
+                      mustSpendScriptOutputWithMatchingDatumAndValue 
+                        (UScripts.validatorHash repayLoanVal) 
+                        (== toDatum (convert2LoanDatum d))
+                        (==v) 
+                        repayRedeemer
+                  ) 
+                  mempty 
+                  repayLoanSpecificUTxOs
+        -- | Return change to loan address
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith repayLoanChangeAddress (fmap toDatum' d) v)
+              mempty
+              repayLoanChangeOutputs
+           )
+        -- | Must tell script current time
+        <> (if repayLoanWithTTE
+            then mustValidateIn (to end)
+            else mempty)
+        -- | Must be signed by borrower
+        <> mustBeSignedBy userPubKeyHash
+
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Made loan payment"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -426,10 +494,12 @@ endpoints = selectList choices >> endpoints
     acceptLoan' = endpoint @"accept" acceptLoan
     closeAsk' = endpoint @"close-ask" closeAsk
     closeOffer' = endpoint @"close-offer" closeOffer
+    repayLoan' = endpoint @"repay-loan" repayLoan
     choices = 
       [ askForLoan'
       , offerLoan'
       , acceptLoan'
       , closeAsk'
       , closeOffer'
+      , repayLoan'
       ]

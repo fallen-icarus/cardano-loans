@@ -306,41 +306,37 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
       -- | There can only be one utxo spent from this address.
       traceIfFalse "Only one utxo can be spent from this address in this tx." (length allAddrInputs == 1) &&
-      -- | If the input has the active beacon:
-      if uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1
+      -- | The staking credential must signal approval. This must be true regardless of presence of
+      -- active beacon.
+      traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
+      -- | The loan must not be expired.
+      traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
+      -- | There can only be one output to this address. Checked by the next check.
+      -- | The output must have the proper datum.
+      --     - same as input datum except must subtract loan repaid from loanOutstanding.
+      traceIfFalse "Output to address has wrong datum" 
+        ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
+      -- | If new loanOutstanding <= 0):
+      if newOutstanding <= fromInteger 0
       then
-        -- | The loan must not be expired.
-        traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
-        -- | There can only be one output to this address. Checked by the next check.
-        -- | The output must have the proper datum.
-        --     - same as input datum except must subtract loan repaid from loanOutstanding.
-        traceIfFalse "Output to address has wrong datum" 
-          ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
-        -- | If new loanOutstanding <= 0):
-        if newOutstanding <= fromInteger 0
-        then
-          -- | The remaining collateral is unlocked.
-          -- | The borrower ID must be burned.
-          traceIfFalse "Borrower ID not burned" 
-            (uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum) == -1) &&
-          -- | The output must have the active beacon and the lender ID.
-          traceIfFalse "Output must have active beacon and lender ID"
-            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-             uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
-        -- Else:
-        else
-          -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
-          traceIfFalse "Fail: collateralTaken / collateralization * (1 + interest) <= loanRepaid"
-            repaymentCheck &&
-          -- | The output must have the active beacon, borrower ID, and lender ID.
-          traceIfFalse "Output must have active beacon, borrower ID, and lender ID"
-            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-             uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
-             uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
-      -- Else (a sign of an invalid active utxo):
+        -- | The remaining collateral is unlocked.
+        -- | The borrower ID must be burned.
+        traceIfFalse "Borrower ID not burned" 
+          (uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum) == -1) &&
+        -- | The output must have the active beacon and the lender ID.
+        traceIfFalse "Output must have active beacon and lender ID"
+          (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
+            uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
+      -- Else:
       else
-        -- | The staking credential must signal approval.
-        traceIfFalse "Staking credential did not approve" stakingCredApproves'
+        -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+        traceIfFalse "Fail: collateralTaken / collateralization * (1 + interest) <= loanRepaid"
+          repaymentCheck &&
+        -- | The output must have the active beacon, borrower ID, and lender ID.
+        traceIfFalse "Output must have active beacon, borrower ID, and lender ID"
+          (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
+            uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
+            uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
     Claim ->
       -- | The datum must be an ActiveDatum.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&

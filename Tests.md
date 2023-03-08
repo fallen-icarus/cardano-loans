@@ -140,5 +140,32 @@
 - [x] If offer beacon NOT present, the staking credential must signal approval.
 
 ### RepayLoan
+- [x] The input utxo must have an ActiveDatum.
+  - [x] Fail if not an ActiveDatum.
+- [x] There can only be one utxo spent from the address.
+  - [x] Fail if multiple utxos spent from address.
+- [x] Staking credential must approve.
+- [x] Loan must not be expired.
+- [x] There can/must be one output to the address.
+  - [x] Fail if there are mulitple outputs to address.
+  - [x] Fail if there are no outputs to address.
+- [x] The output must have the same datum accept for the updated loanOutstanding.
+- [x] Fail if output datum not inline.
+- [x] If newOutstanding <= 0
+  - [x] Allows reclaiming remaing collateral for over-collateralized loan.
+  - [x] The borrower ID must be burned.
+    - [x] Fail if the borrower ID not burned.
+  - [x] The output must have the active beacon and the lender ID.
+    - [x] Fail if output missing active beacon.
+    - [x] Fail if output missing lender ID.
+- [x] Else
+  - [x] collateralTaken / collateralization * (1 + interest) <= loanRepaid
+    - [x] Fail if not enough loan repaid.
+    - [x] Successfully repay an undercollateralized loan.
+  - [x] The output must have the active beacon, borrower ID, and the lender ID.
+    - [x] Fail if output missing active beacon.
+    - [x] Fail if output missing lender ID.
+    - [x] Fail if output missing borrower ID.
+- [x] Fail if TTE not specified.
 
 ### Claim
