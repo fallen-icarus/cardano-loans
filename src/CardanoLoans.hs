@@ -76,7 +76,7 @@ data LoanDatum
       { askBeacon :: (CurrencySymbol,TokenName)
       , borrowerId :: (CurrencySymbol,TokenName)
       , loanAsset :: (CurrencySymbol,TokenName)
-      , loanQuantity :: Integer
+      , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , collateral :: [(CurrencySymbol,TokenName)]
       }
@@ -85,7 +85,7 @@ data LoanDatum
       { offerBeacon :: (CurrencySymbol,TokenName)
       , lenderId :: (CurrencySymbol,TokenName)
       , loanAsset :: (CurrencySymbol,TokenName)
-      , loanQuantity :: Integer
+      , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
@@ -96,7 +96,7 @@ data LoanDatum
       , lenderId :: (CurrencySymbol,TokenName)
       , borrowerId :: (CurrencySymbol,TokenName)
       , loanAsset :: (CurrencySymbol,TokenName)
-      , loanQuantity :: Integer
+      , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
@@ -438,7 +438,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
             foo val
                 (acc + (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
                 xs
-      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanQuantity offerDatum)
+      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanPrinciple offerDatum)
 
     repaymentCheck :: Bool
     repaymentCheck = 
@@ -467,7 +467,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           traceError "Datums are using different beacons"
       | loanAsset askDatum /= loanAsset offerDatum =
           traceError "Datums have different loan assets"
-      | loanQuantity askDatum /= loanQuantity offerDatum =
+      | loanPrinciple askDatum /= loanPrinciple offerDatum =
           traceError "Datums have different loan quantities"
       | loanTerm askDatum /= loanTerm offerDatum =
           traceError "Datums have different loan terms"
@@ -504,13 +504,13 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       , lenderId = lenderId offerDatum
       , borrowerId = borrowerId askDatum
       , loanAsset = loanAsset askDatum
-      , loanQuantity = loanQuantity askDatum
+      , loanPrinciple = loanPrinciple askDatum
       , loanTerm = loanTerm askDatum
       , loanInterest = loanInterest offerDatum
       , collateralRates = collateralRates offerDatum
       , loanExpiration = expirationTime
       , loanOutstanding = 
-          fromInteger (loanQuantity askDatum) * (fromInteger 1 + loanInterest askDatum)
+          fromInteger (loanPrinciple askDatum) * (fromInteger 1 + loanInterest offerDatum)
       }
 
 data Loan
@@ -545,7 +545,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- 3) The ask token must be stored with the proper ask datum.
       --     - askBeacon == (beaconSym, TokenName "Ask")
       --     - borrowerId == (beaconSym,pubkeyAsToken pkh)
-      --     - loanQuantity > 0
+      --     - loanPrinciple > 0
       --     - loanTerm > 0
       --     - collateral list not empty
       destinationCheck r &&
@@ -564,7 +564,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- 4) The tokens must be stored with the proper offer datum.
       --     - offerBeacon == (beaconSym,TokenName "Offer")
       --     - lenderId == (beaconSym,pubKeyAsToken pkh)
-      --     - loanQuantity > 0.
+      --     - loanPrinciple > 0.
       --     - loanTerm > 0.
       --     - loanInterest > 0.
       --     - collateralRates not null
@@ -649,7 +649,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     validDatum (MintAskToken pkh) (AskDatum ab bi _ lq lt c)
       | ab /= (beaconSym,TokenName "Ask") = traceError "Invalid AskDatum askBeacon"
       | bi /= (beaconSym,pubKeyAsToken pkh) = traceError "Invalid AskDatum borrowerId"
-      | lq <= 0 = traceError "AskDatum loanQuantity not > 0"
+      | lq <= 0 = traceError "AskDatum loanPrinciple not > 0"
       | lt <= 0 = traceError "AskDatum loanTerm not > 0"
       | null c = traceError "AskDatum collateral is empty"
       | otherwise = True
@@ -657,7 +657,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     validDatum (MintOfferToken pkh) (OfferDatum ob li _ lq lt i cr)
       | ob /= (beaconSym, TokenName "Offer") = traceError "Invalid OfferDatum offerBeacon"
       | li /= (beaconSym, pubKeyAsToken pkh) = traceError "OfferDatum lenderId not correct"
-      | lq <= 0 = traceError "OfferDatum loanQuantity not > 0"
+      | lq <= 0 = traceError "OfferDatum loanPrinciple not > 0"
       | lt <= 0 = traceError "OfferDatum loanTerm not > 0"
       | i <= fromInteger 0 = traceError "OfferDatum loanInterest not > 0"
       | null cr = traceError "OfferDatum collateralRates is empty"
@@ -667,11 +667,11 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     validDatum _ _ = True -- ^ This is to stop the pattern match compile warning. It is not used
                           --   for any other redeemers.
 
-    loanQuantityMet :: Value -> LoanDatum -> Bool
-    loanQuantityMet oVal d
+    loanPrincipleMet :: Value -> LoanDatum -> Bool
+    loanPrincipleMet oVal d
       | loanAsset d == (adaSymbol,adaToken) = 
-          uncurry (valueOf oVal) (loanAsset d) >= loanQuantity d * 1_000_000 + 3_000_000
-      | otherwise = uncurry (valueOf oVal) (loanAsset d) >= loanQuantity d
+          uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d * 1_000_000 + 3_000_000
+      | otherwise = uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d
 
     -- | Check if the beacons are going to the proper address and are stored properly (together and 
     -- with proper datum). This is only used for MintOfferToken and MintAskToken.
@@ -707,7 +707,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                         in 
                           acc && validDestination vh && validDatum r' datum && 
                           traceIfFalse "Offer beacon not stored with required loan amount" 
-                            (loanQuantityMet oVal datum)
+                            (loanPrincipleMet oVal datum)
                       _ -> traceError "Offer beacon must go to a dapp address using a staking pubkey"
                   else traceError "Offer token and lender ID must be stored in the same utxo."
                 else acc
