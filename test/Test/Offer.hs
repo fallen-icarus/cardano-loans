@@ -47,9 +47,9 @@ offerToStakePubKey = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -84,10 +84,10 @@ mintMultipleOfferBeacons = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -121,10 +121,10 @@ mintOfferTokenWithWrongName = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -158,10 +158,10 @@ mintMultipleLenderIds = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -195,10 +195,10 @@ mintWrongLenderId = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -232,10 +232,10 @@ mintAdditionalTokens = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -270,10 +270,10 @@ mintToPaymentPubKey = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (PubKeyCredential $ unPaymentPubKeyHash lenderPubKey)
@@ -307,10 +307,10 @@ mintToOtherPaymentScript = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential alwaysSucceedValidatorHash)
@@ -344,10 +344,10 @@ mintToAddressWithoutStaking = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -377,10 +377,10 @@ mintToAddressUsingStakingScript = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -411,10 +411,10 @@ storeOfferBeaconAndLenderIdSeparately = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -450,10 +450,10 @@ wrongOfferBeacon = do
         { offerBeacon' = (beaconPolicySymbol,"Ofer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -487,10 +487,10 @@ wrongLenderId = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,"pubKeyAsToken lenderPubKey")
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -515,8 +515,8 @@ wrongLenderId = do
       , offerAsInline = True
       }
 
-negativeQuantity :: EmulatorTrace ()
-negativeQuantity = do
+negativePrinciple :: EmulatorTrace ()
+negativePrinciple = do
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
@@ -524,10 +524,10 @@ negativeQuantity = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = -100
+        , loanPrinciple' = -100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -561,10 +561,10 @@ negativeTerm = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = -12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -598,10 +598,10 @@ negativeInterest = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio (-1) 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -635,10 +635,10 @@ emptyCollateral = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = []
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -672,10 +672,10 @@ negativeCollateralRate = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2),(testToken2,unsafeRatio (-2) 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -709,10 +709,10 @@ notInline = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -746,7 +746,7 @@ datumNotOfferDatum = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -781,10 +781,10 @@ lenderDidNotSign = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanDownPayment' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -818,7 +818,7 @@ offerUTxODoesntHaveLoanAmount = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
         , loanDownPayment' = 50
@@ -855,9 +855,9 @@ negativeDownPayment = do
         { offerBeacon' = (beaconPolicySymbol,"Offer")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100
+        , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = -100
+        , loanDownPayment' = -100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -915,7 +915,7 @@ tests = do
     , checkPredicateOptions opts "Fail if output datum has wrong lenderId"
         (Test.not assertNoFailedTransactions) wrongLenderId
     , checkPredicateOptions opts "Fail if output datum has loanPrinciple <= 0"
-        (Test.not assertNoFailedTransactions) negativeQuantity
+        (Test.not assertNoFailedTransactions) negativePrinciple
     , checkPredicateOptions opts "Fail if output datum has loanTerm <= 0"
         (Test.not assertNoFailedTransactions) negativeTerm
     , checkPredicateOptions opts "Fail if output datum has loanInterest <= 0"

@@ -676,7 +676,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     loanPrincipleMet :: Value -> LoanDatum -> Bool
     loanPrincipleMet oVal d
       | loanAsset d == (adaSymbol,adaToken) = 
-          uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d * 1_000_000 + 3_000_000
+          uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d + 3_000_000
       | otherwise = uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d
 
     -- | Check if the beacons are going to the proper address and are stored properly (together and 
