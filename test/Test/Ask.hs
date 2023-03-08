@@ -47,7 +47,7 @@ askWithStakePubKey = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -80,7 +80,7 @@ mintMultipleAskTokens = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -113,7 +113,7 @@ mintAskTokenWithDifferentName = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -146,7 +146,7 @@ mintToPaymentPubKey = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -179,7 +179,7 @@ mintToDifferentScriptAddress = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -212,7 +212,7 @@ mintToAddressWithoutStaking = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -241,7 +241,7 @@ mintToAddressUsingStakingScript = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -272,7 +272,7 @@ mintWithDifferentPubkeyInRedeemer = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -305,7 +305,7 @@ mintToAddressWithDifferentStakingPubKey = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -338,7 +338,7 @@ wrongAskBeaconInDatum = do
         { askBeacon' = (beaconPolicySymbol,"As")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -371,7 +371,7 @@ wrongBorrowerIdInDatum = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken $ mockWalletPaymentPubKeyHash $ knownWallet 3)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -404,7 +404,7 @@ negativeQuantity = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = -100
+        , loanPrinciple' = -100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -437,7 +437,7 @@ negativeTerm = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = -12000
         , collateral' = [testToken1]
         }
@@ -470,7 +470,7 @@ emptyCollateral = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = []
         }
@@ -503,7 +503,7 @@ notInline = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -536,7 +536,7 @@ receivingAddressDidNotSign = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -569,7 +569,7 @@ mintMultipleKindsOfTokens = do
         { askBeacon' = (beaconPolicySymbol,"Ask")
         , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , collateral' = [testToken1]
         }
@@ -604,9 +604,10 @@ notAnAskDatum = do
         { offerBeacon' = (beaconPolicySymbol,"Ask")
         , lenderId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
         , loanAsset' = (adaSymbol,adaToken)
-        , loanQuantity' = 100
+        , loanPrinciple' = 100
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
+        , loanDownPayment' = 100
         , collateralRates' = [(testToken1,unsafeRatio 1 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -658,7 +659,7 @@ tests = do
         (Test.not assertNoFailedTransactions) wrongAskBeaconInDatum
     , checkPredicateOptions opts "Fail if output datum has wrong borrower ID"
         (Test.not assertNoFailedTransactions) wrongBorrowerIdInDatum
-    , checkPredicateOptions opts "Fail if output datum has loanQuantity <= 0"
+    , checkPredicateOptions opts "Fail if output datum has loanPrinciple <= 0"
         (Test.not assertNoFailedTransactions) negativeQuantity
     , checkPredicateOptions opts "Fail if output datum has loanTerm <= 0"
         (Test.not assertNoFailedTransactions) negativeTerm
