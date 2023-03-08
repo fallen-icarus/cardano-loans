@@ -88,6 +88,7 @@ data LoanDatum
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
+      , loanDownPayment :: Integer
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
       }
   -- | The datum for the active ask. This also has information useful for the credit history.
@@ -99,6 +100,7 @@ data LoanDatum
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
+      , loanDownPayment :: Integer
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration :: POSIXTime
       , loanOutstanding :: Rational
@@ -108,11 +110,11 @@ instance Eq LoanDatum where
   {-# INLINABLE (==) #-}
   (AskDatum a b c d e f) == (AskDatum a' b' c' d' e' f') =
     a == a' && b == b' && c == c' && d == d' && e == e' && f == f'
-  (OfferDatum a b c d e f g) == (OfferDatum a' b' c' d' e' f' g') =
-    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g'
-  (ActiveDatum a b c d e f g h i j) == (ActiveDatum a' b' c' d' e' f' g' h' i' j') =
+  (OfferDatum a b c d e f g h) == (OfferDatum a' b' c' d' e' f' g' h') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h'
+  (ActiveDatum a b c d e f g h i j k) == (ActiveDatum a' b' c' d' e' f' g' h' i' j' k') =
     a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h' && 
-    i == i' && j == j'
+    i == i' && j == j' && k == k'
   _ == _ = False
 
 data LoanRedeemer
@@ -160,8 +162,8 @@ tokenAsPubKey (TokenName pkh) = PubKeyHash pkh
 -- | This is a convenient way to check what kind of datum it is.
 encodeDatum :: LoanDatum -> Integer
 encodeDatum (AskDatum _ _ _ _ _ _) = 0
-encodeDatum (OfferDatum _ _ _ _ _ _ _) = 1
-encodeDatum (ActiveDatum _ _ _ _ _ _ _ _ _ _) = 2
+encodeDatum (OfferDatum _ _ _ _ _ _ _ _) = 1
+encodeDatum (ActiveDatum _ _ _ _ _ _ _ _ _ _ _) = 2
 
 {-# INLINABLE signed #-}
 signed :: [PubKeyHash] -> PubKeyHash -> Bool
@@ -430,7 +432,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
                 xs
       in foo addrDiff (fromInteger 0) (collateralRates loanDatum)
 
-    -- | This checks that enough collateral is posted when a loan offer is accepted.
+    -- | This checks that enough collateral is posted when a loan offer is accepted. It uses the
+    -- loanDownPayment to determine validity.
     enoughCollateral :: Bool
     enoughCollateral =
       let foo _ acc [] = acc
@@ -438,7 +441,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
             foo val
                 (acc + (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
                 xs
-      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanPrinciple offerDatum)
+      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanDownPayment offerDatum)
 
     repaymentCheck :: Bool
     repaymentCheck = 
@@ -507,6 +510,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       , loanPrinciple = loanPrinciple askDatum
       , loanTerm = loanTerm askDatum
       , loanInterest = loanInterest offerDatum
+      , loanDownPayment = loanDownPayment offerDatum
       , collateralRates = collateralRates offerDatum
       , loanExpiration = expirationTime
       , loanOutstanding = 
@@ -654,12 +658,13 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       | null c = traceError "AskDatum collateral is empty"
       | otherwise = True
     validDatum (MintAskToken _) _ = traceError "Ask beacon not stored with an AskDatum"
-    validDatum (MintOfferToken pkh) (OfferDatum ob li _ lq lt i cr)
+    validDatum (MintOfferToken pkh) (OfferDatum ob li _ lq lt i dp cr)
       | ob /= (beaconSym, TokenName "Offer") = traceError "Invalid OfferDatum offerBeacon"
       | li /= (beaconSym, pubKeyAsToken pkh) = traceError "OfferDatum lenderId not correct"
       | lq <= 0 = traceError "OfferDatum loanPrinciple not > 0"
       | lt <= 0 = traceError "OfferDatum loanTerm not > 0"
       | i <= fromInteger 0 = traceError "OfferDatum loanInterest not > 0"
+      | dp <= 0 = traceError "OfferDatum loanDownPayment not > 0"
       | null cr = traceError "OfferDatum collateralRates is empty"
       | not $ all (\(_,p) -> p > fromInteger 0) cr = traceError "All collateralRates must be > 0"
       | otherwise = True
@@ -667,6 +672,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     validDatum _ _ = True -- ^ This is to stop the pattern match compile warning. It is not used
                           --   for any other redeemers.
 
+    -- | This checks that the offer beacon is stored with the desired loan amount.
     loanPrincipleMet :: Value -> LoanDatum -> Bool
     loanPrincipleMet oVal d
       | loanAsset d == (adaSymbol,adaToken) = 
