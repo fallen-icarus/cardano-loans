@@ -89,7 +89,7 @@ data LoanDatum
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
       , loanDownPayment :: Integer
-      , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
+      , collateralRates :: [((CurrencySymbol,TokenName),Rational)] -- ^ Rates: collateralAsset/loanAsset
       }
   -- | The datum for the active ask. This also has information useful for the credit history.
   | ActiveDatum
@@ -227,6 +227,10 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- collateral assets ever leave. Those assets come from the borrower and the borrower has custody
 -- of that utxo until the loan expires.
 --
+-- There are no checks to ensure that the borrower only takes the proper assets from the offer
+-- utxo. Instead, it is up to the lender to ONLY deposit the assets that are to be loaned out.
+-- This does not seem like an unreasonable expectation.
+--
 -- The beacon policy requires that the beacons can only be minted to an address with a staking
 -- pubkey. However, there is no way to enforce this from the validator's side which means it is
 -- possible to send funds to an address instance for this validator that uses a staking script.
@@ -286,7 +290,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- | The following function checks:
       -- 1) There must only be one output to this address (checked implicitly).
       -- 2) The output must contain the proper datum.
-      traceIfFalse "output datum is incorrect: must be ActiveDatum with correct info" 
+      traceIfFalse "Output datum is incorrect: must be ActiveDatum with correct info" 
         validActiveDatum &&
       -- | The required amount of collateral must be posted.
       traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
@@ -383,7 +387,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           foo iCred !acc (TxInInfo{txInInfoResolved=x@TxOut{txOutAddress=addr}}:xs) =
             if addr == iCred
             then foo iCred (x : acc) xs
-            else acc
+            else foo iCred acc xs
       in foo inputCredentials [] inputs
 
     -- | Get the loan repayment time from the tx's validity range.
@@ -410,8 +414,10 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
             then if null acc
                  then foo iCred (x : acc) xs
                  else traceError "There can only be one output to address"
-            else acc
-      in head $ foo inputCredentials [] outputs
+            else foo iCred acc xs
+      in case foo inputCredentials [] outputs of
+        [x] -> x
+        _ -> traceError "Missing output to address"
 
     -- | The value flux of this address.
     -- Positive values mean the address gained the asset.
@@ -436,12 +442,13 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- loanDownPayment to determine validity.
     enoughCollateral :: Bool
     enoughCollateral =
-      let foo _ acc [] = acc
+      let target = fromInteger (loanDownPayment offerDatum)
+          foo _ acc [] = acc
           foo val !acc ((collatAsset,price):xs) =
             foo val
                 (acc + (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
                 xs
-      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= fromInteger (loanDownPayment offerDatum)
+      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= target
 
     repaymentCheck :: Bool
     repaymentCheck = 
@@ -471,7 +478,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       | loanAsset askDatum /= loanAsset offerDatum =
           traceError "Datums have different loan assets"
       | loanPrinciple askDatum /= loanPrinciple offerDatum =
-          traceError "Datums have different loan quantities"
+          traceError "Datums have different loan principles"
       | loanTerm askDatum /= loanTerm offerDatum =
           traceError "Datums have different loan terms"
       | collateral askDatum /= map fst (collateralRates offerDatum) =

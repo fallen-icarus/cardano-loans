@@ -62,7 +62,7 @@ data LoanDatum'
       { askBeacon' :: (CurrencySymbol,TokenName)
       , borrowerId' :: (CurrencySymbol,TokenName)
       , loanAsset' :: (CurrencySymbol,TokenName)
-      , loanQuantity' :: Integer
+      , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , collateral' :: [(CurrencySymbol,TokenName)]
       }
@@ -71,9 +71,10 @@ data LoanDatum'
       { offerBeacon' :: (CurrencySymbol,TokenName)
       , lenderId' :: (CurrencySymbol,TokenName)
       , loanAsset' :: (CurrencySymbol,TokenName)
-      , loanQuantity' :: Integer
+      , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
+      , loanDownPayment' :: Integer
       , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
       }
   -- | The datum for the active ask. This also has information useful for the credit history.
@@ -82,9 +83,10 @@ data LoanDatum'
       , lenderId' :: (CurrencySymbol,TokenName)
       , borrowerId' :: (CurrencySymbol,TokenName)
       , loanAsset' :: (CurrencySymbol,TokenName)
-      , loanQuantity' :: Integer
+      , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
+      , loanDownPayment' :: Integer
       , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration' :: POSIXTime
       , loanOutstanding' :: Rational
@@ -93,8 +95,8 @@ data LoanDatum'
 
 convert2LoanDatum :: LoanDatum' -> LoanDatum
 convert2LoanDatum (AskDatum' a b c d e f) = AskDatum a b c d e f
-convert2LoanDatum (OfferDatum' a b c d e f g) = OfferDatum a b c d e f g
-convert2LoanDatum (ActiveDatum' a b c d e f g h i j) = ActiveDatum a b c d e f g h i j
+convert2LoanDatum (OfferDatum' a b c d e f g h) = OfferDatum a b c d e f g h
+convert2LoanDatum (ActiveDatum' a b c d e f g h i j k) = ActiveDatum a b c d e f g h i j k
 
 -- | The redeemer for the beacons.
 data BeaconRedeemer'
@@ -136,9 +138,23 @@ data OfferParams = OfferParams
   , offerAsInline :: Bool
   } deriving (Generic,ToJSON,FromJSON)
 
+data AcceptParams = AcceptParams
+  { acceptBeaconsMinted :: [(TokenName,Integer)]
+  , acceptBeaconRedeemer :: BeaconRedeemer'
+  , acceptBeaconPolicy :: MintingPolicy
+  , acceptLoanVal :: Validator
+  , acceptLoanAddress :: Address
+  , acceptSpecificUTxOs :: [(LoanDatum',Value)]
+  , acceptChangeAddress :: Address
+  , acceptChangeOutput :: [(Maybe LoanDatum',Value)]
+  , acceptDatumAsInline :: Bool
+  , acceptWithTTL :: Bool
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "ask" AskParams
   .\/ Endpoint "offer" OfferParams
+  .\/ Endpoint "accept" AcceptParams
 
 -------------------------------------------------
 -- Configs
@@ -161,6 +177,8 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
     user2 = lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 100
          <> (uncurry singleton testToken2) 100
+         <> singleton beaconPolicySymbol "Offer" 5
+         <> singleton beaconPolicySymbol "Ask" 5
     
     user3 :: Value
     user3 = lovelaceValueOf 1_000_000_000
@@ -243,7 +261,61 @@ offerLoan OfferParams{..} = do
   
   ledgerTx <- submitTxConstraintsWith @Void lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-  logInfo @String "Asked for a loan"
+  logInfo @String "Offered a loan"
+
+acceptLoan :: AcceptParams -> Contract () TraceSchema Text ()
+acceptLoan AcceptParams{..} = do
+  offerUtxos <- utxosAt acceptLoanAddress
+  (start,_) <- currentNodeClientTimeRange
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let beaconPolicyHash = mintingPolicyHash acceptBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer acceptBeaconRedeemer
+      
+      toDatum'
+        | acceptDatumAsInline = TxOutDatumInline . toDatum . convert2LoanDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2LoanDatum
+
+      acceptRedeemer = toRedeemer AcceptOffer
+
+      lookups = Constraints.unspentOutputs offerUtxos
+             <> plutusV2OtherScript acceptLoanVal
+             <> plutusV2MintingPolicy acceptBeaconPolicy
+      
+      tx' =
+        -- | Mint/burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          acceptBeaconsMinted
+        )
+        -- | Must spend all utxos to be accepted
+        <> foldl' (\a (d,v) -> 
+                      a <>
+                      mustSpendScriptOutputWithMatchingDatumAndValue 
+                        (UScripts.validatorHash acceptLoanVal) 
+                        (== toDatum (convert2LoanDatum d))
+                        (==v) 
+                        acceptRedeemer
+                  ) 
+                  mempty 
+                  acceptSpecificUTxOs
+        -- | Return change to loan address
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith acceptChangeAddress (fmap toDatum' d) v)
+              mempty
+              acceptChangeOutput
+           )
+        -- | Must tell script current time
+        <> (if acceptWithTTL
+            then mustValidateIn (from start)
+            else mempty)
+        -- | Must be signed by borrower
+        <> mustBeSignedBy userPubKeyHash
+
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Loan accepted"
 
 -------------------------------------------------
 -- Endpoints
@@ -253,7 +325,9 @@ endpoints = selectList choices >> endpoints
   where
     askForLoan' = endpoint @"ask" askForLoan
     offerLoan' = endpoint @"offer" offerLoan
+    acceptLoan' = endpoint @"accept" acceptLoan
     choices = 
       [ askForLoan'
       , offerLoan'
+      , acceptLoan'
       ]

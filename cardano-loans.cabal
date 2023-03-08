@@ -46,7 +46,8 @@ test-suite cardano-loans-tests
   other-modules:
     Test.Common,
     Test.Ask,
-    Test.Offer
+    Test.Offer,
+    Test.AcceptOffer
   build-depends:
     cardano-loans,
     cardano-api,
