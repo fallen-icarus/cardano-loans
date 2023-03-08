@@ -160,11 +160,21 @@ data CloseAskParams = CloseAskParams
   , closeAskSpecificUTxOs :: [(LoanDatum',Value)]
   } deriving (Generic,ToJSON,FromJSON)
 
+data CloseOfferParams = CloseOfferParams
+  { closeOfferBeaconsBurned :: [(TokenName,Integer)]
+  , closeOfferBeaconRedeemer :: BeaconRedeemer'
+  , closeOfferBeaconPolicy :: MintingPolicy
+  , closeOfferLoanVal :: Validator
+  , closeOfferLoanAddress :: Address
+  , closeOfferSpecificUTxOs :: [(LoanDatum',Value)]
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "ask" AskParams
   .\/ Endpoint "offer" OfferParams
   .\/ Endpoint "accept" AcceptParams
   .\/ Endpoint "close-ask" CloseAskParams
+  .\/ Endpoint "close-offer" CloseOfferParams
 
 -------------------------------------------------
 -- Configs
@@ -364,7 +374,46 @@ closeAsk CloseAskParams{..} = do
   
   ledgerTx <- submitTxConstraintsWith @Void lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-  logInfo @String "Asked for a loan"
+  logInfo @String "Closed an ask"
+
+closeOffer :: CloseOfferParams -> Contract () TraceSchema Text ()
+closeOffer CloseOfferParams{..} = do
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+  offerUtxos <- utxosAt closeOfferLoanAddress
+
+  let beaconPolicyHash = mintingPolicyHash closeOfferBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer closeOfferBeaconRedeemer
+
+      closeRedeemer = toRedeemer CloseOffer
+      
+      lookups = plutusV2MintingPolicy closeOfferBeaconPolicy
+             <> plutusV2OtherScript closeOfferLoanVal
+             <> Constraints.unspentOutputs offerUtxos
+      
+      tx' =
+        -- | Burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          closeOfferBeaconsBurned
+        )
+        -- | Must spend all utxos to be closed
+        <> foldl' (\a (d,v) -> 
+                      a <>
+                      mustSpendScriptOutputWithMatchingDatumAndValue 
+                        (UScripts.validatorHash closeOfferLoanVal) 
+                        (== toDatum (convert2LoanDatum d))
+                        (==v) 
+                        closeRedeemer
+                  ) 
+                  mempty 
+                  closeOfferSpecificUTxOs
+        -- | Must be signed by receiving pubkey
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Closed an offer"
 
 -------------------------------------------------
 -- Endpoints
@@ -376,9 +425,11 @@ endpoints = selectList choices >> endpoints
     offerLoan' = endpoint @"offer" offerLoan
     acceptLoan' = endpoint @"accept" acceptLoan
     closeAsk' = endpoint @"close-ask" closeAsk
+    closeOffer' = endpoint @"close-offer" closeOffer
     choices = 
       [ askForLoan'
       , offerLoan'
       , acceptLoan'
       , closeAsk'
+      , closeOffer'
       ]

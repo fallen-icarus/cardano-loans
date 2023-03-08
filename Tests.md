@@ -132,12 +132,12 @@
   - [x] Fail if not all ask beacons burned.
 
 ### CloseOffer
-- [ ] The input utxo must have an OfferDatum.
-  - [ ] Fail if it has a different datum type.
-- [ ] All offer beacons among tx inputs must be burned.
-- [ ] All lender IDs in tx for the lender must be burned.
-- [ ] If offer beacon is present, the lender must sign.
-- [ ] If offer beacon NOT present, the staking credential must signal approval.
+- [x] The input utxo must have an OfferDatum.
+  - [x] Fail if it has a different datum type.
+- [x] All offer beacons among tx inputs must be burned.
+- [x] All lender IDs in tx for the lender must be burned.
+- [x] If offer beacon is present, the lender must sign.
+- [x] If offer beacon NOT present, the staking credential must signal approval.
 
 ### RepayLoan
 
