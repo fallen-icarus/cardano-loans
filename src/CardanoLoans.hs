@@ -28,6 +28,11 @@ module CardanoLoans
   adaSymbol,
   adaToken,
 
+  PlutusRational,
+  fromGHC,
+  readCurrencySymbol,
+  readTokenName,
+  readPaymentPubKeyHash,
 
   loanValidator,
   loanValidatorHash,
@@ -45,7 +50,7 @@ import Data.Aeson hiding (Value)
 import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
-import Prelude (IO,FilePath,seq) 
+import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
 
@@ -62,10 +67,32 @@ import Ledger.Bytes (fromHex)
 import qualified Plutonomy
 import Ledger.Value (valueOf,flattenValue)
 import PlutusTx.Numeric as Num
-import PlutusTx.Ratio (fromGHC,recip)
 import PlutusTx.Ratio as Ratio
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
+
+-------------------------------------------------
+-- Off-Chain Helper Functions and Types
+-------------------------------------------------
+type PlutusRational = Rational
+
+-- | Parse Currency from user supplied String
+readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse TokenName from user supplied String
+readTokenName :: Haskell.String -> Either Haskell.String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse PaymentPubKeyHash from user supplied String
+readPaymentPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
+readPaymentPubKeyHash s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ PaymentPubKeyHash $ PubKeyHash bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
 
 -------------------------------------------------
 -- Data Types
