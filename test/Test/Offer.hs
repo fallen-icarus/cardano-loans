@@ -883,6 +883,44 @@ negativeDownPayment = do
       , offerAsInline = True
       }
 
+-- Minimum = 2.116210 ADA
+-- minOfferUTxOTest :: EmulatorTrace ()
+-- minOfferUTxOTest = do
+--   h2 <- activateContractWallet (knownWallet 2) endpoints
+
+--   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
+--       offerDatum = OfferDatum'
+--         { offerBeacon' = (beaconPolicySymbol,"Offer")
+--         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+--         , loanAsset' = (adaSymbol,adaToken)
+--         , loanPrinciple' = 1
+--         , loanTerm' = 12000
+--         , loanBacking' = 100_000_000
+--         , loanInterest' = unsafeRatio 1 10
+--         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+--         }
+--       addr = Address (ScriptCredential loanValidatorHash)
+--                      (Just $ StakingHash
+--                            $ PubKeyCredential
+--                            $ unPaymentPubKeyHash
+--                            $ mockWalletPaymentPubKeyHash
+--                            $ knownWallet 1)
+  
+--   callEndpoint @"offer" h2 $
+--     OfferParams
+--       { offerBeaconsMinted = [("Offer",1),(pubKeyAsToken lenderPubKey,1)]
+--       , offerBeaconRedeemer = MintOfferToken' lenderPubKey
+--       , offerBeaconPolicy = beaconPolicy
+--       , offerAddress = addr
+--       , offerInfo = 
+--           [ ( Just offerDatum
+--             , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Offer" 1
+--            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
+--             )
+--           ]
+--       , offerAsInline = True
+--       }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -939,4 +977,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig negativeDownPayment
+testTrace = runEmulatorTraceIO' def emConfig offerToStakePubKey

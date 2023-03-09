@@ -31,7 +31,7 @@ import Ledger.Ada (lovelaceValueOf)
 import Data.Default
 import Plutus.V2.Ledger.Api
 import Ledger.Address
-import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash,alwaysSucceedPolicy)
+import Plutus.Script.Utils.V2.Generators (alwaysSucceedPolicy)
 import Ledger.TimeSlot
 
 import Test.Common
