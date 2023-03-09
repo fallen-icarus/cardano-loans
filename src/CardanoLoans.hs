@@ -346,7 +346,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- | The loan must not be expired.
         traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
         -- | There can only be one output to this address. Checked by the next check.
-        -- | The output must have the proper datum.
+        -- | The output to this address must have the proper datum.
         --     - same as input datum except must subtract loan repaid from loanOutstanding.
         traceIfFalse "Output to address has wrong datum" 
           ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
@@ -361,8 +361,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
           traceIfFalse "No other tokens can be minted/burned in tx."
             (length (flattenValue minted) == 1) &&
-          -- | The output must have the active beacon and the lender ID.
-          traceIfFalse "Output must have active beacon and lender ID"
+          -- | The output to this address must have the active beacon and the lender ID.
+          traceIfFalse "Output to address must have active beacon and lender ID"
             (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
               uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
         -- | Otherwise this is a partial payment.
@@ -370,8 +370,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
           traceIfFalse "Fail: sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid"
             repaymentCheck &&
-          -- | The output must have the active beacon, borrower ID, and lender ID.
-          traceIfFalse "Output must have active beacon, borrower ID, and lender ID"
+          -- | The output to this address must have the active beacon, borrower ID, and lender ID.
+          traceIfFalse "Output to address must have active beacon, borrower ID, and lender ID"
             (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
               uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
               uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
