@@ -143,8 +143,8 @@
 - [x] The input utxo must have an ActiveDatum.
   - [x] Fail if not an ActiveDatum.
 - [x] Staking credential must approve.
-- [ ] If the active beacon is present
-  - [ ] No other phase beacons allowed in tx inputs.
+- [x] If the active beacon is present
+  - [x] No other phase beacons allowed in tx inputs.
   - [x] There can only be one utxo spent from the address.
     - [x] Fail if an invalid utxo spent from address.
   - [x] Loan must not be expired.
@@ -157,7 +157,7 @@
     - [x] Allows reclaiming remaing collateral for over-collateralized loan.
     - [x] The borrower ID must be burned.
       - [x] Fail if the borrower ID not burned.
-    - [ ] No other tokens can be minted/burned in tx.
+    - [x] No other tokens can be minted/burned in tx.
     - [x] The output must have the active beacon and the lender ID.
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.
@@ -170,7 +170,7 @@
       - [x] Fail if output missing lender ID.
       - [x] Fail if output missing borrower ID.
   - [x] Fail if TTE not specified.
-- [ ] Allow reclaiming utxo when active beacon missing.
+- [x] Allow reclaiming utxo when active beacon missing.
 
 ### Claim
 - [ ] The input utxo must have an ActiveDatum.

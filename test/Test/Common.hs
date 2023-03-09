@@ -180,6 +180,8 @@ data RepayLoanParams = RepayLoanParams
   , repayLoanChangeOutputs :: [(Maybe LoanDatum',Value)]
   , repayLoanDatumAsInline :: Bool
   , repayLoanWithTTE :: Bool
+  , repayLoanOtherMint :: [(TokenName,Integer)]
+  , repayLoanOtherMintPolicy :: MintingPolicy
   } deriving (Generic,ToJSON,FromJSON)
 
 type TraceSchema =
@@ -444,9 +446,13 @@ repayLoan RepayLoanParams{..} = do
 
       repayRedeemer = toRedeemer RepayLoan
 
+      otherMintPolicyHash = mintingPolicyHash repayLoanOtherMintPolicy
+      otherMintRedeemer = toRedeemer ()
+
       lookups = Constraints.unspentOutputs loanUtxos
              <> plutusV2OtherScript repayLoanVal
              <> plutusV2MintingPolicy repayLoanBeaconPolicy
+             <> plutusV2MintingPolicy repayLoanOtherMintPolicy
       
       tx' =
         -- | Burn Beacons
@@ -478,6 +484,12 @@ repayLoan RepayLoanParams{..} = do
             else mempty)
         -- | Must be signed by borrower
         <> mustBeSignedBy userPubKeyHash
+        -- | Burn Beacons
+        <> (foldl' 
+              (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer otherMintPolicyHash otherMintRedeemer t i) 
+              mempty
+              repayLoanOtherMint
+           )
 
   ledgerTx <- submitTxConstraintsWith @Void lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
