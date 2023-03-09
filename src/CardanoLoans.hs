@@ -240,58 +240,77 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- as well as a staking pubkey. To prevent this locking, the validator still checks if the staking 
 -- script signals approval, too.
 --
--- The interest for these loans are non-compounding.
+-- The interest for these loans is non-compounding.
 mkLoan :: LoanDatum -> LoanRedeemer -> ScriptContext -> Bool
 mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     CloseAsk ->
-      -- | The datum must be an AskDatum.
+      -- | The datum must be an AskDatum. This must be checked first since not all fields are the
+      -- same across the datum types.
       traceIfFalse "Datum is not an AskDatum" (encodeDatum loanDatum == 0) &&
-      -- | The address' staking credential must signal approval.
+      -- | The address' staking credential must signal approval. This is required regarless
+      -- of whether or not the ask is valid. This is due to the address owner having custody
+      -- of invalid utxos.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
-      -- | All ask beacons among tx inputs must be burned.
+      -- | All ask beacons among tx inputs must be burned. This is not meant to be composable
+      -- with the other redeemers.
       traceIfFalse "Ask beacons not burned."
         (uncurry (valueOf allVal) (askBeacon loanDatum) == 
-           Num.negate (uncurry (valueOf $ txInfoMint info) (askBeacon loanDatum)))
+           Num.negate (uncurry (valueOf minted) (askBeacon loanDatum)))
     CloseOffer ->
-      -- | The datum must be an OfferDatum.
+      -- | The datum must be an OfferDatum. This must be checked first since not all fields are the
+      -- same across the datum types.
       traceIfFalse "Datum is not an OfferDatum" (encodeDatum loanDatum == 1) &&
-      -- | If the offer beacon is present (also means lender ID is present):
+      -- | If the offer beacon is present, that means it is a valid offer and the lender has
+      -- custody of the utxo. This also means the lender ID is present in the utxo.
       if uncurry (valueOf inputValue) (offerBeacon loanDatum) == 1
       then
-        -- | The lender in the lender ID must sign the tx.
+        -- | The lender in the lender ID must sign the tx. The ID has the lender's pubkey hash
+        -- as the token name.
         traceIfFalse "Lender did not sign" 
              (signed (txInfoSignatories info) (tokenAsPubKey $ snd $ lenderId loanDatum)) &&
-        -- | All offer beacons in tx inputs must be burned.
+        -- | All offer beacons in tx inputs must be burned. This is not meant to be composable
+        -- with the other redeemers.
         traceIfFalse "Offer beacons not burned"
           (uncurry (valueOf allVal) (offerBeacon loanDatum) == 
-           Num.negate (uncurry (valueOf $ txInfoMint info) (offerBeacon loanDatum))) &&
-        -- | All the lender IDs for this lender in tx inputs must be burned.
+           Num.negate (uncurry (valueOf minted) (offerBeacon loanDatum))) &&
+        -- | All the lender IDs for this lender in tx inputs must be burned. This is not meant 
+        -- to be composable with the other redeemers.
         traceIfFalse "Lender IDs not burned"
           (uncurry (valueOf allVal) (lenderId loanDatum) == 
-           Num.negate (uncurry (valueOf $ txInfoMint info) (lenderId loanDatum)))
-      -- Else (a sign of an invalid offer utxo):
-      else
+           Num.negate (uncurry (valueOf minted) (lenderId loanDatum)))
+      -- | Otherwise the offer is an invalid utxo and the address owner has custody. This also 
+      -- means no lender IDs are present.
+      else 
         -- | The staking credential must signal approval.
         traceIfFalse "Staking credential did not approve" stakingCredApproves'
     AcceptOffer ->
-      -- | The staking credential must signal approval.
+      -- | The staking credential must signal approval. The address owner (borrower) is the only
+      -- user that can use this redeemer.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
       -- | The following function checks:
       -- 1) There must only be two inputs from this address.
-      -- 2) One input must be an ask input.
-      -- 3) One input must be an offer input.
+      -- 2) One input must be an ask input (signified by an AskDatum).
+      -- 3) One input must be an offer input (signified by an OfferDatum).
       -- 4) The input datums must agree.
       -- 5) The ask input must have the ask beacon.
       -- 6) The offer input must have the offer beacon.
+      -- If presence of the beacons signifies that the ask and offer are valid utxos. If either are
+      -- invalid, this redeemer will always fail. Invalid ask and offer utxos must be closed with 
+      -- either the CloseOffer or CloseAsk redeemers. This function will throw error messages
+      -- as appropriate.
       validInputs &&
-      -- | No other ask and offer beacons are in the tx inputs.
-      noOtherInputBeacons &&
+      -- | No other phase beacons are in the tx inputs. Loans must be treated individually
+      -- due to how the on-chain credit history works.
+      traceIfFalse "No other phase beacons are allowed in tx" noOtherInputBeacons &&
       -- | The following function checks:
-      -- 1) There must only be one output to this address (checked implicitly).
+      -- 1) There must only be one output to this address - this ensures proper collateral
+      --    calculations.
       -- 2) The output must contain the proper datum.
+      -- See the validActiveDatum function to see how the information must be generated.
       traceIfFalse "Output datum is incorrect: must be ActiveDatum with correct info" 
         validActiveDatum &&
-      -- | The required amount of collateral must be posted.
+      -- | The required amount of collateral must be posted. The total amount of collateral that
+      -- must be posted is determined by the loanBacking field in the OfferDatum.
       traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
       -- | The following function checks:
       -- 1) The active beacon must be minted and stored in this address.
@@ -299,69 +318,108 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- 3) The output contains the active beacon, the lender ID, and the borrower ID.
       -- 4) The ask beacon and the offer beacon are burned.
       -- 5) The ask beacon must have the same currency symbol as the offer beacon.
+      -- These checks are actually done by the minting policy. The requirement for the mint
+      -- means the minting policy was actually executed.
       traceIfFalse "Active beacon not minted to this address"
-        (((valueOf $ txInfoMint info) (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
+        (((valueOf minted) (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
          ((valueOf oVal) (fst $ askBeacon askDatum) (TokenName "Active") == 1))
     RepayLoan ->
-      -- | The input must have an ActiveDatum.
+      -- | The input must have an ActiveDatum. This must be checked first since not all fields are
+      -- the same across the datum types.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
-      -- | There can only be one utxo spent from this address.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allAddrInputs == 1) &&
-      -- | The staking credential must signal approval. This must be true regardless of presence of
-      -- active beacon.
+      -- | The staking credential must signal approval. The address owner has custody of the utxo
+      -- regardless of whether or not the utxo is a valid loan.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
-      -- | The loan must not be expired.
-      traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
-      -- | There can only be one output to this address. Checked by the next check.
-      -- | The output must have the proper datum.
-      --     - same as input datum except must subtract loan repaid from loanOutstanding.
-      traceIfFalse "Output to address has wrong datum" 
-        ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
-      -- | If new loanOutstanding <= 0):
-      if newOutstanding <= fromInteger 0
+      -- | If the active beacon is present, this is a valid loan:
+      if uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1
       then
-        -- | The remaining collateral is unlocked.
-        -- | The borrower ID must be burned.
-        traceIfFalse "Borrower ID not burned" 
-          (uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum) == -1) &&
-        -- | The output must have the active beacon and the lender ID.
-        traceIfFalse "Output must have active beacon and lender ID"
-          (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-            uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
-      -- Else:
-      else
-        -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
-        traceIfFalse "Fail: collateralTaken / collateralization * (1 + interest) <= loanRepaid"
-          repaymentCheck &&
-        -- | The output must have the active beacon, borrower ID, and lender ID.
-        traceIfFalse "Output must have active beacon, borrower ID, and lender ID"
-          (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-            uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
-            uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
+        -- | No other beacons are allowed in the tx inputs. This ensures:
+        -- 1) There is only one borrower ID present.
+        -- 2) There is only one lender ID present.
+        -- 3) There is only one valid loan input in tx.
+        -- The last point is because treatment of this loan cannot be combined with treatment
+        -- of another loan. This is necessary due to the way the on-chain credit history works.
+        traceIfFalse "No other phase beacons can be in the tx." noOtherBeacons &&
+        -- | No other inputs are allowed from this address. This covers the case of invalid
+        -- inputs skewing the repayment calculations.
+        traceIfFalse "Only one input allowed from this address" (length allAddrInputs == 1) &&
+        -- | The loan must not be expired.
+        traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
+        -- | There can only be one output to this address. Checked by the next check.
+        -- | The output must have the proper datum.
+        --     - same as input datum except must subtract loan repaid from loanOutstanding.
+        traceIfFalse "Output to address has wrong datum" 
+          ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
+        -- | If new loanOutstanding <= 0, then the loan is fully repaid.
+        if newOutstanding <= fromInteger 0
+        then
+          -- | All remaining collateral is unlocked.
+          -- | The only borrower ID in the tx must be burned.
+          traceIfFalse "Borrower ID not burned" 
+            (uncurry (valueOf minted) (borrowerId loanDatum) == -1) &&
+          -- | No other tokens can be minted/burned in tx. This is to make checking the credit
+          -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
+          traceIfFalse "No other tokens can be minted/burned in tx."
+            (length (flattenValue minted) == 1) &&
+          -- | The output must have the active beacon and the lender ID.
+          traceIfFalse "Output must have active beacon and lender ID"
+            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
+              uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
+        -- | Otherwise this is a partial payment.
+        else 
+          -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+          traceIfFalse "Fail: sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid"
+            repaymentCheck &&
+          -- | The output must have the active beacon, borrower ID, and lender ID.
+          traceIfFalse "Output must have active beacon, borrower ID, and lender ID"
+            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
+              uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
+              uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
+      -- | If the active beacon is missing, this is an invalid loan. The conditions have already
+      -- been satisfied:
+      -- 1) The datum must be an ActiveDatum.
+      -- 2) The staking credential must approve - the address owner has custody of invalid utxos.
+      else True
     Claim ->
-      -- | The datum must be an ActiveDatum.
+      -- | The datum must be an ActiveDatum. This must be checked first since not all fields are
+      -- the same across the datum types.
       traceIfFalse "Datum is not an ActiveDatum" (encodeDatum loanDatum == 2) &&
-      -- | There can only be one utxo spent from this address. This is due to how
-      -- the credit history is updated.
-      traceIfFalse "Only one utxo can be spent from this address in this tx." (length allAddrInputs == 1) &&
       -- | The input utxo must have an active beacon. This also ensures a lender ID is present.
-      traceIfFalse "UTxO does not have an active beacon" 
+      -- If the active beacon beacon is missing, then this utxo is an invalid loan. The address
+      -- owner can claim this utxo using the RepayLoan redeemer.
+      traceIfFalse "UTxO does not have an active beacon - use RepayLoan redeemer to claim if address owner" 
         (uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1) &&
-      -- | The active beacon must be burned.
-      traceIfFalse "Active beacon not burned" 
-            (uncurry (valueOf $ txInfoMint info) (activeBeacon loanDatum) == -1) &&
-      -- | The lender ID must be burned.
-      traceIfFalse "Lender ID not burned" 
-            (uncurry (valueOf $ txInfoMint info) (lenderId loanDatum) == -1) &&
+      -- | There can only be one active beacon in the tx inputs. This is due to how the credit history
+      -- works. This also ensures there is only one borrower ID and lender ID in the tx.
+      traceIfFalse "No other phase beacons allowed in tx inputs" noOtherBeacons &&
       -- | The loan must be expired.
       traceIfFalse "Loan not expired" (loanIsExpired $ loanExpiration loanDatum) &&
-      -- | The lender must sign the tx.
+      -- | The active beacon in input must be burned.
+      traceIfFalse "Active beacon not burned"
+        (uncurry (valueOf minted) (activeBeacon loanDatum) == -1) &&
+      -- | The lender ID in input must be burned.
+      traceIfFalse "Lender ID not burned"
+        (uncurry (valueOf minted) (lenderId loanDatum) == -1) &&
+      -- | The lender must sign the tx. Since the active beacon is present, that means the lender has
+      -- custody of the utxo as long as the loan is expired. The lender's pubkey hash is the token
+      -- name of the lender ID.
       traceIfFalse "Lender did not sign" 
         (signed (txInfoSignatories info) (tokenAsPubKey $ snd $ lenderId loanDatum)) &&
-      -- | If the borrower ID is still present, it must be burned.
-      traceIfFalse "Borrower ID not burned."
-        (uncurry (valueOf inputValue) (borrowerId loanDatum) == 
-           Num.negate (uncurry (valueOf $ txInfoMint info) (borrowerId loanDatum)))
+      -- | If the borrower ID is still present:
+      if uncurry (valueOf inputValue) (borrowerId loanDatum) == 1
+      then 
+        -- | The borrower ID must be burned.
+        traceIfFalse "Borrower ID not burned." 
+          (uncurry (valueOf minted) (borrowerId loanDatum) == -1) &&
+        -- | No other tokens can be minted/burned in tx. This is to make checking the credit
+        -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
+        traceIfFalse "No other tokens can be minted/burned in tx."
+          (length (flattenValue minted) == 3)
+      else
+        -- | No other tokens can be minted/burned in tx. This is to make checking the credit
+        -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
+        traceIfFalse "No other tokens can be minted/burned in tx."
+          (length (flattenValue minted) == 2)
   where
     -- | Get the credential for this input as well as its value.
     -- Credential is used to check asset flux for address and ensure staking credential approves 
@@ -377,7 +435,10 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     
     -- | The total input value for this tx.
     allVal :: Value
-    allVal = valueSpent info
+    !allVal = valueSpent info
+
+    minted :: Value
+    !minted = txInfoMint info
 
     -- | Returns a list of inputs from this address.
     allAddrInputs :: [TxOut]
@@ -490,15 +551,23 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     validInputs = datumsAgree && 
       traceIfFalse "Ask beacon is missing" (uncurry (valueOf askVal) (askBeacon askDatum) == 1) &&
       traceIfFalse "Offer beacon is missing" (uncurry (valueOf offerVal) (offerBeacon offerDatum) == 1)
-
+    
+    -- | This is only used with AcceptLoan.
     noOtherInputBeacons :: Bool
     noOtherInputBeacons =
-      let offerBeacon' = offerBeacon offerDatum
-          askBeacon' = askBeacon askDatum
-      in traceIfFalse "No other ask and offer beacons are allowed in tx" $
-        uncurry (valueOf allVal) askBeacon' == uncurry (valueOf askVal) askBeacon' &&
-        uncurry (valueOf allVal) offerBeacon' == uncurry (valueOf offerVal) offerBeacon'
-    
+      let beaconSym' = fst $ offerBeacon offerDatum
+      in valueOf allVal beaconSym' (TokenName "Ask") == 1 && 
+         valueOf allVal beaconSym' (TokenName "Offer") == 1 &&
+         valueOf allVal beaconSym' (TokenName "Active") == 0
+
+    -- | This is only used with the RepayLoan and Claim. This ensures all loans are treated separately.
+    noOtherBeacons :: Bool
+    noOtherBeacons =
+      let beaconSym' = fst $ activeBeacon loanDatum
+      in valueOf allVal beaconSym' (TokenName "Ask") == 0 && 
+         valueOf allVal beaconSym' (TokenName "Offer") == 0 &&
+         valueOf allVal beaconSym' (TokenName "Active") == 1
+
     -- | Get the loan expiration time from the tx's validity range. Based off the lower bound.
     expirationTime :: POSIXTime
     expirationTime = case (\(LowerBound t _) -> t) $ ivFrom $ txInfoValidRange info of
@@ -602,10 +671,13 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     beaconSym :: CurrencySymbol
     beaconSym = ownCurrencySymbol ctx
 
+    minted :: Value
+    minted = txInfoMint info
+
     -- | Returns only the beacons minted/burned. This is useful for ensuring only
     -- the required beacons are minting.
     beaconMint :: [(CurrencySymbol,TokenName,Integer)]
-    beaconMint = case Map.lookup beaconSym $ getValue $ txInfoMint info of
+    beaconMint = case Map.lookup beaconSym $ getValue minted of
       Nothing -> traceError "MintError"
       Just bs -> flattenValue $ Value $ Map.insert beaconSym bs Map.empty -- ^ a Value with only beacons
 
