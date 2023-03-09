@@ -607,7 +607,7 @@ notAnAskDatum = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100
+        , loanBacking' = 100
         , collateralRates' = [(testToken1,unsafeRatio 1 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)

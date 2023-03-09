@@ -197,7 +197,7 @@ wrongDatumType = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }

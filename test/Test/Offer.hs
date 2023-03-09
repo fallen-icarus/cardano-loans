@@ -49,7 +49,7 @@ offerToStakePubKey = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -87,7 +87,7 @@ mintMultipleOfferBeacons = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -124,7 +124,7 @@ mintOfferTokenWithWrongName = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -161,7 +161,7 @@ mintMultipleLenderIds = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -198,7 +198,7 @@ mintWrongLenderId = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -235,7 +235,7 @@ mintAdditionalTokens = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -273,7 +273,7 @@ mintToPaymentPubKey = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (PubKeyCredential $ unPaymentPubKeyHash lenderPubKey)
@@ -310,7 +310,7 @@ mintToOtherPaymentScript = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential alwaysSucceedValidatorHash)
@@ -347,7 +347,7 @@ mintToAddressWithoutStaking = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -380,7 +380,7 @@ mintToAddressUsingStakingScript = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -414,7 +414,7 @@ storeOfferBeaconAndLenderIdSeparately = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -453,7 +453,7 @@ wrongOfferBeacon = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -490,7 +490,7 @@ wrongLenderId = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -527,7 +527,7 @@ negativePrinciple = do
         , loanPrinciple' = -100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -564,7 +564,7 @@ negativeTerm = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = -12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -601,7 +601,7 @@ negativeInterest = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio (-1) 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -638,7 +638,7 @@ emptyCollateral = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = []
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -675,7 +675,7 @@ negativeCollateralRate = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2),(testToken2,unsafeRatio (-2) 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -712,7 +712,7 @@ notInline = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -784,7 +784,7 @@ lenderDidNotSign = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -821,7 +821,7 @@ offerUTxODoesntHaveLoanAmount = do
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanDownPayment' = 50
+        , loanBacking' = 50
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
@@ -857,7 +857,7 @@ negativeDownPayment = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = -100_000_000
+        , loanBacking' = -100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -932,7 +932,7 @@ tests = do
         (Test.not assertNoFailedTransactions) lenderDidNotSign
     , checkPredicateOptions opts "Fail if offer utxo doesn't have loan amount."
         (Test.not assertNoFailedTransactions) offerUTxODoesntHaveLoanAmount
-    , checkPredicateOptions opts "Fail if output datum loanDownPayment <= 0"
+    , checkPredicateOptions opts "Fail if output datum loanBacking <= 0"
         (Test.not assertNoFailedTransactions) negativeDownPayment
     , checkPredicateOptions opts "Successfully create loan offer"
         assertNoFailedTransactions offerToStakePubKey

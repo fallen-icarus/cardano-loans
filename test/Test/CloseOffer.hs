@@ -49,7 +49,7 @@ closeSingleOffer = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -103,7 +103,7 @@ offerBeaconNotBurned = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -157,7 +157,7 @@ lenderIdNotBurned = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -211,7 +211,7 @@ otherBeaconsNotBurned = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -266,7 +266,7 @@ offerBeaconPresentButLenderDidNotSign = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -320,7 +320,7 @@ offerBeaconNotPresentButStakeCredDidNotApprove = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -373,7 +373,7 @@ offerBeaconAbsentAndStakeCredApproves = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }
@@ -425,7 +425,7 @@ closeMultipleOffers = do
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanDownPayment' = 100_000_000
+        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
         }

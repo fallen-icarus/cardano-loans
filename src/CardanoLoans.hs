@@ -88,7 +88,8 @@ data LoanDatum
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
-      , loanDownPayment :: Integer
+      , loanBacking :: Integer -- ^ How much of the loan needs to be collateralized. In units of the
+                               -- loanAsset.
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)] -- ^ Rates: collateralAsset/loanAsset
       }
   -- | The datum for the active ask. This also has information useful for the credit history.
@@ -100,7 +101,7 @@ data LoanDatum
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
-      , loanDownPayment :: Integer
+      , loanBacking :: Integer
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration :: POSIXTime
       , loanOutstanding :: Rational
@@ -438,10 +439,10 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       in foo addrDiff (fromInteger 0) (collateralRates loanDatum)
 
     -- | This checks that enough collateral is posted when a loan offer is accepted. It uses the
-    -- loanDownPayment to determine validity.
+    -- loanBacking to determine validity.
     enoughCollateral :: Bool
     enoughCollateral =
-      let target = fromInteger (loanDownPayment offerDatum)
+      let target = fromInteger (loanBacking offerDatum)
           foo _ acc [] = acc
           foo val !acc ((collatAsset,price):xs) =
             foo val
@@ -515,7 +516,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       , loanPrinciple = loanPrinciple askDatum
       , loanTerm = loanTerm askDatum
       , loanInterest = loanInterest offerDatum
-      , loanDownPayment = loanDownPayment offerDatum
+      , loanBacking = loanBacking offerDatum
       , collateralRates = collateralRates offerDatum
       , loanExpiration = expirationTime
       , loanOutstanding = 
@@ -669,7 +670,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       | lq <= 0 = traceError "OfferDatum loanPrinciple not > 0"
       | lt <= 0 = traceError "OfferDatum loanTerm not > 0"
       | i <= fromInteger 0 = traceError "OfferDatum loanInterest not > 0"
-      | dp <= 0 = traceError "OfferDatum loanDownPayment not > 0"
+      | dp <= 0 = traceError "OfferDatum loanBacking not > 0"
       | null cr = traceError "OfferDatum collateralRates is empty"
       | not $ all (\(_,p) -> p > fromInteger 0) cr = traceError "All collateralRates must be > 0"
       | otherwise = True

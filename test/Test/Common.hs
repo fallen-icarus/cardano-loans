@@ -74,7 +74,7 @@ data LoanDatum'
       , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
-      , loanDownPayment' :: Integer
+      , loanBacking' :: Integer
       , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
       }
   -- | The datum for the active ask. This also has information useful for the credit history.
@@ -86,7 +86,7 @@ data LoanDatum'
       , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
-      , loanDownPayment' :: Integer
+      , loanBacking' :: Integer
       , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration' :: POSIXTime
       , loanOutstanding' :: Rational
