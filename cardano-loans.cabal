@@ -50,7 +50,8 @@ test-suite cardano-loans-tests
     Test.AcceptOffer,
     Test.CloseAsk,
     Test.CloseOffer,
-    Test.RepayLoan
+    Test.RepayLoan,
+    Test.Claim
   build-depends:
     cardano-loans,
     cardano-api,

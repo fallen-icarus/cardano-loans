@@ -72,12 +72,12 @@
   - [x] Fail if the lender ID stored separately.
 
 ### BurnBeaconToken
-- [ ] Always allow burning.
-  - [ ] Allows burning many beacons.
-  - [ ] Allows burning a single beacon.
-- [ ] Must use burn redeemer.
-  - [ ] Fail if mint redeemer used to burn.
-- [ ] Fail if burn redeemer used to mint.
+- [x] Always allow burning.
+  - [x] Allows burning many beacons.
+  - [x] Allows burning a single beacon.
+- [x] Must use burn redeemer.
+  - [x] Fail if mint redeemer used to burn.
+- [x] Fail if burn redeemer used to mint.
 
 ## Loan Validator
 
@@ -173,15 +173,16 @@
 - [x] Allow reclaiming utxo when active beacon missing.
 
 ### Claim
-- [ ] The input utxo must have an ActiveDatum.
-  - [ ] Fail if not an ActiveDatum.
-- [ ] The active beacon must be present.
-  - [ ] Fail if redeemer used on a utxo without an active beacon.
-- [ ] Fail if any other phase beacons in tx inputs.
-- [ ] Fail if loan not expired.
-- [ ] The active beacon and the IDs must be burned.
-  - [ ] Fail if active beacon not burned.
-  - [ ] Fail if lender ID not burned.
-  - [ ] If borrower ID present, fail if borrower ID not burned.
-- [ ] Lender must sign tx.
-- [ ] No other tokens can be minted/burned.
+- [x] The input utxo must have an ActiveDatum.
+  - [x] Fail if not an ActiveDatum.
+- [x] The active beacon must be present.
+  - [x] Fail if redeemer used on a utxo without an active beacon.
+- [x] Fail if any other phase beacons in tx inputs.
+- [x] Fail if loan not expired.
+- [x] The active beacon and the IDs must be burned.
+  - [x] Fail if active beacon not burned.
+  - [x] Fail if lender ID not burned.
+  - [x] If borrower ID present, fail if borrower ID not burned.
+- [x] Lender must sign tx.
+- [x] No other tokens can be minted/burned.
+- [x] Allow claiming fully repaid loan before expiration.

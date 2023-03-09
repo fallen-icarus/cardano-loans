@@ -392,8 +392,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- | There can only be one active beacon in the tx inputs. This is due to how the credit history
       -- works. This also ensures there is only one borrower ID and lender ID in the tx.
       traceIfFalse "No other phase beacons allowed in tx inputs" noOtherBeacons &&
-      -- | The loan must be expired.
-      traceIfFalse "Loan not expired" (loanIsExpired $ loanExpiration loanDatum) &&
+      -- | The loan must either be expired or fully repaid.
+      traceIfFalse "Loan is still active" claimable &&
       -- | The active beacon in input must be burned.
       traceIfFalse "Active beacon not burned"
         (uncurry (valueOf minted) (activeBeacon loanDatum) == -1) &&
@@ -591,6 +591,11 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       , loanOutstanding = 
           fromInteger (loanPrinciple askDatum) * (fromInteger 1 + loanInterest offerDatum)
       }
+
+    -- | Allows claiming early if loan is fully repaid.
+    claimable :: Bool
+    claimable = loanIsExpired (loanExpiration loanDatum) || 
+                loanOutstanding loanDatum <= fromInteger 0
 
 data Loan
 instance ValidatorTypes Loan where

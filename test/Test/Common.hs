@@ -184,6 +184,18 @@ data RepayLoanParams = RepayLoanParams
   , repayLoanOtherMintPolicy :: MintingPolicy
   } deriving (Generic,ToJSON,FromJSON)
 
+data ClaimLoanParams = ClaimLoanParams
+  { claimLoanBeaconsBurned :: [(TokenName,Integer)]
+  , claimLoanBeaconRedeemer :: BeaconRedeemer'
+  , claimLoanBeaconPolicy :: MintingPolicy
+  , claimLoanVal :: Validator
+  , claimLoanAddress :: Address
+  , claimLoanSpecificUTxOs :: [(LoanDatum',Value)]
+  , claimLoanWithTTE :: Bool
+  , claimLoanOtherMint :: [(TokenName,Integer)]
+  , claimLoanOtherMintPolicy :: MintingPolicy
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "ask" AskParams
   .\/ Endpoint "offer" OfferParams
@@ -191,6 +203,7 @@ type TraceSchema =
   .\/ Endpoint "close-ask" CloseAskParams
   .\/ Endpoint "close-offer" CloseOfferParams
   .\/ Endpoint "repay-loan" RepayLoanParams
+  .\/ Endpoint "claim-loan" ClaimLoanParams
 
 -------------------------------------------------
 -- Configs
@@ -495,6 +508,60 @@ repayLoan RepayLoanParams{..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Made loan payment"
 
+claimLoan :: ClaimLoanParams -> Contract () TraceSchema Text ()
+claimLoan ClaimLoanParams{..} = do
+  loanUtxos <- utxosAt claimLoanAddress
+  (_,end) <- currentNodeClientTimeRange
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let beaconPolicyHash = mintingPolicyHash claimLoanBeaconPolicy
+      beaconRedeemer = toRedeemer $ convert2BeaconRedeemer claimLoanBeaconRedeemer
+      
+      claimRedeemer = toRedeemer Claim
+
+      otherMintPolicyHash = mintingPolicyHash claimLoanOtherMintPolicy
+      otherMintRedeemer = toRedeemer ()
+
+      lookups = Constraints.unspentOutputs loanUtxos
+             <> plutusV2OtherScript claimLoanVal
+             <> plutusV2MintingPolicy claimLoanBeaconPolicy
+             <> plutusV2MintingPolicy claimLoanOtherMintPolicy
+      
+      tx' =
+        -- | Burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          claimLoanBeaconsBurned
+        )
+        -- | Must spend all utxos to be repaid
+        <> foldl' (\a (d,v) -> 
+                      a <>
+                      mustSpendScriptOutputWithMatchingDatumAndValue 
+                        (UScripts.validatorHash claimLoanVal) 
+                        (== toDatum (convert2LoanDatum d))
+                        (==v) 
+                        claimRedeemer
+                  ) 
+                  mempty 
+                  claimLoanSpecificUTxOs
+        -- | Must tell script current time
+        <> (if claimLoanWithTTE
+            then mustValidateIn (to end)
+            else mempty)
+        -- | Must be signed by borrower
+        <> mustBeSignedBy userPubKeyHash
+        -- | Burn Beacons
+        <> (foldl' 
+              (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer otherMintPolicyHash otherMintRedeemer t i) 
+              mempty
+              claimLoanOtherMint
+           )
+
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Claimed a loan"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -507,6 +574,7 @@ endpoints = selectList choices >> endpoints
     closeAsk' = endpoint @"close-ask" closeAsk
     closeOffer' = endpoint @"close-offer" closeOffer
     repayLoan' = endpoint @"repay-loan" repayLoan
+    claimLoan' = endpoint @"claim-loan" claimLoan
     choices = 
       [ askForLoan'
       , offerLoan'
@@ -514,4 +582,5 @@ endpoints = selectList choices >> endpoints
       , closeAsk'
       , closeOffer'
       , repayLoan'
+      , claimLoan'
       ]
