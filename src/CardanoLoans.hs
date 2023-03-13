@@ -24,15 +24,20 @@ module CardanoLoans
   CurrencySymbol(..),
   TokenName(..),
   PaymentPubKeyHash(..),
+  PlutusRational,
+  POSIXTime(..),
+  Slot(..),
   pubKeyAsToken,
+  tokenAsPubKey,
   adaSymbol,
   adaToken,
-
-  PlutusRational,
+  slotToPOSIXTime,
   fromGHC,
   readCurrencySymbol,
   readTokenName,
   readPaymentPubKeyHash,
+  unsafeRatio,
+  (-),(*),(+),
 
   loanValidator,
   loanValidatorHash,
@@ -53,6 +58,7 @@ import qualified Data.ByteString.Short as SBS
 import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
+import Data.Default
 
 import           Cardano.Api hiding (Script,Value,TxOut,Address,ScriptHash)
 import           Cardano.Api.Shelley   (PlutusScript (..))
@@ -70,11 +76,16 @@ import PlutusTx.Numeric as Num
 import PlutusTx.Ratio as Ratio
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
+import Ledger.TimeSlot
+import Ledger.Slot
 
 -------------------------------------------------
 -- Off-Chain Helper Functions and Types
 -------------------------------------------------
 type PlutusRational = Rational
+
+slotToPOSIXTime :: Slot -> POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime def
 
 -- | Parse Currency from user supplied String
 readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
