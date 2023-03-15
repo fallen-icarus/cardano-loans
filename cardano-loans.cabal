@@ -97,5 +97,6 @@ executable cardano-loans
       vector,
       aeson-pretty,
       bytestring,
-      utf8-string,
+      utf8-string
+    ghc-options: -O2
     hs-source-dirs:   app
