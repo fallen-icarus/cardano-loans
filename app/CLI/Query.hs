@@ -20,7 +20,6 @@ import Control.Exception
 
 import CLI.BlockfrostApi as Blockfrost
 import CLI.Types
-import CardanoLoans
 
 runAllAsksQuery :: Network -> IO [AvailableAsk]
 runAllAsksQuery (PreProdTestnet apiKey) = do

@@ -111,10 +111,10 @@ pQueryAsks :: Parser LenderCmd
 pQueryAsks = QueryAllAsks <$> pNetwork <*> pOutput
 
 pQueryCurrentOffers :: Parser LenderCmd
-pQueryCurrentOffers = QueryCurrentOffers <$> pLenderID <*> pNetwork <*> pOutput
+pQueryCurrentOffers = QueryLenderCurrentOffers <$> pLenderID <*> pNetwork <*> pOutput
 
 pQueryCurrentLoans :: Parser LenderCmd
-pQueryCurrentLoans = QueryCurrentLenderLoans <$> pLenderID <*> pNetwork <*> pOutput
+pQueryCurrentLoans = QueryLenderCurrentLoans <$> pLenderID <*> pNetwork <*> pOutput
 
 pQueryBorrowerHistory :: Parser LenderCmd
 pQueryBorrowerHistory = QueryBorrowerHistory <$> pBorrowerID <*> pNetwork <*> pOutput
@@ -267,7 +267,7 @@ pCreateAcceptOfferRedeemer :: Parser BorrowerCmd
 pCreateAcceptOfferRedeemer = CreateAcceptOfferRedeemer <$> pOutputFile
 
 pQueryBorrowerOpenLoans :: Parser BorrowerCmd
-pQueryBorrowerOpenLoans = QueryCurrentBorrowerLoans <$> pBorrowerID <*> pNetwork <*> pOutput
+pQueryBorrowerOpenLoans = QueryBorrowerCurrentLoans <$> pBorrowerID <*> pNetwork <*> pOutput
       
 -------------------------------------------------
 -- Basic Helper Parsers
@@ -381,19 +381,6 @@ pBacking = option auto
   <> metavar "INT"
   <> help "The number of units of the loan asset that needs to be backed by collateral."
   )
-
-pCollatRates :: Parser [((CurrencySymbol,TokenName),PlutusRational)]
-pCollatRates = some pRate'
-  where
-    pRate' :: Parser ((CurrencySymbol,TokenName),PlutusRational)
-    pRate' = (,) <$> pCollateralAsset <*> pCollateralization
-
-    pCollateralization :: Parser PlutusRational
-    pCollateralization = fromGHC . (toRational :: Double -> Rational) <$> option auto
-      (  long "collateral-rate"
-      <> metavar "DECIMAL"
-      <> help "The ratio of collateralAsset/loanAsset needed for this collateral asset."
-      )
     
 pCollatRatesFraction :: Parser [((CurrencySymbol,TokenName),PlutusRational)]
 pCollatRatesFraction = some pRate'

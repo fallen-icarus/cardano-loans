@@ -58,7 +58,7 @@ runBorrowerCmd borrowerCmd = case borrowerCmd of
     runBorrowerAsksQuery addr network >>= toOutput output
   QueryBorrowerCurrentOffers addr network output -> 
     runAllOffersToBorrowerQuery addr network >>= toOutput output
-  QueryCurrentBorrowerLoans borrowerPubKey network output -> 
+  QueryBorrowerCurrentLoans borrowerPubKey network output -> 
     runAllBorrowersActiveLoansQuery (show borrowerPubKey) network >>= toOutput output
 
 runLenderCmd :: LenderCmd -> IO ()
@@ -78,9 +78,9 @@ runLenderCmd lenderCmd = case lenderCmd of
     writeData file CloseOffer
     putStrLn "CloseOffer redeemer created successfully."
   QueryAllAsks network output -> runAllAsksQuery network >>= toOutput output
-  QueryCurrentOffers lenderPubKey network output -> 
+  QueryLenderCurrentOffers lenderPubKey network output -> 
     runAllOffersFromLenderQuery (show lenderPubKey) network >>= toOutput output
-  QueryCurrentLenderLoans lenderPubKey network output -> 
+  QueryLenderCurrentLoans lenderPubKey network output -> 
     runAllLendersActiveLoansQuery (show lenderPubKey) network >>= toOutput output
   QueryBorrowerHistory borrowerPubKey network output ->
     runQueryBorrowerHistory (show borrowerPubKey) network >>= toOutput output 

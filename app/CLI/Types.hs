@@ -51,7 +51,7 @@ data BorrowerCmd
   | CreateRepayRedeemer FilePath
   | QueryBorrowerCurrentAsks String Network Output
   | QueryBorrowerCurrentOffers String Network Output
-  | QueryCurrentBorrowerLoans PaymentPubKeyHash Network Output
+  | QueryBorrowerCurrentLoans PaymentPubKeyHash Network Output
 
 data LenderCmd
   = CreateOfferDatum LoanDatum FilePath
@@ -61,8 +61,8 @@ data LenderCmd
   | CreateCloseOfferRedeemer FilePath
   | QueryAllAsks Network Output
   | QueryBorrowerHistory PaymentPubKeyHash Network Output
-  | QueryCurrentOffers PaymentPubKeyHash Network Output
-  | QueryCurrentLenderLoans PaymentPubKeyHash Network Output
+  | QueryLenderCurrentOffers PaymentPubKeyHash Network Output
+  | QueryLenderCurrentLoans PaymentPubKeyHash Network Output
 
 data Network 
   = PreProdTestnet String  -- ^ Api key

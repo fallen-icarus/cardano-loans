@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE StrictData #-}
 
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-incomplete-patterns #-}
 
 module CLI.BlockfrostApi
 (
@@ -20,19 +20,17 @@ module CLI.BlockfrostApi
 
 import Servant.API
 import Data.Aeson
-import Data.Aeson.Types (Parser)
 import Data.Proxy
 import Servant.Client
 import Control.Monad
 import qualified Data.Text as T
-import Data.List (nub,find,partition)
+import Data.List (find)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector
 import Data.Maybe (isJust,fromJust)
 
 import CLI.Types
-import CardanoLoans
 
 -------------------------------------------------
 -- Core Types
@@ -140,6 +138,7 @@ newtype RawCollateralRate = RawCollateralRate { unRawCollateralRate :: (RawAsset
 
 instance FromJSON RawCollateralRate where
   parseJSON (Object o) = RawCollateralRate <$> ((o .: "fields") >>= parseJSON)
+  parseJSON _ = mzero
 
 -- | The inline offer datum type used in the offerDatumApi.
 data RawOfferDatum = RawOfferDatum
@@ -202,7 +201,7 @@ class RawDatum a where
 
 instance RawDatum RawAskDatum where
   fetchDatums apiKey dhs = 
-    let go key datumMap [] = return datumMap
+    let go _ datumMap [] = return datumMap
         go key datumMap ((Just d):ds) = do
           i <- askDatumApi key d
           go key (Map.insert d i datumMap) ds
@@ -210,7 +209,7 @@ instance RawDatum RawAskDatum where
 
 instance RawDatum RawOfferDatum where
   fetchDatums apiKey dhs = 
-    let go key datumMap [] = return datumMap
+    let go _ datumMap [] = return datumMap
         go key datumMap ((Just d):ds) = do
           i <- offerDatumApi key d
           go key (Map.insert d i datumMap) ds
@@ -218,7 +217,7 @@ instance RawDatum RawOfferDatum where
 
 instance RawDatum RawActiveDatum where
   fetchDatums apiKey dhs = 
-    let go key datumMap [] = return datumMap
+    let go _ datumMap [] = return datumMap
         go key datumMap ((Just d):ds) = do
           i <- activeDatumApi key d
           go key (Map.insert d i datumMap) ds
@@ -273,6 +272,7 @@ newtype RawLoan = RawLoan { unRawLoan :: [RawLoanInfo] } deriving (Show)
 
 instance FromJSON RawLoan where
   parseJSON (Object o) = RawLoan <$> (o .: "inputs" >>= parseJSON)
+  parseJSON _ = mzero
 
 -------------------------------------------------
 -- Blockfrost Api
@@ -382,27 +382,27 @@ queryAllOffersToBorrower apiKey addr = do
 queryAllLendersActiveLoans :: BlockfrostApiKey -> String -> ClientM [AvailableActive]
 queryAllLendersActiveLoans apiKey lenderPubKeyHash = do
   let lender = BeaconId (show beaconSym,lenderPubKeyHash)
-      activeBeacon' = show beaconSym <> "416374697665"
+      activeId = show beaconSym <> "416374697665"
   -- | Get all the addresses that currently hold the lender ID.
   addrs <- beaconAddressListApi apiKey lender
   -- | Get all the lender ID utxos for those addresses.
   addrUtxos <- concat <$> mapM (\z -> beaconInfoApi apiKey z lender) addrs
   -- | Filter for utxos that have an active beacon. Then get the datums for those utxos.
-  let activeUtxos = filterForAsset activeBeacon' addrUtxos
+  let activeUtxos = filterForAsset activeId addrUtxos
   activeDatums <- fetchDatums apiKey $ map rawBeaconDataHash activeUtxos
   return $ convertActive activeUtxos activeDatums
 
 queryAllBorrowersActiveLoans :: BlockfrostApiKey -> String -> ClientM [AvailableActive]
 queryAllBorrowersActiveLoans apiKey borrowerPubKeyHash = do
   let borrower = BeaconId (show beaconSym,borrowerPubKeyHash)
-      activeBeacon' = show beaconSym <> "416374697665"
+      activeId = show beaconSym <> "416374697665"
   -- | Get all the addresses that currently hold the borrower ID (there should only be one).
   addrs <- beaconAddressListApi apiKey borrower
   -- | Get all the borrower ID utxos for those addresses. Only the active loans will still have
   -- the borrower's ID.
   addrUtxos <- concat <$> mapM (\z -> beaconInfoApi apiKey z borrower) addrs
   -- | Filter for utxos that have an active beacon. Then get the datums for those utxos.
-  let activeUtxos = filterForAsset activeBeacon' addrUtxos
+  let activeUtxos = filterForAsset activeId addrUtxos
   activeDatums <- fetchDatums apiKey $ map rawBeaconDataHash activeUtxos
   return $ convertActive activeUtxos activeDatums
 
