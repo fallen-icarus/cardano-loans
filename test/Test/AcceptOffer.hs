@@ -5565,4 +5565,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig acceptALoanOfferWithMultipleCollateralAssets
+testTrace = runEmulatorTraceIO' def emConfig acceptALoanOffer

@@ -191,7 +191,7 @@ data ClaimLoanParams = ClaimLoanParams
   , claimLoanVal :: Validator
   , claimLoanAddress :: Address
   , claimLoanSpecificUTxOs :: [(LoanDatum',Value)]
-  , claimLoanWithTTE :: Bool
+  , claimLoanWithTTL :: Bool
   , claimLoanOtherMint :: [(TokenName,Integer)]
   , claimLoanOtherMintPolicy :: MintingPolicy
   } deriving (Generic,ToJSON,FromJSON)
@@ -511,7 +511,7 @@ repayLoan RepayLoanParams{..} = do
 claimLoan :: ClaimLoanParams -> Contract () TraceSchema Text ()
 claimLoan ClaimLoanParams{..} = do
   loanUtxos <- utxosAt claimLoanAddress
-  (_,end) <- currentNodeClientTimeRange
+  (start,_) <- currentNodeClientTimeRange
   userPubKeyHash <- ownFirstPaymentPubKeyHash
 
   let beaconPolicyHash = mintingPolicyHash claimLoanBeaconPolicy
@@ -546,8 +546,8 @@ claimLoan ClaimLoanParams{..} = do
                   mempty 
                   claimLoanSpecificUTxOs
         -- | Must tell script current time
-        <> (if claimLoanWithTTE
-            then mustValidateIn (to end)
+        <> (if claimLoanWithTTL
+            then mustValidateIn (from start)
             else mempty)
         -- | Must be signed by borrower
         <> mustBeSignedBy userPubKeyHash

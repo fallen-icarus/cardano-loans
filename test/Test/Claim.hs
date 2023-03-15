@@ -209,7 +209,7 @@ claimExpiredLoan = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -384,7 +384,7 @@ otherBeaconsInInput = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -558,7 +558,7 @@ claimActiveLoan = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -731,7 +731,7 @@ activeBeaconNotBurned = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -904,7 +904,7 @@ lenderIdNotBurned = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1077,7 +1077,7 @@ borrowerIdNotBurned = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1251,7 +1251,7 @@ lenderDidNotSign = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1425,7 +1425,7 @@ otherTokensMinted = do
            <> (uncurry singleton testToken1) 40
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = [("other",1)]
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1594,7 +1594,7 @@ claimFullyPaidLoanEarly = do
            <> singleton beaconPolicySymbol "Active" 1
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1653,7 +1653,7 @@ inputDoesNotHaveActiveDatum = do
             , lovelaceValueOf 3_000_000 <> singleton beaconPolicySymbol "Ask" 1
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = []
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
@@ -1811,7 +1811,7 @@ noActiveBeaconPresent = do
             , lovelaceValueOf 25_000_000
             )
           ]
-      , claimLoanWithTTE = True
+      , claimLoanWithTTL = True
       , claimLoanOtherMint = [("other",1),("other2",2)]
       , claimLoanOtherMintPolicy = alwaysSucceedPolicy
       }
