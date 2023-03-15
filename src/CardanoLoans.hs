@@ -58,7 +58,6 @@ import qualified Data.ByteString.Short as SBS
 import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
-import Data.Default
 
 import           Cardano.Api hiding (Script,Value,TxOut,Address,ScriptHash)
 import           Cardano.Api.Shelley   (PlutusScript (..))

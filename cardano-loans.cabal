@@ -28,7 +28,7 @@ library
     bytestring,
     serialise,
     aeson,
-    plutonomy,
+    plutonomy
   hs-source-dirs: src
   ghc-options: 
     -fobject-code 
@@ -78,9 +78,24 @@ executable cardano-loans
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:
+    other-modules:
+      CLI.Types,
+      CLI.Parsers,
+      CLI.Run,
+      CLI.BlockfrostApi,
+      CLI.Query
+    build-depends:    
+      cardano-loans,
+      optparse-applicative,
+      servant,
+      aeson,
+      servant-client,
+      http-client,
+      http-client-tls,
+      text,
+      containers,
+      vector,
+      aeson-pretty,
+      bytestring,
+      utf8-string,
     hs-source-dirs:   app

@@ -1,26 +1,34 @@
 #!/bin/sh
 
-# A helper script for showing how to create an Offer as a lender.
+# A helper script for showing how to claim an expired loan as a lender.
 
 ## Variables
 dir="../assets/loan-files/"
 tmpDir="../assets/tmp/"
 
+loanScriptFile="${dir}loan.plutus"
 beaconPolicyFile="${dir}beacons.plutus"
-
-offerDatumFile="${dir}offer.json"
-
-beaconRedeemerFile="${dir}mintOffer.json"
 
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 
 ### Change these two variables to your target borrower.
-loanAddr="addr_test1zrzk6pehy4n2wunznhgptaa3xftlrfkxenfv6craycf8ws3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqvtj3cx"
+loanAddr="addr_test1zz9zev97ugewyhuc96mlml4ek0k7wmkymmgxxdvhr248kneualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqecl7nc"
 borrowerPubKeyHash="3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa"
 
-### This is the hexidecimal encoding for 'Offer'.
-offerTokenName="4f66666572"
+claimRedeemerFile="${dir}claim.json"
+beaconRedeemerFile="${dir}burn.json"
+
+### The time used for claiming.
+ttl=23217543
+
+### This is the hexidecimal encoding for 'Active'.
+activeTokenName="416374697665"
+
+## Export the loan validator script.
+cabal run exe:cardano-loans -- export-script \
+  --loan-script \
+  --out-file $loanScriptFile
 
 ## Generate the hash for the lender's payment pubkey.
 cardano-cli address key-hash \
@@ -32,32 +40,21 @@ cabal run exe:cardano-loans -- export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
-## Create the Offer datum.
-cabal run exe:cardano-loans -- lender offer-datum \
-  --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
-  --loan-asset-is-lovelace \
-  --principle 10000000 \
-  --loan-term 3600 \
-  --loan-interest-numerator 1 \
-  --loan-interest-denominator 10 \
-  --required-backing 10000000 \
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --collateral-rate-numerator 2 \
-  --collateral-rate-denominator 1000000 \
-  --out-file $offerDatumFile
-
-## Create the MintOfferToken beacon policy redeemer.
-cabal run exe:cardano-loans -- lender offer-beacon \
-  --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
+## Create the BurnBeaconToken beacon policy redeemer.
+cabal run exe:cardano-loans -- lender burn-beacons \
   --out-file $beaconRedeemerFile
+
+## Create the ClaimLoan redeemer.
+cabal run exe:cardano-loans -- lender claim-loan \
+  --out-file $claimRedeemerFile
 
 ## Get the beacon policy id.
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
-## Helper Offer beacon variable
-offerBeacon="${beaconPolicyId}.${offerTokenName}"
+## Helper beacon variables
+activeBeacon="${beaconPolicyId}.${activeTokenName}"
+borrowerBeacon="${beaconPolicyId}.${borrowerPubKeyHash}"
 
 ## Helper Lender ID beacon variable.
 lenderPaymentPubKeyHash=$(cat $lenderPaymentPubKeyHashFile)
@@ -69,17 +66,21 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 1a5f2de7ead5772dafee5325e98bb164261e1a226570396bdc7485d4278c032d#1 \
-  --tx-out "${loanAddr} + 13000000 lovelace + 1 ${offerBeacon} + 1 ${lenderBeacon}" \
-  --tx-out-inline-datum-file $offerDatumFile \
-  --mint "1 ${offerBeacon} + 1 ${lenderBeacon}" \
+  --tx-in 4a991394b4c5255b8e7432606078ddcfaf4e5ba0452d52e646461c61a50c31a6#0 \
+  --tx-in 1027dabb7aedbc20217adac671beede6b7330494c90fb70bd3b52450a5dd0422#0 \
+  --tx-in-script-file $loanScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $claimRedeemerFile \
+  --tx-out "$(cat ../assets/wallets/02.addr) + 2000000 lovelace + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --required-signer-hash "$(cat $lenderPaymentPubKeyHashFile)" \
+  --mint "-1 ${activeBeacon} + -1 ${borrowerBeacon} + -1 ${lenderBeacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
-  --required-signer-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --change-address "$(cat ../assets/wallets/02.addr)" \
-  --tx-in-collateral 62d4e442d8f01e035003fc60d448289440ca9b390c71385f11a55ac07b695ee0#2 \
+  --tx-in-collateral 71c87734cbab0e152b3619b6506ab6f6cebbabe76f56c6a0605f41f5f5c51d91#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
+  --invalid-before $ttl \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \
