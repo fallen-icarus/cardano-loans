@@ -17,7 +17,6 @@
 module Test.Common where
 
 import qualified Data.Map as Map
-import Control.Lens hiding (from,to)
 import Data.Default
 import Data.Void (Void)
 import Control.Monad (void)
@@ -37,9 +36,6 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Data.List (foldl')
 import Prelude as Haskell (Semigroup (..), String)
-import Plutus.Script.Utils.V2.Generators
-import Cardano.Api.Shelley (ExecutionUnits (..),ProtocolParameters (..))
-import PlutusPrelude (Natural)
 
 import CardanoLoans
 
