@@ -205,9 +205,9 @@ tokenAsPubKey (TokenName pkh) = PubKeyHash pkh
 {-# INLINABLE encodeDatum #-}
 -- | This is a convenient way to check what kind of datum it is.
 encodeDatum :: LoanDatum -> Integer
-encodeDatum (AskDatum _ _ _ _ _ _) = 0
-encodeDatum (OfferDatum _ _ _ _ _ _ _ _) = 1
-encodeDatum (ActiveDatum _ _ _ _ _ _ _ _ _ _ _) = 2
+encodeDatum AskDatum{} = 0
+encodeDatum OfferDatum{} = 1
+encodeDatum ActiveDatum{} = 2
 
 {-# INLINABLE signed #-}
 signed :: [PubKeyHash] -> PubKeyHash -> Bool
@@ -350,7 +350,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       --    calculations.
       -- 2) The output must contain the proper datum.
       -- This will throw the proper error message.
-      (validActiveDatum $ parseLoanDatum od) &&
+      validActiveDatum (parseLoanDatum od) &&
       -- | The required amount of collateral must be posted. The total amount of collateral that
       -- must be posted is determined by the loanBacking field in the OfferDatum.
       traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
@@ -363,8 +363,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- These checks are actually done by the minting policy. The requirement for the mint
       -- means the minting policy was actually executed.
       traceIfFalse "Active beacon not minted to this address"
-        (((valueOf minted) (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
-         ((valueOf oVal) (fst $ askBeacon askDatum) (TokenName "Active") == 1))
+        ((valueOf minted (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
+         (valueOf oVal (fst $ askBeacon askDatum) (TokenName "Active") == 1))
     RepayLoan ->
       -- | The input must have an ActiveDatum. This must be checked first since not all fields are
       -- the same across the datum types.
@@ -391,7 +391,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- | The output to this address must have the proper datum.
         --     - same as input datum except must subtract loan repaid from loanOutstanding.
         traceIfFalse "Output to address has wrong datum" 
-          ((parseLoanDatum od) == loanDatum{loanOutstanding = newOutstanding}) &&
+          (parseLoanDatum od == loanDatum{loanOutstanding = newOutstanding}) &&
         -- | If new loanOutstanding <= 0, then the loan is fully repaid.
         if newOutstanding <= fromInteger 0
         then
@@ -549,7 +549,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           foo _ acc [] = acc
           foo val !acc ((collatAsset,price):xs) =
             foo val
-                (acc + (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
+                (acc + fromInteger (uncurry (valueOf val) collatAsset) * recip price)
                 xs
       in foo oVal (fromInteger 0) (collateralRates offerDatum) >= target
 
@@ -623,8 +623,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     -- | Ensures the new active datum has the proper information.
     validActiveDatum :: LoanDatum -> Bool
-    validActiveDatum (AskDatum _ _ _ _ _ _) = traceError "Output datum not ActiveDatum"
-    validActiveDatum (OfferDatum _ _ _ _ _ _ _ _) = traceError "Output datum not ActiveDatum"
+    validActiveDatum AskDatum{} = traceError "Output datum not ActiveDatum"
+    validActiveDatum OfferDatum{} = traceError "Output datum not ActiveDatum"
     validActiveDatum newDatum
       | activeBeacon newDatum /= (fst $ askBeacon askDatum,TokenName "Active") =
           traceError "Active datum activeBeacon incorrect"
@@ -653,7 +653,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     -- | Allows claiming early if loan is fully repaid. Get's current time from TTL.
     claimable :: Bool
-    claimable = startTime >= (loanExpiration loanDatum) || 
+    claimable = startTime >= loanExpiration loanDatum || 
                 loanOutstanding loanDatum <= fromInteger 0
 
 data Loan
@@ -754,7 +754,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     mintCheck :: BeaconRedeemer -> Bool
     mintCheck r' = case (r',beaconMint) of
       (MintAskToken _, [(_,tn,n)]) ->
-        traceIfFalse "Only the ask beacon must have the token name 'Ask'" (tn == (TokenName "Ask")) &&
+        traceIfFalse "Only the ask beacon must have the token name 'Ask'" (tn == TokenName "Ask") &&
         traceIfFalse "Only one ask beacon can be minted" (n == 1)
       (MintAskToken _, _) -> 
         traceError "Only one beacon can be minted and it must be the ask beacon."
