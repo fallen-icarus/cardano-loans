@@ -85,7 +85,13 @@ import Ledger.Slot
 type PlutusRational = Rational
 
 slotToPOSIXTime :: Slot -> POSIXTime
-slotToPOSIXTime = slotToBeginPOSIXTime def
+slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
+
+-- | This is normalized by taking a slot time and subtracting the slot number from it. For example,
+-- slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number from the time
+-- yields the 0 time.
+preprodConfig :: SlotConfig
+preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
 
 -- | Parse Currency from user supplied String
 readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
@@ -344,9 +350,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- 1) There must only be one output to this address - this ensures proper collateral
       --    calculations.
       -- 2) The output must contain the proper datum.
-      -- See the validActiveDatum function to see how the information must be generated.
-      traceIfFalse "Output datum is incorrect: must be ActiveDatum with correct info" 
-        validActiveDatum &&
+      -- This will throw the proper error message.
+      (validActiveDatum $ parseLoanDatum od) &&
       -- | The required amount of collateral must be posted. The total amount of collateral that
       -- must be posted is determined by the loanBacking field in the OfferDatum.
       traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
@@ -606,33 +611,50 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
          valueOf allVal beaconSym' (TokenName "Offer") == 0 &&
          valueOf allVal beaconSym' (TokenName "Active") == 1
 
-    -- | Get the loan expiration time from the tx's validity range. Based off the lower bound.
-    expirationTime :: POSIXTime
-    expirationTime = case (\(LowerBound t _) -> t) $ ivFrom $ txInfoValidRange info of
+    -- | Get the loan start time from the tx's validity range. Based off the lower bound.
+    -- This is also used when a lender is claiming a loan.
+    startTime :: POSIXTime
+    startTime = case (\(LowerBound t _) -> t) $ ivFrom $ txInfoValidRange info of
       NegInf -> traceError "TTL not specified"
-      Finite t -> t + loanTerm offerDatum
+      Finite x -> x
       _ -> traceError "Shouldn't be PosInf."
 
-    -- | Ensures the new active datum has the proper information.
-    validActiveDatum :: Bool
-    validActiveDatum = parseLoanDatum od == ActiveDatum
-      { activeBeacon = (fst $ askBeacon askDatum,TokenName "Active")
-      , lenderId = lenderId offerDatum
-      , borrowerId = borrowerId askDatum
-      , loanAsset = loanAsset askDatum
-      , loanPrinciple = loanPrinciple askDatum
-      , loanTerm = loanTerm askDatum
-      , loanInterest = loanInterest offerDatum
-      , loanBacking = loanBacking offerDatum
-      , collateralRates = collateralRates offerDatum
-      , loanExpiration = expirationTime
-      , loanOutstanding = 
-          fromInteger (loanPrinciple askDatum) * (fromInteger 1 + loanInterest offerDatum)
-      }
+    expirationTime :: POSIXTime
+    expirationTime = startTime + loanTerm offerDatum
 
-    -- | Allows claiming early if loan is fully repaid.
+    -- | Ensures the new active datum has the proper information.
+    validActiveDatum :: LoanDatum -> Bool
+    validActiveDatum (AskDatum _ _ _ _ _ _) = traceError "Output datum not ActiveDatum"
+    validActiveDatum (OfferDatum _ _ _ _ _ _ _ _) = traceError "Output datum not ActiveDatum"
+    validActiveDatum newDatum
+      | activeBeacon newDatum /= (fst $ askBeacon askDatum,TokenName "Active") =
+          traceError "Active datum activeBeacon incorrect"
+      | lenderId newDatum /= lenderId offerDatum =
+          traceError "Active datum lenderId incorrect"
+      | borrowerId newDatum /= borrowerId askDatum =
+          traceError "Active datum borrowerId incorrect"
+      | loanAsset newDatum /= loanAsset askDatum =
+          traceError "Active datum loanAsset incorrect"
+      | loanPrinciple newDatum /= loanPrinciple askDatum =
+          traceError "Active datum loanPrinciple incorrect"
+      | loanTerm newDatum /= loanTerm askDatum =
+          traceError "Active Datum loanTerm incorrect"
+      | loanInterest newDatum /= loanInterest offerDatum =
+          traceError "Active datum loanInterest incorrect"
+      | loanBacking newDatum /= loanBacking offerDatum =
+          traceError "Active datum loanBacking incorrect"
+      | collateralRates newDatum /= collateralRates offerDatum =
+          traceError "Active datum collateralRates incorrect"
+      | loanExpiration newDatum /= expirationTime =
+          traceError "Active datum loanExpiration /= ttl + loanTerm"
+      | loanOutstanding newDatum /= 
+          fromInteger (loanPrinciple askDatum) * (fromInteger 1 + loanInterest offerDatum) =
+            traceError "Active datum loanOutstanding incorrect"
+      | otherwise = True
+
+    -- | Allows claiming early if loan is fully repaid. Get's current time from TTL.
     claimable :: Bool
-    claimable = loanIsExpired (loanExpiration loanDatum) || 
+    claimable = startTime >= (loanExpiration loanDatum) || 
                 loanOutstanding loanDatum <= fromInteger 0
 
 data Loan
