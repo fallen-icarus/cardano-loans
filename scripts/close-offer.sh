@@ -12,30 +12,32 @@ beaconPolicyFile="${dir}beacons.plutus"
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 
-loanAddrFile="${dir}loan.addr"
-
 beaconRedeemerFile="${dir}burnBeacons.json"
 closeOfferRedeemerFile="${dir}closeOffer.json"
 
-### This is the hexidecimal encoding for 'Offer'.
-offerTokenName="4f66666572"
+offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
-cabal run exe:cardano-loans -- lender burn-beacons \
+cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
+## Generate the hash for the lender's payment pubkey.
+cardano-cli address key-hash \
+  --payment-verification-key-file $lenderPaymentPubKeyFile \
+  --out-file $lenderPaymentPubKeyHashFile
+
 ## Create the CloseAsk redeemer for the loan validator.
-cabal run exe:cardano-loans -- lender close-offer \
+cardano-loans lender close-offer \
   --out-file $closeOfferRedeemerFile
 
 ## Get the beacon policy id.

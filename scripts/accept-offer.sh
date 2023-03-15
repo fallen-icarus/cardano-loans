@@ -12,7 +12,7 @@ beaconPolicyFile="${dir}beacons.plutus"
 borrowerPubKeyFile="../assets/wallets/01Stake.vkey"
 borrowerPubKeyHashFile="../assets/wallets/01Stake.pkh"
 
-### This is the lender's ID.
+### This is the lender's ID. Change this for your target offer.
 lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
 
 loanAddrFile="${dir}loan.addr"
@@ -34,7 +34,7 @@ offerTokenName="4f66666572"
 ttl=23211143
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
@@ -44,18 +44,18 @@ cardano-cli stake-address key-hash \
   --out-file $borrowerPubKeyHashFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the AcceptOffer redeemer for the loan validator.
-cabal run exe:cardano-loans -- borrower accept-offer \
+cardano-loans borrower accept-offer \
   --out-file $acceptOfferRedeemerFile
 
 ## Create the Active datum for accepting an offer.
-cabal run exe:cardano-loans -- borrower accept-offer-datum \
+cardano-loans borrower accept-offer-datum \
   --lender-payment-pubkey-hash $lenderPubKeyHash \
-  --borrower-stake-pubkey-hash $(cat $borrowerPubKeyHashFile) \
+  --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --loan-asset-is-lovelace \
   --principle 10000000 \
   --loan-term 3600 \
@@ -70,7 +70,7 @@ cabal run exe:cardano-loans -- borrower accept-offer-datum \
   --out-file $activeDatumFile
 
 ## Create the MintActiveToken beacon policy redeemer.
-cabal run exe:cardano-loans -- borrower active-beacon \
+cardano-loans borrower active-beacon \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --lender-payment-pubkey-hash $lenderPubKeyHash \
   --out-file $beaconRedeemerFile

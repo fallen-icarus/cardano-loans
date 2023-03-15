@@ -15,12 +15,10 @@ beaconRedeemerFile="${dir}mintOffer.json"
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 
-### Change these two variables to your target borrower.
-loanAddr="addr_test1zrzk6pehy4n2wunznhgptaa3xftlrfkxenfv6craycf8ws3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqvtj3cx"
-borrowerPubKeyHash="3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa"
+offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
 
-### This is the hexidecimal encoding for 'Offer'.
-offerTokenName="4f66666572"
+### Change this to your target borrower.
+loanAddr="addr_test1zrzk6pehy4n2wunznhgptaa3xftlrfkxenfv6craycf8ws3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqvtj3cx"
 
 ## Generate the hash for the lender's payment pubkey.
 cardano-cli address key-hash \
@@ -28,12 +26,12 @@ cardano-cli address key-hash \
   --out-file $lenderPaymentPubKeyHashFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the Offer datum.
-cabal run exe:cardano-loans -- lender offer-datum \
+cardano-loans lender offer-datum \
   --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --loan-asset-is-lovelace \
   --principle 10000000 \
@@ -48,7 +46,7 @@ cabal run exe:cardano-loans -- lender offer-datum \
   --out-file $offerDatumFile
 
 ## Create the MintOfferToken beacon policy redeemer.
-cabal run exe:cardano-loans -- lender offer-beacon \
+cardano-loans lender offer-beacon \
   --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --out-file $beaconRedeemerFile
 

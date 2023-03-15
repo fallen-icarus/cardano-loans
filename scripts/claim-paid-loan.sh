@@ -12,9 +12,6 @@ beaconPolicyFile="${dir}beacons.plutus"
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 
-### Change these two variables to your target borrower.
-loanAddr="addr_test1zrzk6pehy4n2wunznhgptaa3xftlrfkxenfv6craycf8ws3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqvtj3cx"
-
 claimRedeemerFile="${dir}claim.json"
 beaconRedeemerFile="${dir}burn.json"
 
@@ -25,7 +22,7 @@ ttl=23212437
 activeTokenName="416374697665"
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
@@ -35,16 +32,16 @@ cardano-cli address key-hash \
   --out-file $lenderPaymentPubKeyHashFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
-cabal run exe:cardano-loans -- lender burn-beacons \
+cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Create the ClaimLoan redeemer.
-cabal run exe:cardano-loans -- lender claim-loan \
+cardano-loans lender claim-loan \
   --out-file $claimRedeemerFile
 
 ## Get the beacon policy id.

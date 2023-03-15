@@ -12,9 +12,6 @@ beaconPolicyFile="${dir}beacons.plutus"
 borrowerPubKeyFile="../assets/wallets/01Stake.vkey"
 borrowerPubKeyHashFile="../assets/wallets/01Stake.pkh"
 
-### This is the lender's ID.
-lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
-
 loanAddrFile="${dir}loan.addr"
 
 repayDatumFile="${dir}repayDatum.json"
@@ -23,14 +20,15 @@ repayRedeemerFile="${dir}repayRedeemer.json"
 
 beaconRedeemerFile="${dir}burn.json"
 
-### The time used for repayment.
-tte=23212309
+tte=23212309 ### The time used for repayment.
 
-### This is the hexidecimal encoding for 'Active'.
-activeTokenName="416374697665"
+### This is the lender's ID. Change this for the target loan.
+lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
+
+activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
@@ -40,13 +38,13 @@ cardano-cli stake-address key-hash \
   --out-file $borrowerPubKeyHashFile
 
 ## Create the AcceptOffer redeemer for the loan validator.
-cabal run exe:cardano-loans -- borrower repay \
+cardano-loans borrower repay \
   --out-file $repayRedeemerFile
 
 ## Create the Active datum for a loan repayment.
-cabal run exe:cardano-loans -- borrower loan-payment-datum \
+cardano-loans borrower loan-payment-datum \
   --lender-payment-pubkey-hash $lenderPubKeyHash \
-  --borrower-stake-pubkey-hash $(cat $borrowerPubKeyHashFile) \
+  --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --loan-asset-is-lovelace \
   --principle 10000000 \
   --loan-term 3600 \
@@ -64,12 +62,12 @@ cabal run exe:cardano-loans -- borrower loan-payment-datum \
   --out-file $repayDatumFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
-cabal run exe:cardano-loans -- lender burn-beacons \
+cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Get the beacon policy id.

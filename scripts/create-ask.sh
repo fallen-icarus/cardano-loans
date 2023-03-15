@@ -18,11 +18,10 @@ askDatumFile="${dir}ask.json"
 
 beaconRedeemerFile="${dir}mintAsk.json"
 
-### This is the hexidecimal encoding for 'Ask'.
-askTokenName="41736b"
+askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
@@ -39,12 +38,12 @@ cardano-cli address build \
   --out-file $loanAddrFile
 
 ## Export the beacon policy.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the Ask datum.
-cabal run exe:cardano-loans -- borrower ask-datum \
+cardano-loans borrower ask-datum \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --loan-asset-is-lovelace \
   --principle 10000000 \
@@ -54,13 +53,13 @@ cabal run exe:cardano-loans -- borrower ask-datum \
   --out-file $askDatumFile
 
 ## Create the MintAskToken beacon policy redeemer.
-cabal run exe:cardano-loans -- borrower ask-beacon \
+cardano-loans borrower ask-beacon \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --out-file $beaconRedeemerFile
 
 ## Get the beacon policy id.
 beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file $beaconPolicyFile)
+  --script-file $beaconPolicyFile) 
 
 ## Helper Ask beacon variable
 askBeacon="${beaconPolicyId}.${askTokenName}"

@@ -12,28 +12,32 @@ beaconPolicyFile="${dir}beacons.plutus"
 borrowerPubKeyFile="../assets/wallets/01Stake.vkey"
 borrowerPubKeyHashFile="../assets/wallets/01Stake.pkh"
 
-### This is the lender's ID.
-lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
-
-### This is the beacon policy id. This is so that you don't need to re-export the policy.
-beaconPolicyId="2f62ee1de23df1e54724b93aceaa065587e0545be490ab2dab318d3f"
-
 loanAddrFile="${dir}loan.addr"
 
 repayDatumFile="${dir}repayDatum.json"
 
 repayRedeemerFile="${dir}repayRedeemer.json"
 
-### The time used for repayment.
-tte=23211909
+### This is the lender's ID.
+lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
 
-### This is the hexidecimal encoding for 'Active'.
-activeTokenName="416374697665"
+tte=23211909 ### The time used for repayment.
+
+activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
 
 ## Export the loan validator script.
-cabal run exe:cardano-loans -- export-script \
+cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
+
+## Export the beacon policy.
+cardano-loans export-script \
+  --beacon-policy \
+  --out-file $beaconPolicyFile
+
+## Get the beacon policy id.
+beaconPolicyId=$(cardano-cli transaction policyid \
+  --script-file $beaconPolicyFile)
 
 ## Generate the hash for the staking verification key.
 cardano-cli stake-address key-hash \
@@ -41,13 +45,13 @@ cardano-cli stake-address key-hash \
   --out-file $borrowerPubKeyHashFile
 
 ## Create the AcceptOffer redeemer for the loan validator.
-cabal run exe:cardano-loans -- borrower repay \
+cardano-loans borrower repay \
   --out-file $repayRedeemerFile
 
 ## Create the Active datum for a loan repayment.
-cabal run exe:cardano-loans -- borrower loan-payment-datum \
+cardano-loans borrower loan-payment-datum \
   --lender-payment-pubkey-hash $lenderPubKeyHash \
-  --borrower-stake-pubkey-hash $(cat $borrowerPubKeyHashFile) \
+  --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --loan-asset-is-lovelace \
   --principle 10000000 \
   --loan-term 3600 \
