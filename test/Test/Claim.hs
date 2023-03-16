@@ -178,7 +178,7 @@ claimExpiredLoan = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -206,7 +206,7 @@ claimExpiredLoan = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -352,7 +352,7 @@ otherBeaconsInInput = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -381,7 +381,7 @@ otherBeaconsInInput = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -527,7 +527,7 @@ claimActiveLoan = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -555,7 +555,7 @@ claimActiveLoan = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -701,7 +701,7 @@ activeBeaconNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -728,7 +728,7 @@ activeBeaconNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -874,7 +874,7 @@ lenderIdNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -901,7 +901,7 @@ lenderIdNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -1047,7 +1047,7 @@ borrowerIdNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1074,7 +1074,7 @@ borrowerIdNotBurned = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -1220,7 +1220,7 @@ lenderDidNotSign = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1248,7 +1248,7 @@ lenderDidNotSign = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -1394,7 +1394,7 @@ otherTokensMinted = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1422,7 +1422,7 @@ otherTokensMinted = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , claimLoanWithTTL = True
@@ -1850,4 +1850,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig noActiveBeaconPresent
+testTrace = runEmulatorTraceIO' def emConfig claimFullyPaidLoanEarly

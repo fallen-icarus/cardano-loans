@@ -162,9 +162,7 @@
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.
   - [x] Else
-    - [x] collateralTaken / collateralization * (1 + interest) <= loanRepaid
-      - [x] Fail if not enough loan repaid.
-      - [x] Successfully repay an undercollateralized loan.
+    - [x] Fail if any collateral take during partial payment.
     - [x] The output must have the active beacon, borrower ID, and the lender ID.
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.

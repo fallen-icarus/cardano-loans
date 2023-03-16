@@ -395,7 +395,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- | If new loanOutstanding <= 0, then the loan is fully repaid.
         if newOutstanding <= fromInteger 0
         then
-          -- | All remaining collateral is unlocked.
+          -- | All collateral is unlocked.
           -- | The only borrower ID in the tx must be burned.
           traceIfFalse "Borrower ID not burned" 
             (uncurry (valueOf minted) (borrowerId loanDatum) == -1) &&
@@ -409,9 +409,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
               uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
         -- | Otherwise this is a partial payment.
         else 
-          -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
-          traceIfFalse "Fail: sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid"
-            repaymentCheck &&
+          -- | No collateral can be taken.
+          traceIfFalse "No collateral can be taken" noCollateralTaken &&
           -- | The output to this address must have the active beacon, borrower ID, and lender ID.
           traceIfFalse "Output to address must have active beacon, borrower ID, and lender ID"
             (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
@@ -498,7 +497,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- set an earlier time than has already passed to trick the script.
     repaymentTime :: POSIXTime
     repaymentTime = case (\(UpperBound t _) -> t) $ ivTo $ txInfoValidRange info of
-      PosInf -> traceError "TTE not specified"
+      PosInf -> traceError "invalid-hereafter not specified"
       Finite t -> t
       _ -> traceError "Shouldn't be NegInf."
 
@@ -531,15 +530,13 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     repaidAmount :: Rational
     repaidAmount = fromInteger $ uncurry (valueOf addrDiff) $ loanAsset loanDatum
 
-    -- | This is converted into units of the loan asset by dividing by the collateral rates.
-    collateralReclaimed :: Rational
-    collateralReclaimed = 
+    -- | Checks that no collateral is taken during RepayLoan (unless loan fully paid off).
+    noCollateralTaken :: Bool
+    noCollateralTaken =
       let foo _ acc [] = acc
-          foo val !acc ((collatAsset,price):xs) = 
-            foo val 
-                (acc + Ratio.negate (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
-                xs
-      in foo addrDiff (fromInteger 0) (collateralRates loanDatum)
+          foo val !acc ((collatAsset,_):xs) =
+            foo val (acc && uncurry (valueOf val) collatAsset == 0) xs
+      in foo addrDiff True (collateralRates loanDatum)
 
     -- | This checks that enough collateral is posted when a loan offer is accepted. It uses the
     -- loanBacking to determine validity.
@@ -552,10 +549,6 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
                 (acc + fromInteger (uncurry (valueOf val) collatAsset) * recip price)
                 xs
       in foo oVal (fromInteger 0) (collateralRates offerDatum) >= target
-
-    repaymentCheck :: Bool
-    repaymentCheck = 
-      collateralReclaimed * (fromInteger 1 + loanInterest loanDatum) <= repaidAmount
 
     -- | New total of loan outstanding.
     newOutstanding :: Rational
@@ -614,7 +607,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     -- This is also used when a lender is claiming a loan.
     startTime :: POSIXTime
     startTime = case (\(LowerBound t _) -> t) $ ivFrom $ txInfoValidRange info of
-      NegInf -> traceError "TTL not specified"
+      NegInf -> traceError "invalid-before not specified"
       Finite x -> x
       _ -> traceError "Shouldn't be PosInf."
 

@@ -178,7 +178,7 @@ makePartialPayment = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -401,7 +401,7 @@ txHasMultipleInputsFromAddress = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -548,7 +548,7 @@ loanIsExpired = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -695,7 +695,7 @@ multipleOutputsToAddress = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           , (Just newActiveDatum
             , lovelaceValueOf 3_000_000
@@ -986,7 +986,7 @@ outputHasChangedOtherFieldInActiveDatum = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -995,8 +995,8 @@ outputHasChangedOtherFieldInActiveDatum = do
       , repayLoanOtherMintPolicy = alwaysSucceedPolicy
       }
 
-takeMoreColalteralThanRepaid :: EmulatorTrace ()
-takeMoreColalteralThanRepaid = do
+takeCollateralBeforeFullyRepaying :: EmulatorTrace ()
+takeCollateralBeforeFullyRepaying = do
   borrowerH <- activateContractWallet (knownWallet 1) endpoints
   lenderH <- activateContractWallet (knownWallet 2) endpoints
 
@@ -1279,7 +1279,7 @@ partialPaymetOutputMissingActiveBeacon = do
             , lovelaceValueOf 25_000_000
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1425,7 +1425,7 @@ partialPaymetOutputMissingLenderID = do
             , lovelaceValueOf 25_000_000
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1571,7 +1571,7 @@ partialPaymetOutputMissingBorrowerID = do
             , lovelaceValueOf 25_000_000
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1718,7 +1718,7 @@ stakingCredDidNotApprove = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -1865,6 +1865,7 @@ makePartialPaymentOnUnderCollateralizedLoan = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
+           <> (uncurry singleton testToken1) 10
             )
           ]
       , repayLoanDatumAsInline = True
@@ -2735,7 +2736,7 @@ outputDatumNotInline = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = False
@@ -2882,7 +2883,7 @@ repayWithoutTTE = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -3029,7 +3030,7 @@ otherBeaconsInInputs = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
             )
           ]
       , repayLoanDatumAsInline = True
@@ -3446,7 +3447,7 @@ repayALoanWithMultipleCollateralAssets = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
            <> (uncurry singleton testToken2) 20
             )
           ]
@@ -3472,7 +3473,7 @@ repayALoanWithMultipleCollateralAssets = do
            <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
            <> singleton beaconPolicySymbol (pubKeyAsToken borrowerPubKey) 1
            <> singleton beaconPolicySymbol "Active" 1
-           <> (uncurry singleton testToken1) 40
+           <> (uncurry singleton testToken1) 50
            <> (uncurry singleton testToken2) 20
             )
           ]
@@ -3866,8 +3867,8 @@ tests = do
         (Test.not assertNoFailedTransactions) noOutputsToAddress
     , checkPredicateOptions opts "Fail if output changed another field in ActiveDatum"
         (Test.not assertNoFailedTransactions) outputHasChangedOtherFieldInActiveDatum
-    , checkPredicateOptions opts "Fail if taking more collateral than loan repaid"
-        (Test.not assertNoFailedTransactions) takeMoreColalteralThanRepaid
+    , checkPredicateOptions opts "Fail if taking collateral during partial payment"
+        (Test.not assertNoFailedTransactions) takeCollateralBeforeFullyRepaying
     , checkPredicateOptions opts "Fail if partial payment output is missing active beacon"
         (Test.not assertNoFailedTransactions) partialPaymetOutputMissingActiveBeacon
     , checkPredicateOptions opts "Fail if partial payment output is missing lender ID"
@@ -3884,7 +3885,7 @@ tests = do
         (Test.not assertNoFailedTransactions) fullPaymentOutputMissingLenderId
     , checkPredicateOptions opts "Fail if output datum not inline"
         (Test.not assertNoFailedTransactions) outputDatumNotInline
-    , checkPredicateOptions opts "Fail if TTE not specified"
+    , checkPredicateOptions opts "Fail if invalid-hereafter not specified"
         (Test.not assertNoFailedTransactions) repayWithoutTTE
     , checkPredicateOptions opts "Fail if other phase beacons in tx inputs"
         (Test.not assertNoFailedTransactions) otherBeaconsInInputs
