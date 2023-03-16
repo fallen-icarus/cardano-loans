@@ -114,7 +114,7 @@ readPaymentPubKeyHash s = case fromHex $ fromString s of
 -- Data Types
 -------------------------------------------------
 data LoanDatum
-  -- | The datum for the ask ask.
+  -- | The datum for the ask phase.
   = AskDatum 
       { askBeacon :: (CurrencySymbol,TokenName)
       , borrowerId :: (CurrencySymbol,TokenName)
@@ -123,7 +123,7 @@ data LoanDatum
       , loanTerm :: POSIXTime
       , collateral :: [(CurrencySymbol,TokenName)]
       }
-  -- | The datum for the offer ask.
+  -- | The datum for the offer phase.
   | OfferDatum
       { offerBeacon :: (CurrencySymbol,TokenName)
       , lenderId :: (CurrencySymbol,TokenName)
@@ -135,7 +135,7 @@ data LoanDatum
                                -- loanAsset.
       , collateralRates :: [((CurrencySymbol,TokenName),Rational)] -- ^ Rates: collateralAsset/loanAsset
       }
-  -- | The datum for the active ask. This also has information useful for the credit history.
+  -- | The datum for the active phase. This also has information useful for the credit history.
   | ActiveDatum
       { activeBeacon :: (CurrencySymbol,TokenName)
       , lenderId :: (CurrencySymbol,TokenName)
