@@ -254,7 +254,7 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- On-Chain Loan Validator
 -------------------------------------------------
 -- | The purpose of this validator is to guarantee that loan negotiations and repayment go
--- smoothing without needing to trust the other party.
+-- smoothly without needing to trust the other party.
 --
 -- This validator uses the presence or absence of the beacon tokens to judge the validity of
 -- the datums. This is due to the beacon tokens only being mintable when the datums are valid.
@@ -263,7 +263,7 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- the address has custody rights. This is to protect the address owner from malicious datums. 
 -- It is therefore up to the lenders to ensure proper usage of this validator.
 --
--- It is technically possible for a malicious user to create their own beacon beacon policy for use
+-- It is technically possible for a malicious user to create their own beacon minting policy for use
 -- with this validator. However, this would be an entirely different token than the actual beacons
 -- which means they would not even be discoverable by other users.
 --
@@ -673,7 +673,7 @@ mkBeaconPolicy :: AppName -> ValidatorHash  -- ^ Extra parameters
                -> BeaconRedeemer -> ScriptContext -> Bool
 mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
     MintAskToken (PaymentPubKeyHash pkh) ->
-      -- | Only one ask token can be minted this tx and it must have the token name "Ask".
+      -- | Only one beacon token can be minted this tx and it must have the token name "Ask".
       mintCheck r &&
       -- | The following function checks:
       -- 1) Must be minted to an address protected by the dappHash.
@@ -703,6 +703,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - loanPrinciple > 0.
       --     - loanTerm > 0.
       --     - loanInterest > 0.
+      --     - loanBacking > 0.
       --     - collateralRates not null
       --     - all collaterale rates > 0.
       -- 5) The offer token must be stored with the amount of the loan asset specified in
