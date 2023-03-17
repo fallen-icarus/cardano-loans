@@ -213,7 +213,7 @@ pBorrowerAcceptActiveDatum :: Parser BorrowerCmd
 pBorrowerAcceptActiveDatum = BorrowerAcceptActiveDatum <$> pActiveDatum <*> pOutputFile
   where
     pActiveDatum :: Parser LoanDatum
-    pActiveDatum = convert <$> pActiveDatum' <*> pTTL
+    pActiveDatum = convert <$> pActiveDatum' <*> pStart
 
     pActiveDatum' :: Parser ActiveDatum'
     pActiveDatum' =
@@ -235,9 +235,9 @@ pBorrowerAcceptActiveDatum = BorrowerAcceptActiveDatum <$> pActiveDatum <*> pOut
     calcOutstanding principle interest =
       fromGHC (toRational principle) * (unsafeRatio 1 1 + interest)
 
-    pTTL :: Parser POSIXTime
-    pTTL = slotToPOSIXTime . Slot <$> option auto
-      (  long "loan-ttl"
+    pStart :: Parser POSIXTime
+    pStart = slotToPOSIXTime . Slot <$> option auto
+      (  long "loan-start"
       <> metavar "INT"
       <> help "The slot at which the loan will start."
       )
