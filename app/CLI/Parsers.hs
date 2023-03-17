@@ -160,6 +160,9 @@ parseBorrowerCmd = fmap BorrowerCmd $ hsubparser $ mconcat
   , command "query-active-loans"
       (info pQueryBorrowerOpenLoans $
         progDesc "Query current loans.")
+  , command "convert-posix" 
+      (info pConvertPOSIXToSlot $
+        progDesc "Convert POSIX time to the corresponding slot number.")
   ]
 
 pBorrowerAskDatum :: Parser BorrowerCmd
@@ -268,7 +271,14 @@ pCreateAcceptOfferRedeemer = CreateAcceptOfferRedeemer <$> pOutputFile
 
 pQueryBorrowerOpenLoans :: Parser BorrowerCmd
 pQueryBorrowerOpenLoans = QueryBorrowerCurrentLoans <$> pBorrowerID <*> pNetwork <*> pOutput
-      
+
+pConvertPOSIXToSlot :: Parser BorrowerCmd
+pConvertPOSIXToSlot = ConvertPOSIXToSlot . POSIXTime <$> option auto
+  (  long "posix-time"
+  <> metavar "INT"
+  <> help "Get the slot number corresponding to the supplied POSIX time."
+  )
+
 -------------------------------------------------
 -- Basic Helper Parsers
 -------------------------------------------------

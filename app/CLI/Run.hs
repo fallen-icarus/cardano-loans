@@ -60,6 +60,7 @@ runBorrowerCmd borrowerCmd = case borrowerCmd of
     runAllOffersToBorrowerQuery addr network >>= toOutput output
   QueryBorrowerCurrentLoans borrowerPubKey network output -> 
     runAllBorrowersActiveLoansQuery (show borrowerPubKey) network >>= toOutput output
+  ConvertPOSIXToSlot time -> print $ getSlot $ posixTimeToSlot time
 
 runLenderCmd :: LenderCmd -> IO ()
 runLenderCmd lenderCmd = case lenderCmd of

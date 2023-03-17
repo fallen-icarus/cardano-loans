@@ -52,6 +52,7 @@ data BorrowerCmd
   | QueryBorrowerCurrentAsks String Network Output
   | QueryBorrowerCurrentOffers String Network Output
   | QueryBorrowerCurrentLoans PaymentPubKeyHash Network Output
+  | ConvertPOSIXToSlot POSIXTime
 
 data LenderCmd
   = CreateOfferDatum LoanDatum FilePath

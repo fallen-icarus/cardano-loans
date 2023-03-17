@@ -32,6 +32,7 @@ module CardanoLoans
   adaSymbol,
   adaToken,
   slotToPOSIXTime,
+  posixTimeToSlot,
   fromGHC,
   readCurrencySymbol,
   readTokenName,
@@ -85,6 +86,9 @@ type PlutusRational = Rational
 
 slotToPOSIXTime :: Slot -> POSIXTime
 slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
+
+posixTimeToSlot :: POSIXTime -> Slot
+posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
 
 -- | This is normalized by taking a slot time and subtracting the slot number from it. For example,
 -- slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number from the time
