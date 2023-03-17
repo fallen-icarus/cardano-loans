@@ -650,7 +650,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     -- | Allows claiming early if loan is fully repaid. Get's current time from TTL.
     claimable :: Bool
-    claimable = startTime >= loanExpiration loanDatum || 
+    claimable = startTime > loanExpiration loanDatum || 
                 loanOutstanding loanDatum <= fromInteger 0
 
 data Loan

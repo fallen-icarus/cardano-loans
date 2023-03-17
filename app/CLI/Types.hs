@@ -12,7 +12,7 @@ import CardanoLoans
 -- This should be changed whenever the on-chain code is changed.
 beaconSym :: CurrencySymbol
 beaconSym = (\(Right sym) -> sym) 
-          $ readCurrencySymbol "a5396cffc0cce87116aed699e2aa62b75db05789e19b7f06aec80360"
+          $ readCurrencySymbol "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64"
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
