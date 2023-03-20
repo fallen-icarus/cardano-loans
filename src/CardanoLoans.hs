@@ -390,7 +390,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- inputs skewing the repayment calculations.
         traceIfFalse "Only one input allowed from this address" (length allAddrInputs == 1) &&
         -- | The loan must not be expired.
-        traceIfFalse "Loan is expired" (not $ loanIsExpired $ loanExpiration loanDatum) &&
+        traceIfFalse "Loan is expired" (not $ loanIsExpired repaymentTime) &&
         -- | There can only be one output to this address. Checked by the next check.
         -- | The output to this address must have the proper datum.
         --     - same as input datum except must subtract loan repaid from loanOutstanding.
@@ -507,7 +507,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     -- | Check if the expiration has passed.
     loanIsExpired :: POSIXTime -> Bool
-    loanIsExpired endTime = repaymentTime > endTime
+    loanIsExpired currentTime = currentTime > loanExpiration loanDatum
 
     -- | Gets the output to this address. 
     -- Throws an error if there is more than one since all redeemers require no more than
@@ -608,7 +608,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
          valueOf allVal beaconSym' (TokenName "Active") == 1
 
     -- | Get the loan start time from the tx's validity range. Based off the lower bound.
-    -- This is also used when a lender is claiming a loan.
+    -- This is also used when a lender is claiming a loan to get the claim time.
     startTime :: POSIXTime
     startTime = case (\(LowerBound t _) -> t) $ ivFrom $ txInfoValidRange info of
       NegInf -> traceError "invalid-before not specified"
@@ -650,7 +650,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
 
     -- | Allows claiming early if loan is fully repaid. Get's current time from TTL.
     claimable :: Bool
-    claimable = startTime > loanExpiration loanDatum || 
+    claimable = loanIsExpired startTime || 
                 loanOutstanding loanDatum <= fromInteger 0
 
 data Loan
