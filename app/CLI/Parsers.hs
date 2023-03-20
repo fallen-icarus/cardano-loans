@@ -70,15 +70,15 @@ parseLenderCmd = fmap LenderCmd $ hsubparser $ mconcat
   , command "query-asks"
       (info pQueryAsks $ 
         progDesc "Query all the current open Asks.")
-  , command "query-open-offers"
+  , command "query-offers"
       (info pQueryCurrentOffers $
         progDesc "Query all open offers belonging to the lender.")
-  , command "query-active-loans"
+  , command "query-loans"
       (info pQueryCurrentLoans $
-        progDesc "Query all active loans associated to the lender.")
-  , command "query-borrower-credit-history"
+        progDesc "Query all loans associated with the lender.")
+  , command "query-credit-history"
       (info pQueryBorrowerHistory $
-        progDesc "Query the borrower's credit history.")
+        progDesc "Query a borrower's credit history.")
   ]
 
 pCreateOfferDatum :: Parser LenderCmd
@@ -157,7 +157,7 @@ parseBorrowerCmd = fmap BorrowerCmd $ hsubparser $ mconcat
   , command "query-offers"
       (info pQueryBorrowerOffers $
         progDesc "Query offers.")
-  , command "query-active-loans"
+  , command "query-loans"
       (info pQueryBorrowerOpenLoans $
         progDesc "Query current loans.")
   , command "convert-posix" 
