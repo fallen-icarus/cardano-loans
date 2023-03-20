@@ -21,16 +21,19 @@ beaconRedeemerFile="${dir}mintAsk.json"
 askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
 
 ## Export the loan validator script.
+echo "Exporting the loan validator script..."
 cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Generate the hash for the staking verification key.
+echo "Calculating the staking pubkey hash for the borrower..."
 cardano-cli stake-address key-hash \
   --stake-verification-key-file $borrowerPubKeyFile \
   --out-file $borrowerPubKeyHashFile
 
 ## Create the loan address.
+echo "Creating the borrower's loan address..."
 cardano-cli address build \
   --payment-script-file $loanScriptFile \
   --stake-verification-key-file $borrowerPubKeyFile \
@@ -38,11 +41,13 @@ cardano-cli address build \
   --out-file $loanAddrFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the Ask datum.
+echo "Creating the ask datum..."
 cardano-loans borrower ask-datum \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --loan-asset-is-lovelace \
@@ -53,11 +58,13 @@ cardano-loans borrower ask-datum \
   --out-file $askDatumFile
 
 ## Create the MintAskToken beacon policy redeemer.
+echo "Creating the minting redeemer..."
 cardano-loans borrower ask-beacon \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
   --out-file $beaconRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile) 
 
@@ -70,7 +77,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in fd1feefe02c91dfb7a10187964a8442646d62835ce8cdd18bda1cea02da176dc#1 \
+  --tx-in e5b4c3b3d8b408e923644e73ef010ae4180cd60acf3441e72ad581901e9e5579#1 \
   --tx-out "$(cat ${loanAddrFile}) + 2000000 lovelace + 1 ${askBeacon}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon}" \

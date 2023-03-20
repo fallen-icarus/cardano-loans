@@ -18,29 +18,35 @@ closeAskRedeemerFile="${dir}closeAsk.json"
 askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
 
 ## Export the loan validator script.
+echo "Exporting the loan validator script..."
 cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Generate the hash for the staking verification key.
+echo "Calculating the hash for the borrower's staking pubkey..."
 cardano-cli stake-address key-hash \
   --stake-verification-key-file $borrowerPubKeyFile \
   --out-file $borrowerPubKeyHashFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
+echo "Creating the burn redeemer..."
 cardano-loans borrower burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Create the CloseAsk redeemer for the loan validator.
+echo "Creating the spending redeemer..."
 cardano-loans borrower close-ask \
   --out-file $closeAskRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
@@ -53,7 +59,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 4b75518160c7e3df36b5754e8ed85f1988ea03f67bd7e92132b3c882a3338dc2#0 \
+  --tx-in 6959fa37b119b4636b920a53686d76844014d41a6dc475d79881ba9a1a96be62#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $closeAskRedeemerFile \

@@ -20,7 +20,7 @@ repayRedeemerFile="${dir}repayRedeemer.json"
 
 beaconRedeemerFile="${dir}burn.json"
 
-tte=23212309 ### The time used for repayment.
+tte=23636081 ### The time used for repayment.
 
 ### This is the lender's ID. Change this for the target loan.
 lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
@@ -28,20 +28,24 @@ lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
 activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
 
 ## Export the loan validator script.
+echo "Exporting the loan validator script..."
 cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Generate the hash for the staking verification key.
+echo "Calculating the hash for the borrower's stake pubkey..."
 cardano-cli stake-address key-hash \
   --stake-verification-key-file $borrowerPubKeyFile \
   --out-file $borrowerPubKeyHashFile
 
 ## Create the AcceptOffer redeemer for the loan validator.
+echo "Creating the spending redeemer..."
 cardano-loans borrower repay \
   --out-file $repayRedeemerFile
 
 ## Create the Active datum for a loan repayment.
+echo "Creating the updated active loan datum..."
 cardano-loans borrower loan-payment-datum \
   --lender-payment-pubkey-hash $lenderPubKeyHash \
   --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
@@ -55,22 +59,25 @@ cardano-loans borrower loan-payment-datum \
   --collateral-asset-token-name 4f74686572546f6b656e0a \
   --collateral-rate-numerator 1 \
   --collateral-rate-denominator 500000 \
-  --expiration-time 1678897943000 \
+  --expiration-time 1679319281000 \
   --current-balance-numerator 6000000 \
   --current-balance-denominator 1 \
   --payment-amount 6000000 \
   --out-file $repayDatumFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
+echo "Creating the burning redeemer..."
 cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
@@ -87,15 +94,14 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 7bbdd65e6fae6c66d8c3b03973adbf9b1eb6c6a689ffe8ecbd4ef71dbf92a5c9#1 \
-  --tx-in 593b6321410d537e7781b12fbaf44af29b313bbdda431a757084c8f5068d6513#1 \
-  --tx-in 4763325930557dd5e4835bb0e6f1592b815673aa861d6ea0b602abe277f353e2#0 \
+  --tx-in 223ef8cad930efdd8a30855e8b4f5dbc5df2b2f0000d7019becae082b5a5b867#0 \
+  --tx-in e5b4c3b3d8b408e923644e73ef010ae4180cd60acf3441e72ad581901e9e5579#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $repayRedeemerFile \
   --tx-out "$(cat ${loanAddrFile}) + 14000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon}" \
   --tx-out-inline-datum-file $repayDatumFile \
-  --tx-out "$(cat ../assets/wallets/01.addr) + 10000000 lovelace + 501 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ../assets/wallets/01.addr) + 2000000 lovelace + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --required-signer-hash "$(cat $borrowerPubKeyHashFile)" \
   --mint "-1 ${borrowerBeacon}" \
   --mint-script-file $beaconPolicyFile \

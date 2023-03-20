@@ -16,35 +16,41 @@ claimRedeemerFile="${dir}claim.json"
 beaconRedeemerFile="${dir}burn.json"
 
 ### The time used for claiming.
-ttl=23212437
+ttl=23633874
 
 ### This is the hexidecimal encoding for 'Active'.
 activeTokenName="416374697665"
 
 ## Export the loan validator script.
+echo "Exporting the loan validator script..."
 cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Generate the hash for the lender's payment pubkey.
+echo "Calculating the hash for the lender's payment pubkey..."
 cardano-cli address key-hash \
   --payment-verification-key-file $lenderPaymentPubKeyFile \
   --out-file $lenderPaymentPubKeyHashFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
+echo "Creating the burn redeemer..."
 cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Create the ClaimLoan redeemer.
+echo "Creating the spending redeemer..."
 cardano-loans lender claim-loan \
   --out-file $claimRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
@@ -61,8 +67,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in b156b6ee95f8992cbd31e4688e878a993d8df03c78aa72e9fc6fafc05bcf6326#1 \
-  --tx-in 00c8967e60dea640df632d9a05c3afdc6493b0c04007f27ba8557e018343b5a0#0 \
+  --tx-in 6616233a655fd5caae7ffd4790d30c8bf43b57bd1f6c211f96bcaca461233c5e#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $claimRedeemerFile \

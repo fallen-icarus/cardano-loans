@@ -19,35 +19,41 @@ claimRedeemerFile="${dir}claim.json"
 beaconRedeemerFile="${dir}burn.json"
 
 ### The time used for claiming.
-ttl=23217543
+claimTime=23638305
 
 ### This is the hexidecimal encoding for 'Active'.
 activeTokenName="416374697665"
 
 ## Export the loan validator script.
+echo "Exporting the loan validator script..."
 cardano-loans export-script \
   --loan-script \
   --out-file $loanScriptFile
 
 ## Generate the hash for the lender's payment pubkey.
+echo "Calculating the hash of the lender's payment verification key..."
 cardano-cli address key-hash \
   --payment-verification-key-file $lenderPaymentPubKeyFile \
   --out-file $lenderPaymentPubKeyHashFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the BurnBeaconToken beacon policy redeemer.
+echo "Creating the burn redeemer..."
 cardano-loans lender burn-beacons \
   --out-file $beaconRedeemerFile
 
 ## Create the ClaimLoan redeemer.
+echo "Creating the spending redeemer..."
 cardano-loans lender claim-loan \
   --out-file $claimRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
@@ -65,12 +71,12 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 4a991394b4c5255b8e7432606078ddcfaf4e5ba0452d52e646461c61a50c31a6#0 \
-  --tx-in 1027dabb7aedbc20217adac671beede6b7330494c90fb70bd3b52450a5dd0422#0 \
+  --tx-in 76a5888a1efe6199b73487824b1ecba06e8a5f0382ec32eb0f2a1052a145fc37#1 \
+  --tx-in 48c65de6874878bf6025c83c74788373ac8e61c442eed74ab31b7238cd649fd9#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $claimRedeemerFile \
-  --tx-out "$(cat ../assets/wallets/02.addr) + 2000000 lovelace + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ../assets/wallets/02.addr) + 2000000 lovelace + 40 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --required-signer-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --mint "-1 ${activeBeacon} + -1 ${borrowerBeacon} + -1 ${lenderBeacon}" \
   --mint-script-file $beaconPolicyFile \
@@ -79,7 +85,7 @@ cardano-cli transaction build \
   --tx-in-collateral 71c87734cbab0e152b3619b6506ab6f6cebbabe76f56c6a0605f41f5f5c51d91#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --invalid-before $ttl \
+  --invalid-before $claimTime \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \

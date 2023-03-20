@@ -18,19 +18,22 @@ lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
 
 ### Change this to your target borrower.
-loanAddr="addr_test1zrzk6pehy4n2wunznhgptaa3xftlrfkxenfv6craycf8ws3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqvtj3cx"
+loanAddr="addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg"
 
 ## Generate the hash for the lender's payment pubkey.
+echo "Calculating the lender's pubkey hash..."
 cardano-cli address key-hash \
   --payment-verification-key-file $lenderPaymentPubKeyFile \
   --out-file $lenderPaymentPubKeyHashFile
 
 ## Export the beacon policy.
+echo "Exporting the beacon policy script..."
 cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Create the Offer datum.
+echo "Creating the offer datum..."
 cardano-loans lender offer-datum \
   --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --loan-asset-is-lovelace \
@@ -46,11 +49,13 @@ cardano-loans lender offer-datum \
   --out-file $offerDatumFile
 
 ## Create the MintOfferToken beacon policy redeemer.
+echo "Creating the mint redeemer..."
 cardano-loans lender offer-beacon \
   --lender-payment-pubkey-hash "$(cat $lenderPaymentPubKeyHashFile)" \
   --out-file $beaconRedeemerFile
 
 ## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
@@ -67,7 +72,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 1a5f2de7ead5772dafee5325e98bb164261e1a226570396bdc7485d4278c032d#1 \
+  --tx-in 06a486a9d7902bbf66786308faa29f0e0f99c7bdc8d9016b10cdeac29a988d8e#1 \
   --tx-out "${loanAddr} + 13000000 lovelace + 1 ${offerBeacon} + 1 ${lenderBeacon}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${lenderBeacon}" \
