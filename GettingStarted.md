@@ -4,7 +4,7 @@
 
 Template bash scripts that follow these steps are available [here](scripts/).
 
-When integration testing, it is highly recommended that you change the string passed to the mkBeaconPolicy function [here](src/CardanoSwaps.hs#L195). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, this extra parameter was added. Change the string to something unique to you. You should remember to change it to the desired string for mainnet.
+When integration testing, it is highly recommended that you change the string passed to the mkBeaconPolicy function [here](src/CardanoLending.hs#L195). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, this extra parameter was added. Change the string to something unique to you. You should remember to change it to the desired string for mainnet.
 
 If you change any on-chain code (including the string passed to the mkBeaconPolicy), then you should also change the string passed [here](app/CLI/Types.hs#14) if you still intend to use the accompanying `cardano-loans` CLI. This variable is meant to be set to the beacon policy id. Using this variable whenever possible circumvents the need to create the beacon policy every time the CLI program runs. There is a `beaconPolicySymbol` variable that can be executed from within `cabal repl` that will display the beacon policy symbol of the current on-chain code.
 
