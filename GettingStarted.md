@@ -401,7 +401,7 @@ Here is an example response when piped to `jq`:
 ``` JSON
 [
   {
-    "activeAddress": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
+    "active_address": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
     "active_tx_ix": "3b24d952689c62b51b704142375d2a1cc4b23bbea0ad209f39b590950253d785#0",
     "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
     "collateral_rates": [
@@ -700,7 +700,7 @@ Here is an example response when piped to `jq`:
   {
     "default": false,
     "loan_info": {
-      "activeAddress": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
+      "active_address": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
       "active_tx_ix": "e5b4c3b3d8b408e923644e73ef010ae4180cd60acf3441e72ad581901e9e5579#0",
       "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
       "collateral_rates": [
@@ -747,7 +747,7 @@ Here is an example response when piped to `jq`:
   {
     "default": true,
     "loan_info": {
-      "activeAddress": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
+      "active_address": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
       "active_tx_ix": "48c65de6874878bf6025c83c74788373ac8e61c442eed74ab31b7238cd649fd9#0",
       "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
       "collateral_rates": [
@@ -981,7 +981,7 @@ Here is an example response when piped to `jq`:
 ``` JSON
 [
   {
-    "activeAddress": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
+    "active_address": "addr_test1zphtaf8kvhsukaq9fmwgr0xqcm9769r5p2uasqtl497thtfualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq9smjcg",
     "active_tx_ix": "3b24d952689c62b51b704142375d2a1cc4b23bbea0ad209f39b590950253d785#0",
     "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
     "collateral_rates": [

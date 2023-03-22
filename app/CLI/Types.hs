@@ -165,7 +165,7 @@ data AvailableActive = AvailableActive
 
 instance ToJSON AvailableActive where
   toJSON AvailableActive{..} =
-    object [ "activeAddress" .= availableActiveAddress
+    object [ "active_address" .= availableActiveAddress
            , "active_tx_ix" .= availableActiveTxIx
            , "utxo_assets" .= availableActiveAssets
            , "lender_id" .= availableActiveLenderID
