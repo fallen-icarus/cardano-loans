@@ -2,7 +2,7 @@
 
 ## Abstract
 
-By utilizing beacon tokens, it is possible to design a p2p lending dApp where borrowers and lenders can trustlessly negotiate terms, and trustlessly handle the collateral and repayments of loans, all while maintaining custody and full delegation control of the assets. This design allows for an on-chain credit history as well as fully customizable loan terms. This is a step up from the current lending dApp designs where the loan terms are effectively non-negotiable and it is impossible to use one's credit history to get more favorable loans.
+Current p2p lending dApp designs are very rigid in the kinds of loans borrowers can use and have no trustless credit history. As a whole, these designs tend to resemble margin loans which are arguably unproductive loans. By utilizing beacon tokens, it is possible to design a p2p lending dApp where borrowers and lenders can trustlessly negotiate terms, and trustlessly handle the collateral and repayments of loans, all while maintaining custody and full delegation control of the assets. This design allows for an on-chain credit history as well as fully customizable loan terms. This is a step up from the current lending dApp designs where the loan terms are effectively non-negotiable and it is impossible to use one's credit history to get more favorable loans.
 
 ## Motivation
 
