@@ -529,7 +529,7 @@ cardano-loans lender burn-beacons \
 ``` Bash
 cardano-cli query protocol-parameters \
   --testnet-magic 1 \
-  --out-file "${tmpDir}protocol.json"
+  --out-file protocol.json
 
 cardano-cli transaction build \
   --tx-in <borrower_utxo_with_loan_asset_to_repay> \
