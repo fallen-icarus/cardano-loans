@@ -132,7 +132,7 @@ data AvailableOffer = AvailableOffer
 
 instance ToJSON AvailableOffer where
   toJSON AvailableOffer{..} =
-    object [ "offerAddress" .= availableOfferAddress
+    object [ "offer_address" .= availableOfferAddress
            , "offer_tx_ix" .= availableOfferTxIx
            , "utxo_assets" .= availableOfferAssets
            , "lender_id" .= availableOfferLenderID

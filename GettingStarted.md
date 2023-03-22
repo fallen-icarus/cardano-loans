@@ -247,7 +247,7 @@ Here is an example response when piped to `jq`:
     "length_of_loan_in_slots": 3600,
     "loan_asset": "lovelace",
     "loan_principle": 10000000,
-    "offerAddress": "addr_test1zpjwer4uw4wj64a7dp6zkn97sc02mqsxrpmgdngaqdsek3fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqumhh9t",
+    "offer_address": "addr_test1zpjwer4uw4wj64a7dp6zkn97sc02mqsxrpmgdngaqdsek3fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqumhh9t",
     "offer_tx_ix": "76a5888a1efe6199b73487824b1ecba06e8a5f0382ec32eb0f2a1052a145fc37#0",
     "required_backing": 10000000,
     "utxo_assets": [
@@ -935,7 +935,7 @@ Here is an example response when piped to `jq`:
     "length_of_loan_in_slots": 3600,
     "loan_asset": "lovelace",
     "loan_principle": 10000000,
-    "offerAddress": "addr_test1zpjwer4uw4wj64a7dp6zkn97sc02mqsxrpmgdngaqdsek3fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqumhh9t",
+    "offer_address": "addr_test1zpjwer4uw4wj64a7dp6zkn97sc02mqsxrpmgdngaqdsek3fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqumhh9t",
     "offer_tx_ix": "76a5888a1efe6199b73487824b1ecba06e8a5f0382ec32eb0f2a1052a145fc37#0",
     "required_backing": 10000000,
     "utxo_assets": [
@@ -957,6 +957,17 @@ Here is an example response when piped to `jq`:
 ```
 
 This lender only has one open offer at this time. There is enough information here for the lender to close the offer if desired.
+
+The lender can also check if the ask is still present by taking the `offer_address` from this response and using it in the following command:
+
+``` Bash
+cardano-loans borrower query-asks \
+  --borrower-address <offer_address> \
+  --preprod-testnet $(cat api.txt) \
+  --stdout
+```
+
+If the borrower still has the ask open, it will be returned by this command.
 
 ### Checking all current loans
 ``` Bash
