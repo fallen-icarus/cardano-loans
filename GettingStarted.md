@@ -501,6 +501,8 @@ cardano-loans borrower loan-payment-datum \
   --out-file repaymentActiveDatum.json
 ```
 
+Everything should be the same as the current active datum. The new `payment-amount` flag is the amount of the loan asset that will be repaid this transaction.
+
 6. Create helper beacon variables.
 ``` Bash
 activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
