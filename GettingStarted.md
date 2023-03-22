@@ -559,6 +559,8 @@ cardano-cli transaction submit \
   --tx-file tx.signed
 ```
 
+The amount actually repaid must exactly match that specified in the `payment-amount` field when creating the new active datum.
+
 If the borrower is fully paying off the loan, then he/she must also burn the `borrowerBeacon` and withdraw the collateral in this transaction. **There are no checks to make sure the collateral is taken. If the borrower misses this opportunity to take his/her collateral, custody of the collateral will be transferred to the lender.**
 
 For convenience, the `invalid-hereafter` option can always be set to the slot where the loan expires. This is only used to tell the script that the slot has not passed yet. You can use the following command to convert POSIX time to the corresponding slot number:
