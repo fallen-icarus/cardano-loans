@@ -244,7 +244,7 @@ parseLoanDatum d = case d of
 stakingCredApproves :: Address -> TxInfo -> Bool
 stakingCredApproves addr info = case addressStakingCredential addr of
   -- | This is to prevent permanent locking of funds.
-  -- The DEX is not meant to be used without a staking credential.
+  -- The dApp is not meant to be used without a staking credential.
   Nothing -> True
 
   -- | Check if staking credential signals approval.
@@ -287,7 +287,11 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- as well as a staking pubkey. To prevent this locking, the validator still checks if the staking 
 -- script signals approval, too.
 --
--- The interest for these loans is non-compounding.
+-- The interest for these loans is non-compounding. This is for two reasons:
+-- 1) PlutusTx is not very efficient and these contracts are already bumping up against the current
+-- limits.
+-- 2) Plutus does not currently support exponents which is required for the compound interest 
+-- calculation.
 mkLoan :: LoanDatum -> LoanRedeemer -> ScriptContext -> Bool
 mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     CloseAsk ->
@@ -296,7 +300,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       traceIfFalse "Datum is not an AskDatum" (encodeDatum loanDatum == 0) &&
       -- | The address' staking credential must signal approval. This is required regarless
       -- of whether or not the ask is valid. This is due to the address owner having custody
-      -- of invalid utxos.
+      -- of invalid ask utxos.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
       -- | All ask beacons among tx inputs must be burned. This is not meant to be composable
       -- with the other redeemers.
@@ -341,7 +345,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- 4) The input datums must agree.
       -- 5) The ask input must have the ask beacon.
       -- 6) The offer input must have the offer beacon.
-      -- If presence of the beacons signifies that the ask and offer are valid utxos. If either are
+      -- The presence of the beacons signifies that the ask and offer are valid utxos. If either are
       -- invalid, this redeemer will always fail. Invalid ask and offer utxos must be closed with 
       -- either the CloseOffer or CloseAsk redeemers. This function will throw error messages
       -- as appropriate.
@@ -423,7 +427,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- | If the active beacon is missing, this is an invalid loan. The conditions have already
       -- been satisfied:
       -- 1) The datum must be an ActiveDatum.
-      -- 2) The staking credential must approve - the address owner has custody of invalid utxos.
+      -- 2) The staking credential must approve - the address owner has custody of invalid active 
+      -- utxos.
       else True
     Claim ->
       -- | The datum must be an ActiveDatum. This must be checked first since not all fields are
@@ -505,7 +510,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       Finite t -> t
       _ -> traceError "Shouldn't be NegInf."
 
-    -- | Check if the expiration has passed.
+    -- | Check if the expiration has passed. Only used with active datums.
     loanIsExpired :: POSIXTime -> Bool
     loanIsExpired currentTime = currentTime > loanExpiration loanDatum
 
@@ -581,6 +586,8 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           traceError "Datums have different loan principles"
       | loanTerm askDatum /= loanTerm offerDatum =
           traceError "Datums have different loan terms"
+      -- | Sorting the collateral first pushes the transaction over its limits. Therefore,
+      -- it is up to the lender to ensure the order is the same.
       | collateral askDatum /= map fst (collateralRates offerDatum) =
           traceError "Datums have different collateral assets"
       | otherwise = True
@@ -648,7 +655,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
             traceError "Active datum loanOutstanding incorrect"
       | otherwise = True
 
-    -- | Allows claiming early if loan is fully repaid. Get's current time from TTL.
+    -- | Allows claiming early if loan is fully repaid. Get's current time from invalid-before.
     claimable :: Bool
     claimable = loanIsExpired startTime || 
                 loanOutstanding loanDatum <= fromInteger 0
@@ -682,7 +689,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- | The following function checks:
       -- 1) Must be minted to an address protected by the dappHash.
       -- 2) Must be minted to an address with a staking pubkey matching the supplied pubkey.
-      -- 3) The ask token must be stored with the proper ask datum.
+      -- 3) The ask token must be stored with the proper inline ask datum.
       --     - askBeacon == (beaconSym, TokenName "Ask")
       --     - borrowerId == (beaconSym,pubkeyAsToken pkh)
       --     - loanPrinciple > 0
@@ -701,7 +708,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- 1) Must be minted to an address protected by the dappHash.
       -- 2) Must be minted to an address with a staking pubkey.
       -- 3) The offer token and lender ID must be stored in the same utxo at the dapp address.
-      -- 4) The tokens must be stored with the proper offer datum.
+      -- 4) The tokens must be stored with the proper inline offer datum.
       --     - offerBeacon == (beaconSym,TokenName "Offer")
       --     - lenderId == (beaconSym,pubKeyAsToken pkh)
       --     - loanPrinciple > 0.
@@ -746,13 +753,13 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     mintSatisfied :: TokenName -> Integer -> [(CurrencySymbol,TokenName,Integer)] -> Bool
     mintSatisfied _ _ [] = False
     mintSatisfied tn n ((_,tn',n'):cs)
-      | tn == tn' && n == n' = True
+      | tn == tn' && n == n' = True  -- ^ Stops recursing as soon as match found.
       | otherwise = mintSatisfied tn n cs
 
     mintCheck :: BeaconRedeemer -> Bool
     mintCheck r' = case (r',beaconMint) of
       (MintAskToken _, [(_,tn,n)]) ->
-        traceIfFalse "Only the ask beacon must have the token name 'Ask'" (tn == TokenName "Ask") &&
+        traceIfFalse "The ask beacon must have the token name 'Ask'" (tn == TokenName "Ask") &&
         traceIfFalse "Only one ask beacon can be minted" (n == 1)
       (MintAskToken _, _) -> 
         traceError "Only one beacon can be minted and it must be the ask beacon."
@@ -767,7 +774,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
           traceIfFalse "The lender ID does not have the lender's pubkey as token name" 
             (tn1 == pubKeyAsToken pkh) &&
           traceIfFalse "Only one lender ID can be minted" (n1 == 1)
-        else traceError "Only thhe offer beacon and lender ID can be minted"
+        else traceError "Only the offer beacon and lender ID can be minted"
       (MintOfferToken _, _) ->
         traceError "Only the offer beacon and lender ID can be minted"
       (MintActiveToken pkh _, xs@[_,_,_,_]) ->
@@ -810,7 +817,8 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       | otherwise = True
     validDatum (MintOfferToken _) _ = traceError "Offer beacon not stored with an OfferDatum"
     validDatum _ _ = True -- ^ This is to stop the pattern match compile warning. It is not used
-                          --   for any other redeemers.
+                          -- for any other redeemers. The loan validator checks if the active
+                          -- datum is valid.
 
     -- | This checks that the offer beacon is stored with the desired loan amount.
     loanPrincipleMet :: Value -> LoanDatum -> Bool
@@ -820,7 +828,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       | otherwise = uncurry (valueOf oVal) (loanAsset d) >= loanPrinciple d
 
     -- | Check if the beacons are going to the proper address and are stored properly (together and 
-    -- with proper datum). This is only used for MintOfferToken and MintAskToken.
+    -- with proper datum).
     destinationCheck :: BeaconRedeemer -> Bool
     destinationCheck r' =
       let outputs = txInfoOutputs info
@@ -864,7 +872,10 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                       case (addrCred,maybeStakeCred) of
                         (ScriptCredential vh, Just (StakingHash (PubKeyCredential pkh'))) ->
                           -- | validDestination will fail with traceError unless True.
-                          acc && validDestination vh && pkh == pkh'
+                          acc && validDestination vh && 
+                          traceIfFalse 
+                            "Receiving address does not match redeemer's borrower pubkey hash" 
+                            (pkh == pkh')
                         _ -> traceError 
                           "Active token must go to the dapp address using the supplied staking pubkey"
                     else traceError "Lender ID not stored with borrower ID and active beacon"
