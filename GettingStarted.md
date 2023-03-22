@@ -1031,6 +1031,8 @@ Here is an example response when piped to `jq`:
 ]
 ```
 
+Only one loan was found for this lender. In order for the loan to be claimable by the lender either the `loan_expiration` time must have passed or the loan must have been fully repaid, signified by the absence of the borrower's BorrowerID token. In this case, the BorrowerID token(`53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa`) is still present so it can only be reclaimed if the expiration has passed.
+
 ### Claiming an expired/paid loan
 1. Export the loan validator script.
 ``` Bash
