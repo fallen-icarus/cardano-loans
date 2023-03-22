@@ -213,7 +213,7 @@ Here is an example response when piped to `jq`:
         "quantity": 2000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.41736b",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.41736b",
         "quantity": 1
       }
     ]
@@ -256,11 +256,11 @@ Here is an example response when piped to `jq`:
         "quantity": 13000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.4f66666572",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.4f66666572",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
         "quantity": 1
       }
     ]
@@ -427,15 +427,15 @@ Here is an example response when piped to `jq`:
         "quantity": 3000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.416374697665",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.416374697665",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
         "quantity": 1
       },
       {
@@ -679,7 +679,7 @@ Here is an example response when piped to `jq`:
         "quantity": 2000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.41736b",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.41736b",
         "quantity": 1
       }
     ]
@@ -730,15 +730,15 @@ Here is an example response when piped to `jq`:
           "quantity": 8000000
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
           "quantity": 1
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.416374697665",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.416374697665",
           "quantity": 1
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
           "quantity": 1
         },
         {
@@ -777,15 +777,15 @@ Here is an example response when piped to `jq`:
           "quantity": 3000000
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
           "quantity": 1
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.416374697665",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.416374697665",
           "quantity": 1
         },
         {
-          "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+          "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
           "quantity": 1
         },
         {
@@ -948,11 +948,11 @@ Here is an example response when piped to `jq`:
         "quantity": 13000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.4f66666572",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.4f66666572",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
         "quantity": 1
       }
     ]
@@ -1011,15 +1011,15 @@ Here is an example response when piped to `jq`:
         "quantity": 3000000
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.416374697665",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.416374697665",
         "quantity": 1
       },
       {
-        "asset": "53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "asset": "1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
         "quantity": 1
       },
       {
@@ -1031,7 +1031,7 @@ Here is an example response when piped to `jq`:
 ]
 ```
 
-Only one loan was found for this lender. In order for the loan to be claimable by the lender either the `loan_expiration` time must have passed or the loan must have been fully repaid, signified by the absence of the borrower's BorrowerID token. In this case, the BorrowerID token (`53267afd1e0b2db650c3c08f034ef95e686b8ff74f039caf89274c64.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa`) is still present so it can only be reclaimed if the expiration has passed.
+Only one loan was found for this lender. In order for the loan to be claimable by the lender either the `loan_expiration` time must have passed or the loan must have been fully repaid, signified by the absence of the borrower's BorrowerID token. In this case, the BorrowerID token (`1123c14a39c3dd8379154e5c99e8dd8ff244e9b0ec47cb0a7d9e133d.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa`) is still present so it can only be reclaimed if the expiration has passed.
 
 ### Claiming an expired/paid loan
 1. Export the loan validator script.
