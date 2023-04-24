@@ -33,12 +33,12 @@ module CardanoLoans
   adaToken,
   slotToPOSIXTime,
   posixTimeToSlot,
-  fromGHC,
   readCurrencySymbol,
   readTokenName,
-  readPaymentPubKeyHash,
+  readPubKeyHash,
   unsafeRatio,
   (-),(*),(+),
+  fromInteger,
 
   loanValidator,
   loanValidatorHash,
@@ -53,15 +53,18 @@ module CardanoLoans
 ) where
 
 import Data.Aeson hiding (Value)
+import qualified Data.Aeson as Aeson
 import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
 import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
+import Data.Text (Text,pack)
 
-import           Cardano.Api hiding (Script,Value,TxOut,Address,ScriptHash)
-import           Cardano.Api.Shelley   (PlutusScript (..))
+import Cardano.Api hiding (Script,Value,TxOut,Address,ScriptHash)
+import Cardano.Api.Shelley (PlutusScript (..))
+import Ledger.Tx.CardanoAPI.Internal
 import Plutus.V2.Ledger.Contexts
 import Plutus.V2.Ledger.Api
 import qualified PlutusTx
@@ -78,41 +81,8 @@ import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
 import Ledger.TimeSlot
 import Ledger.Slot
-
--------------------------------------------------
--- Off-Chain Helper Functions and Types
--------------------------------------------------
-type PlutusRational = Rational
-
-slotToPOSIXTime :: Slot -> POSIXTime
-slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
-
-posixTimeToSlot :: POSIXTime -> Slot
-posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
-
--- | This is normalized by taking a slot time and subtracting the slot number from it. For example,
--- slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number from the time
--- yields the 0 time.
-preprodConfig :: SlotConfig
-preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
-
--- | Parse Currency from user supplied String
-readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
-readCurrencySymbol s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--- | Parse TokenName from user supplied String
-readTokenName :: Haskell.String -> Either Haskell.String TokenName
-readTokenName s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--- | Parse PaymentPubKeyHash from user supplied String
-readPaymentPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
-readPaymentPubKeyHash s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ PaymentPubKeyHash $ PubKeyHash bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+import PlutusTx.Builtins.Internal (BuiltinByteString(..))
+import Plutus.V1.Ledger.Bytes (encodeByteString)
 
 -------------------------------------------------
 -- Data Types
@@ -120,8 +90,8 @@ readPaymentPubKeyHash s = case fromHex $ fromString s of
 data LoanDatum
   -- | The datum for the ask phase.
   = AskDatum 
-      { askBeacon :: (CurrencySymbol,TokenName)
-      , borrowerId :: (CurrencySymbol,TokenName)
+      { loanBeaconSym :: CurrencySymbol
+      , borrowerId :: TokenName
       , loanAsset :: (CurrencySymbol,TokenName)
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
@@ -129,40 +99,38 @@ data LoanDatum
       }
   -- | The datum for the offer phase.
   | OfferDatum
-      { offerBeacon :: (CurrencySymbol,TokenName)
-      , lenderId :: (CurrencySymbol,TokenName)
+      { loanBeaconSym :: CurrencySymbol
+      , lenderId :: TokenName
       , loanAsset :: (CurrencySymbol,TokenName)
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
-      , loanBacking :: Integer -- ^ How much of the loan needs to be collateralized. In units of the
-                               -- loanAsset.
-      , collateralRates :: [((CurrencySymbol,TokenName),Rational)] -- ^ Rates: collateralAsset/loanAsset
+      , collateralization :: [((CurrencySymbol,TokenName),Rational)]
       }
   -- | The datum for the active phase. This also has information useful for the credit history.
   | ActiveDatum
-      { activeBeacon :: (CurrencySymbol,TokenName)
-      , lenderId :: (CurrencySymbol,TokenName)
-      , borrowerId :: (CurrencySymbol,TokenName)
+      { loanBeaconSym :: CurrencySymbol
+      , lenderId :: TokenName
+      , borrowerId :: TokenName
       , loanAsset :: (CurrencySymbol,TokenName)
       , loanPrinciple :: Integer
       , loanTerm :: POSIXTime
       , loanInterest :: Rational
-      , loanBacking :: Integer
-      , collateralRates :: [((CurrencySymbol,TokenName),Rational)]
+      , collateralization :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration :: POSIXTime
       , loanOutstanding :: Rational
       }
+  deriving (Haskell.Show)
 
 instance Eq LoanDatum where
   {-# INLINABLE (==) #-}
-  (AskDatum a b c d e f) == (AskDatum a' b' c' d' e' f') =
+  (AskDatum a b c d e f ) == (AskDatum a' b' c' d' e' f') =
     a == a' && b == b' && c == c' && d == d' && e == e' && f == f'
-  (OfferDatum a b c d e f g h) == (OfferDatum a' b' c' d' e' f' g' h') =
-    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h'
-  (ActiveDatum a b c d e f g h i j k) == (ActiveDatum a' b' c' d' e' f' g' h' i' j' k') =
+  (OfferDatum a b c d e f g) == (OfferDatum a' b' c' d' e' f' g') =
+    a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g'
+  (ActiveDatum a b c d e f g h i j) == (ActiveDatum a' b' c' d' e' f' g' h' i' j') =
     a == a' && b == b' && c == c' && d == d' && e == e' && f == f' && g == g' && h == h' && 
-    i == i' && j == j' && k == k'
+    i == i' && j == j'
   _ == _ = False
 
 data LoanRedeemer
@@ -261,7 +229,7 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- smoothly without needing to trust the other party.
 --
 -- This validator uses the presence or absence of the beacon tokens to judge the validity of
--- the datums. This is due to the beacon tokens only being mintable when the datums are valid.
+-- the datums/UTxOs. This is due to the beacon tokens only being mintable when they are valid.
 -- 
 -- If there is ever a datum present WITHOUT the proper beacon token, the staking credential of 
 -- the address has custody rights. This is to protect the address owner from malicious datums. 
@@ -270,28 +238,6 @@ stakingCredApproves addr info = case addressStakingCredential addr of
 -- It is technically possible for a malicious user to create their own beacon minting policy for use
 -- with this validator. However, this would be an entirely different token than the actual beacons
 -- which means they would not even be discoverable by other users.
---
--- Since the active utxo is time-locked for the borrower, there is no need to ensure that ONLY the
--- collateral assets ever leave. Those assets come from the borrower and the borrower has custody
--- of that utxo until the loan expires.
---
--- There are no checks to ensure that the borrower only takes the proper assets from the offer
--- utxo. Instead, it is up to the lender to ONLY deposit the assets that are to be loaned out.
--- This does not seem like an unreasonable expectation.
---
--- The beacon policy requires that the beacons can only be minted to an address with a staking
--- pubkey. However, there is no way to enforce this from the validator's side which means it is
--- possible to send funds to an address instance for this validator that uses a staking script.
--- Note that it would be impossible to actually broadcast this address with the beacons. However,
--- the funds would be permanently locked unless the validator allowed spending with a staking script
--- as well as a staking pubkey. To prevent this locking, the validator still checks if the staking 
--- script signals approval, too.
---
--- The interest for these loans is non-compounding. This is for two reasons:
--- 1) PlutusTx is not very efficient and these contracts are already bumping up against the current
--- limits.
--- 2) Plutus does not currently support exponents which is required for the compound interest 
--- calculation.
 mkLoan :: LoanDatum -> LoanRedeemer -> ScriptContext -> Bool
 mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     CloseAsk ->
@@ -305,30 +251,33 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- | All ask beacons among tx inputs must be burned. This is not meant to be composable
       -- with the other redeemers.
       traceIfFalse "Ask beacons not burned."
-        (uncurry (valueOf allVal) (askBeacon loanDatum) == 
-           Num.negate (uncurry (valueOf minted) (askBeacon loanDatum)))
+        ( valueOf allVal (loanBeaconSym loanDatum) (TokenName "Ask") == 
+            Num.negate (valueOf minted (loanBeaconSym loanDatum) (TokenName "Ask"))
+        )
     CloseOffer ->
       -- | The datum must be an OfferDatum. This must be checked first since not all fields are the
       -- same across the datum types.
       traceIfFalse "Datum is not an OfferDatum" (encodeDatum loanDatum == 1) &&
       -- | If the offer beacon is present, that means it is a valid offer and the lender has
       -- custody of the utxo. This also means the lender ID is present in the utxo.
-      if uncurry (valueOf inputValue) (offerBeacon loanDatum) == 1
+      if valueOf inputValue (loanBeaconSym loanDatum) (TokenName "Offer") == 1
       then
         -- | The lender in the lender ID must sign the tx. The ID has the lender's pubkey hash
         -- as the token name.
         traceIfFalse "Lender did not sign" 
-             (signed (txInfoSignatories info) (tokenAsPubKey $ snd $ lenderId loanDatum)) &&
+             (signed (txInfoSignatories info) (tokenAsPubKey $ lenderId loanDatum)) &&
         -- | All offer beacons in tx inputs must be burned. This is not meant to be composable
         -- with the other redeemers.
         traceIfFalse "Offer beacons not burned"
-          (uncurry (valueOf allVal) (offerBeacon loanDatum) == 
-           Num.negate (uncurry (valueOf minted) (offerBeacon loanDatum))) &&
+          ( valueOf allVal (loanBeaconSym loanDatum) (TokenName "Offer") == 
+              Num.negate (valueOf minted (loanBeaconSym loanDatum) (TokenName "Offer"))
+          ) &&
         -- | All the lender IDs for this lender in tx inputs must be burned. This is not meant 
         -- to be composable with the other redeemers.
         traceIfFalse "Lender IDs not burned"
-          (uncurry (valueOf allVal) (lenderId loanDatum) == 
-           Num.negate (uncurry (valueOf minted) (lenderId loanDatum)))
+          ( valueOf allVal (loanBeaconSym loanDatum) (lenderId loanDatum) == 
+              Num.negate (valueOf minted (loanBeaconSym loanDatum) (lenderId loanDatum))
+          )
       -- | Otherwise the offer is an invalid utxo and the address owner has custody. This also 
       -- means no lender IDs are present.
       else 
@@ -371,8 +320,9 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- These checks are actually done by the minting policy. The requirement for the mint
       -- means the minting policy was actually executed.
       traceIfFalse "Active beacon not minted to this address"
-        ((valueOf minted (fst $ askBeacon askDatum) (TokenName "Active") == 1) &&
-         (valueOf oVal (fst $ askBeacon askDatum) (TokenName "Active") == 1))
+        ( valueOf minted (loanBeaconSym loanDatum) (TokenName "Active") == 1 &&
+          valueOf oVal (loanBeaconSym loanDatum) (TokenName "Active") == 1
+        )
     RepayLoan ->
       -- | The input must have an ActiveDatum. This must be checked first since not all fields are
       -- the same across the datum types.
@@ -381,7 +331,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- regardless of whether or not the utxo is a valid loan.
       traceIfFalse "Staking credential did not approve" stakingCredApproves' &&
       -- | If the active beacon is present, this is a valid loan:
-      if uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1
+      if valueOf inputValue (loanBeaconSym loanDatum) (TokenName "Active") == 1
       then
         -- | No other beacons are allowed in the tx inputs. This ensures:
         -- 1) There is only one borrower ID present.
@@ -406,24 +356,24 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           -- | All collateral is unlocked.
           -- | The only borrower ID in the tx must be burned.
           traceIfFalse "Borrower ID not burned" 
-            (uncurry (valueOf minted) (borrowerId loanDatum) == -1) &&
+            (valueOf minted (loanBeaconSym loanDatum) (borrowerId loanDatum) == -1) &&
           -- | No other tokens can be minted/burned in tx. This is to make checking the credit
           -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
           traceIfFalse "No other tokens can be minted/burned in tx."
             (length (flattenValue minted) == 1) &&
           -- | The output to this address must have the active beacon and the lender ID.
           traceIfFalse "Output to address must have active beacon and lender ID"
-            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-              uncurry (valueOf oVal) (activeBeacon loanDatum) == 1)
+            ( valueOf oVal (loanBeaconSym loanDatum) (lenderId loanDatum) == 1 &&
+              valueOf oVal (loanBeaconSym loanDatum) (TokenName "Active") == 1)
         -- | Otherwise this is a partial payment.
         else 
           -- | No collateral can be taken.
           traceIfFalse "No collateral can be taken" noCollateralTaken &&
           -- | The output to this address must have the active beacon, borrower ID, and lender ID.
           traceIfFalse "Output to address must have active beacon, borrower ID, and lender ID"
-            (uncurry (valueOf oVal) (lenderId loanDatum) == 1 &&
-              uncurry (valueOf oVal) (activeBeacon loanDatum) == 1 &&
-              uncurry (valueOf oVal) (borrowerId loanDatum) == 1)
+            ( valueOf oVal (loanBeaconSym loanDatum) (lenderId loanDatum) == 1 &&
+              valueOf oVal (loanBeaconSym loanDatum) (TokenName "Active") == 1 &&
+              valueOf oVal (loanBeaconSym loanDatum) (borrowerId loanDatum) == 1)
       -- | If the active beacon is missing, this is an invalid loan. The conditions have already
       -- been satisfied:
       -- 1) The datum must be an ActiveDatum.
@@ -438,7 +388,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- If the active beacon beacon is missing, then this utxo is an invalid loan. The address
       -- owner can claim this utxo using the RepayLoan redeemer.
       traceIfFalse "UTxO does not have an active beacon - use RepayLoan redeemer to claim if address owner" 
-        (uncurry (valueOf inputValue) (activeBeacon loanDatum) == 1) &&
+        (valueOf inputValue (loanBeaconSym loanDatum) (TokenName "Active") == 1) &&
       -- | There can only be one active beacon in the tx inputs. This is due to how the credit history
       -- works. This also ensures there is only one borrower ID and lender ID in the tx.
       traceIfFalse "No other phase beacons allowed in tx inputs" noOtherBeacons &&
@@ -446,21 +396,21 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       traceIfFalse "Loan is still active" claimable &&
       -- | The active beacon in input must be burned.
       traceIfFalse "Active beacon not burned"
-        (uncurry (valueOf minted) (activeBeacon loanDatum) == -1) &&
+        (valueOf minted (loanBeaconSym loanDatum) (TokenName "Active") == -1) &&
       -- | The lender ID in input must be burned.
       traceIfFalse "Lender ID not burned"
-        (uncurry (valueOf minted) (lenderId loanDatum) == -1) &&
+        (valueOf minted (loanBeaconSym loanDatum) (lenderId loanDatum) == -1) &&
       -- | The lender must sign the tx. Since the active beacon is present, that means the lender has
       -- custody of the utxo as long as the loan is expired. The lender's pubkey hash is the token
       -- name of the lender ID.
       traceIfFalse "Lender did not sign" 
-        (signed (txInfoSignatories info) (tokenAsPubKey $ snd $ lenderId loanDatum)) &&
+        (signed (txInfoSignatories info) (tokenAsPubKey $ lenderId loanDatum)) &&
       -- | If the borrower ID is still present:
-      if uncurry (valueOf inputValue) (borrowerId loanDatum) == 1
+      if valueOf inputValue (loanBeaconSym loanDatum) (borrowerId loanDatum) == 1
       then 
         -- | The borrower ID must be burned.
         traceIfFalse "Borrower ID not burned." 
-          (uncurry (valueOf minted) (borrowerId loanDatum) == -1) &&
+          (valueOf minted (loanBeaconSym loanDatum) (borrowerId loanDatum) == -1) &&
         -- | No other tokens can be minted/burned in tx. This is to make checking the credit
         -- history easy since Blockfrost only shows the number of unique tokens minted/burned.
         traceIfFalse "No other tokens can be minted/burned in tx."
@@ -545,19 +495,18 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       let foo _ acc [] = acc
           foo val !acc ((collatAsset,_):xs) =
             foo val (acc && uncurry (valueOf val) collatAsset == 0) xs
-      in foo addrDiff True (collateralRates loanDatum)
+      in foo addrDiff True (collateralization loanDatum)
 
-    -- | This checks that enough collateral is posted when a loan offer is accepted. It uses the
-    -- loanBacking to determine validity.
+    -- | This checks that enough collateral is posted when a loan offer is accepted.
     enoughCollateral :: Bool
     enoughCollateral =
-      let target = fromInteger (loanBacking offerDatum)
+      let target = fromInteger (loanPrinciple offerDatum)
           foo _ acc [] = acc
           foo val !acc ((collatAsset,price):xs) =
             foo val
                 (acc + fromInteger (uncurry (valueOf val) collatAsset) * recip price)
                 xs
-      in foo oVal (fromInteger 0) (collateralRates offerDatum) >= target
+      in foo oVal (fromInteger 0) (collateralization offerDatum) >= target
 
     -- | New total of loan outstanding.
     newOutstanding :: Rational
@@ -575,10 +524,10 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
              else traceError "Inputs are not the right phases"
         _ -> traceError "There must be two and only two inputs from this address"
 
-    -- | Ensures that the borrower and lender are agreeing to the same loan.
+    -- | Ensures that the lender and borrower are agreeing to the same loan.
     datumsAgree :: Bool
     datumsAgree
-      | fst (askBeacon askDatum) /= fst (offerBeacon offerDatum) =
+      | loanBeaconSym askDatum /= loanBeaconSym offerDatum =
           traceError "Datums are using different beacons"
       | loanAsset askDatum /= loanAsset offerDatum =
           traceError "Datums have different loan assets"
@@ -586,33 +535,33 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           traceError "Datums have different loan principles"
       | loanTerm askDatum /= loanTerm offerDatum =
           traceError "Datums have different loan terms"
-      -- | Sorting the collateral first pushes the transaction over its limits. Therefore,
-      -- it is up to the lender to ensure the order is the same.
-      | collateral askDatum /= map fst (collateralRates offerDatum) =
+      -- | Sorting the collateral first pushes the transaction over its execution limits. 
+      -- Therefore, it is up to the lender to ensure the order is the same.
+      | collateral askDatum /= map fst (collateralization offerDatum) =
           traceError "Datums have different collateral assets"
       | otherwise = True
 
     -- | Checks that the datums agree and the proper beacons are present.
     validInputs :: Bool
     validInputs = datumsAgree && 
-      traceIfFalse "Ask beacon is missing" (uncurry (valueOf askVal) (askBeacon askDatum) == 1) &&
-      traceIfFalse "Offer beacon is missing" (uncurry (valueOf offerVal) (offerBeacon offerDatum) == 1)
+      traceIfFalse "Ask beacon is missing" 
+        (valueOf askVal (loanBeaconSym loanDatum) (TokenName "Ask") == 1) &&
+      traceIfFalse "Offer beacon is missing" 
+        (valueOf offerVal (loanBeaconSym loanDatum) (TokenName "Offer") == 1)
     
     -- | This is only used with AcceptLoan.
     noOtherInputBeacons :: Bool
     noOtherInputBeacons =
-      let beaconSym' = fst $ offerBeacon offerDatum
-      in valueOf allVal beaconSym' (TokenName "Ask") == 1 && 
-         valueOf allVal beaconSym' (TokenName "Offer") == 1 &&
-         valueOf allVal beaconSym' (TokenName "Active") == 0
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Ask") == 1 && 
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Offer") == 1 &&
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Active") == 0
 
     -- | This is only used with the RepayLoan and Claim. This ensures all loans are treated separately.
     noOtherBeacons :: Bool
     noOtherBeacons =
-      let beaconSym' = fst $ activeBeacon loanDatum
-      in valueOf allVal beaconSym' (TokenName "Ask") == 0 && 
-         valueOf allVal beaconSym' (TokenName "Offer") == 0 &&
-         valueOf allVal beaconSym' (TokenName "Active") == 1
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Ask") == 0 && 
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Offer") == 0 &&
+      valueOf allVal (loanBeaconSym loanDatum) (TokenName "Active") == 1
 
     -- | Get the loan start time from the tx's validity range. Based off the lower bound.
     -- This is also used when a lender is claiming a loan to get the claim time.
@@ -630,7 +579,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     validActiveDatum AskDatum{} = traceError "Output datum not ActiveDatum"
     validActiveDatum OfferDatum{} = traceError "Output datum not ActiveDatum"
     validActiveDatum newDatum
-      | activeBeacon newDatum /= (fst $ askBeacon askDatum,TokenName "Active") =
+      | loanBeaconSym newDatum /= loanBeaconSym askDatum =
           traceError "Active datum activeBeacon incorrect"
       | lenderId newDatum /= lenderId offerDatum =
           traceError "Active datum lenderId incorrect"
@@ -644,12 +593,10 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
           traceError "Active Datum loanTerm incorrect"
       | loanInterest newDatum /= loanInterest offerDatum =
           traceError "Active datum loanInterest incorrect"
-      | loanBacking newDatum /= loanBacking offerDatum =
-          traceError "Active datum loanBacking incorrect"
-      | collateralRates newDatum /= collateralRates offerDatum =
-          traceError "Active datum collateralRates incorrect"
+      | collateralization newDatum /= collateralization offerDatum =
+          traceError "Active datum collateralization incorrect"
       | loanExpiration newDatum /= expirationTime =
-          traceError "Active datum loanExpiration /= ttl + loanTerm"
+          traceError "Active datum loanExpiration /= invalid-before + loanTerm"
       | loanOutstanding newDatum /= 
           fromInteger (loanPrinciple askDatum) * (fromInteger 1 + loanInterest offerDatum) =
             traceError "Active datum loanOutstanding incorrect"
@@ -715,7 +662,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       --     - loanTerm > 0.
       --     - loanInterest > 0.
       --     - loanBacking > 0.
-      --     - collateralRates not null
+      --     - collateralization not null
       --     - all collaterale rates > 0.
       -- 5) The offer token must be stored with the amount of the loan asset specified in
       -- the datum. If the loan asset is ADA, an additional 3 ADA is required to account for
@@ -797,23 +744,23 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       | otherwise = True
 
     validDatum :: BeaconRedeemer -> LoanDatum -> Bool
-    validDatum (MintAskToken pkh) (AskDatum ab bi _ lq lt c)
-      | ab /= (beaconSym,TokenName "Ask") = traceError "Invalid AskDatum askBeacon"
-      | bi /= (beaconSym,pubKeyAsToken pkh) = traceError "Invalid AskDatum borrowerId"
-      | lq <= 0 = traceError "AskDatum loanPrinciple not > 0"
-      | lt <= 0 = traceError "AskDatum loanTerm not > 0"
-      | null c = traceError "AskDatum collateral is empty"
+    validDatum (MintAskToken pkh) AskDatum{..}
+      | loanBeaconSym /= beaconSym = traceError "Invalid AskDatum loanBeaconSym"
+      | borrowerId /= pubKeyAsToken pkh = traceError "Invalid AskDatum borrowerId"
+      | loanPrinciple <= 0 = traceError "AskDatum loanPrinciple not > 0"
+      | loanTerm <= 0 = traceError "AskDatum loanTerm not > 0"
+      | null collateral = traceError "AskDatum collateral is empty"
       | otherwise = True
     validDatum (MintAskToken _) _ = traceError "Ask beacon not stored with an AskDatum"
-    validDatum (MintOfferToken pkh) (OfferDatum ob li _ lq lt i dp cr)
-      | ob /= (beaconSym, TokenName "Offer") = traceError "Invalid OfferDatum offerBeacon"
-      | li /= (beaconSym, pubKeyAsToken pkh) = traceError "OfferDatum lenderId not correct"
-      | lq <= 0 = traceError "OfferDatum loanPrinciple not > 0"
-      | lt <= 0 = traceError "OfferDatum loanTerm not > 0"
-      | i <= fromInteger 0 = traceError "OfferDatum loanInterest not > 0"
-      | dp <= 0 = traceError "OfferDatum loanBacking not > 0"
-      | null cr = traceError "OfferDatum collateralRates is empty"
-      | not $ all (\(_,p) -> p > fromInteger 0) cr = traceError "All collateralRates must be > 0"
+    validDatum (MintOfferToken pkh) OfferDatum{..}
+      | loanBeaconSym /= beaconSym = traceError "Invalid OfferDatum loanBeaconSym"
+      | lenderId /= pubKeyAsToken pkh = traceError "OfferDatum lenderId not correct"
+      | loanPrinciple <= 0 = traceError "OfferDatum loanPrinciple not > 0"
+      | loanTerm <= 0 = traceError "OfferDatum loanTerm not > 0"
+      | loanInterest <= fromInteger 0 = traceError "OfferDatum loanInterest not > 0"
+      | null collateralization = traceError "OfferDatum collateralization is empty"
+      | not $ all (\(_,p) -> p > fromInteger 0) collateralization = 
+          traceError "All collateralizations must be > 0"
       | otherwise = True
     validDatum (MintOfferToken _) _ = traceError "Offer beacon not stored with an OfferDatum"
     validDatum _ _ = True -- ^ This is to stop the pattern match compile warning. It is not used
@@ -925,3 +872,91 @@ writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) f
 
 writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
 writeData = writeJSON
+
+decodeDatum :: (FromData a) => Aeson.Value -> Maybe a
+decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScriptData)
+            . scriptDataFromJson ScriptDataJsonDetailedSchema
+
+-------------------------------------------------
+-- Off-Chain Helper Functions and Types
+-------------------------------------------------
+type PlutusRational = Rational
+
+slotToPOSIXTime :: Slot -> POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
+
+posixTimeToSlot :: POSIXTime -> Slot
+posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
+
+-- | This is normalized by taking a slot time and subtracting the slot number from it. For example,
+-- slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number from the time
+-- yields the 0 time.
+preprodConfig :: SlotConfig
+preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
+
+-- | Parse Currency from user supplied String
+readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse TokenName from user supplied String
+readTokenName :: Haskell.String -> Either Haskell.String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse PaymentPubKeyHash from user supplied String
+readPubKeyHash :: Haskell.String -> Either Haskell.String PubKeyHash
+readPubKeyHash s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ PubKeyHash bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+unsafeFromRight :: Either a b -> b
+unsafeFromRight (Right x) = x
+unsafeFromRight _ = Haskell.error "unsafeFromRight used on Left"
+
+-------------------------------------------------
+-- ToJSON Instances and Helper Functions
+-------------------------------------------------
+toEncodedText :: TokenName -> Text
+toEncodedText (TokenName (BuiltinByteString tn)) = encodeByteString tn
+
+toAsset :: (CurrencySymbol,TokenName) -> Text
+toAsset (currSym,tokName)
+  | currSym == adaSymbol = "lovelace"
+  | otherwise = pack (Haskell.show currSym) Haskell.<> "." Haskell.<> toEncodedText tokName
+
+idToString :: TokenName -> Haskell.String
+idToString tn = Haskell.show $ tokenAsPubKey tn
+
+instance ToJSON LoanDatum where
+  toJSON AskDatum{..} =
+    object [ "loan_beacon" .= Haskell.show loanBeaconSym
+           , "borrower_id" .= idToString borrowerId
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "collateral" .= map toAsset collateral
+           ]
+  toJSON OfferDatum{..} =
+    object [ "loan_beacon" .= Haskell.show loanBeaconSym
+           , "lender_id" .= idToString lenderId
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "interest" .= loanInterest
+           , "collateralization" .= map (\(x,y) -> (toAsset x, y)) collateralization
+           ]
+  toJSON ActiveDatum{..} =
+    object [ "loan_beacon" .= Haskell.show loanBeaconSym
+           , "lender_id" .= idToString lenderId
+           , "borrower_id" .= idToString borrowerId
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "interest" .= loanInterest
+           , "collateralization" .= map (\(x,y) -> (toAsset x, y)) collateralization
+           , "expiration_slot" .= getSlot (posixTimeToSlot loanExpiration)
+           , "balanced_owed" .= loanOutstanding
+           ]

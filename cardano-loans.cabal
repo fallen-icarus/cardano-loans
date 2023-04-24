@@ -28,7 +28,8 @@ library
     bytestring,
     serialise,
     aeson,
-    plutonomy
+    plutonomy,
+    text
   hs-source-dirs: src
   ghc-options: 
     -fobject-code 
