@@ -50,6 +50,7 @@ module CardanoLoans
 
   writeData,
   writeScript,
+  decodeDatum
 ) where
 
 import Data.Aeson hiding (Value)
