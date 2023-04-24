@@ -16,6 +16,7 @@ module CLI.BlockfrostApi
   queryOwnOffers,
   queryAllBorrowerLoans,
   queryAllLenderLoans,
+  queryBorrowerHistory
 ) where
 
 import Servant.API
@@ -99,6 +100,47 @@ instance FromJSON LoanDatum where
       Nothing -> mzero
   parseJSON _ = mzero
 
+-- | The return type for the assetHistoryApi.
+data RawAssetHistory = RawAssetHistory
+  { rawAssetHistoryTxHash :: String
+  , rawAssetHistoryAction :: String
+  } deriving (Show)
+
+instance FromJSON RawAssetHistory where
+  parseJSON (Object o) =
+    RawAssetHistory
+      <$> o .: "tx_hash"
+      <*> o .: "action"
+  parseJSON _ = mzero
+
+instance ToHttpApiData RawAssetHistory where
+  toQueryParam = T.pack . rawAssetHistoryTxHash
+
+-- | The return type for the defaultStatusApi.
+-- If the status returned is 1, then the borrower successfully paid the loan.
+-- If the status returned is 3, then the borrower defaulted on the loan.
+newtype RawDefaultStatus = RawDefaultStatus { unRawDefaultStatus :: Integer } deriving (Show)
+
+instance FromJSON RawDefaultStatus where
+  parseJSON (Object o) = RawDefaultStatus <$> o .: "asset_mint_or_burn_count"
+  parseJSON _ = mzero
+
+-- | This has the information needed for the borrower's history.
+data RawLoanInfo = RawLoanInfo 
+  { rawLoanAmount :: [RawAssetInfo]
+  , rawLoanDataHash :: Maybe String
+  } deriving (Show)
+
+instance FromJSON RawLoanInfo where
+  parseJSON (Object o) = RawLoanInfo <$> o .: "amount" <*> o .: "data_hash"
+  parseJSON _ = mzero
+
+newtype RawLoan = RawLoan { unRawLoan :: [RawLoanInfo] } deriving (Show)
+
+instance FromJSON RawLoan where
+  parseJSON (Object o) = RawLoan <$> (o .: "inputs" >>= parseJSON)
+  parseJSON _ = mzero
+
 -------------------------------------------------
 -- Blockfrost Api
 -------------------------------------------------
@@ -122,7 +164,25 @@ type BlockfrostApi
     :> Capture "datum_hash" String
     :> Get '[JSON] Value
 
-beaconAddressListApi :<|> beaconInfoApi :<|> datumApi = client api
+  :<|> "assets"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> Capture "asset" BeaconId
+    :> "history"
+    :> Get '[JSON] [RawAssetHistory]
+
+  :<|> "txs"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> Capture "hash" RawAssetHistory
+    :> Get '[JSON] RawDefaultStatus
+
+  :<|> "txs"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> Capture "hash" RawAssetHistory
+    :> "utxos"
+    :> Get '[JSON] RawLoan
+
+beaconAddressListApi :<|> beaconInfoApi :<|> datumApi :<|> assetHistoryApi 
+  :<|> defaultStatusApi :<|> loanInfoApi = client api
   where
     api :: Proxy BlockfrostApi
     api = Proxy
@@ -199,6 +259,21 @@ queryAllLenderLoans apiKey policyId lenderPubKeyHash = do
   activeInfos <- fetchDatumsLenient apiKey $ map rawBeaconDataHash beaconUTxOs
   return $ convertToLoanInfo Loan beaconUTxOs activeInfos
 
+queryBorrowerHistory :: BlockfrostApiKey -> String -> String -> ClientM [LoanHistory]
+queryBorrowerHistory apiKey policyId borrowerPubKeyHash = do
+  let borrowerBeacon = BeaconId (policyId,borrowerPubKeyHash)
+      activeBeacon = policyId <> "416374697665"
+  -- | Get all the burn transactions for the borrower ID.
+  burnTxs <- filter ((== "burned") . rawAssetHistoryAction) <$> assetHistoryApi apiKey borrowerBeacon
+  -- | Get the default status for each tx.
+  defaultStatuses <- mapM (\z -> defaultStatusApi apiKey z) burnTxs
+  -- | Get the loan info for each tx.
+  loanInfos <- filterForAsset' activeBeacon . concatMap unRawLoan
+           <$> mapM (\z -> loanInfoApi apiKey z) burnTxs
+  -- | Get the active datums.
+  activeDatums <- fetchDatumsLenient apiKey $ map rawLoanDataHash loanInfos
+  return $ zipWith (convertToLoanHistory activeDatums) defaultStatuses loanInfos
+
 -------------------------------------------------
 -- Helper Functions
 -------------------------------------------------
@@ -216,6 +291,9 @@ fetchDatumsLenient apiKey dhs =
 
 filterForAsset :: String -> [RawBeaconInfo] -> [RawBeaconInfo]
 filterForAsset asset = filter (isJust . find ((==asset) . rawUnit) . rawAmount)
+
+filterForAsset' :: String -> [RawLoanInfo] -> [RawLoanInfo]
+filterForAsset' asset = filter (isJust . find ((==asset) . rawUnit) . rawLoanAmount)
 
 convertToAsset :: RawAssetInfo -> Asset
 convertToAsset RawAssetInfo{rawUnit=u,rawQuantity=q} =
@@ -243,3 +321,10 @@ convertToLoanInfo t ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
                 , uTxOValue = map convertToAsset amount
                 , loanInfo = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
                 }
+
+convertToLoanHistory :: Map String LoanDatum -> RawDefaultStatus -> RawLoanInfo -> LoanHistory
+convertToLoanHistory datumMap (RawDefaultStatus s) RawLoanInfo{rawLoanDataHash=dHash} =
+  LoanHistory
+    { defaultStatus = if s == 1 then False else True
+    , loan = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
+    }

@@ -42,6 +42,8 @@ runQuery query = case query of
     runQueryAllBorrowerLoans network policyId borrowerStakeKeyHash addr >>= toOutput output
   QueryAllLenderLoans network policyId lenderPubKeyHash output -> 
     runQueryAllLenderLoans network policyId lenderPubKeyHash >>= toOutput output
+  QueryBorrowerHistory network policyId borrowerStakeKeyHash output ->
+    runQueryBorrowerHistory network policyId borrowerStakeKeyHash >>= toOutput output
 
 -------------------------------------------------
 -- Helper Functions
