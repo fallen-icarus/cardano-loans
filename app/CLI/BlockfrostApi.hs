@@ -323,8 +323,9 @@ convertToLoanInfo t ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
                 }
 
 convertToLoanHistory :: Map String LoanDatum -> RawDefaultStatus -> RawLoanInfo -> LoanHistory
-convertToLoanHistory datumMap (RawDefaultStatus s) RawLoanInfo{rawLoanDataHash=dHash} =
+convertToLoanHistory datumMap (RawDefaultStatus s) (RawLoanInfo amount dHash) =
   LoanHistory
     { defaultStatus = if s == 1 then False else True
+    , remainingUTxOValue = map convertToAsset amount
     , loan = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
     }

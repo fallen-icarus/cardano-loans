@@ -129,11 +129,13 @@ instance ToJSON LoanInfo where
 
 data LoanHistory = LoanHistory
   { defaultStatus :: Bool
+  , remainingUTxOValue :: [Asset]
   , loan :: LoanDatum
   } deriving (Show)
 
 instance ToJSON LoanHistory where
   toJSON LoanHistory{..} =
     object [ "default" .= defaultStatus
+           , "utxo_assets" .= remainingUTxOValue
            , "loan_info" .= toJSON loan
            ]
