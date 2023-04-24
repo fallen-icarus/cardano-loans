@@ -47,8 +47,8 @@ claimExpiredLoan = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -78,14 +78,13 @@ claimExpiredLoan = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -107,15 +106,14 @@ claimExpiredLoan = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -221,8 +219,8 @@ otherBeaconsInInput = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -252,14 +250,13 @@ otherBeaconsInInput = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -281,15 +278,14 @@ otherBeaconsInInput = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -396,8 +392,8 @@ claimActiveLoan = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -427,14 +423,13 @@ claimActiveLoan = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -456,15 +451,14 @@ claimActiveLoan = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -570,8 +564,8 @@ activeBeaconNotBurned = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -601,14 +595,13 @@ activeBeaconNotBurned = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -630,15 +623,14 @@ activeBeaconNotBurned = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -743,8 +735,8 @@ lenderIdNotBurned = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -774,14 +766,13 @@ lenderIdNotBurned = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -803,15 +794,14 @@ lenderIdNotBurned = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -916,8 +906,8 @@ borrowerIdNotBurned = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -947,14 +937,13 @@ borrowerIdNotBurned = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -976,15 +965,14 @@ borrowerIdNotBurned = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -1089,8 +1077,8 @@ lenderDidNotSign = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -1120,14 +1108,13 @@ lenderDidNotSign = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -1149,15 +1136,14 @@ lenderDidNotSign = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -1263,8 +1249,8 @@ otherTokensMinted = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -1294,14 +1280,13 @@ otherTokensMinted = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -1323,15 +1308,14 @@ otherTokensMinted = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -1437,8 +1421,8 @@ claimFullyPaidLoanEarly = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -1468,14 +1452,13 @@ claimFullyPaidLoanEarly = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -1497,15 +1480,14 @@ claimFullyPaidLoanEarly = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }
@@ -1606,8 +1588,8 @@ inputDoesNotHaveActiveDatum = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -1665,8 +1647,8 @@ noActiveBeaconPresent = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
@@ -1696,14 +1678,13 @@ noActiveBeaconPresent = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         }
   
   callEndpoint @"offer" lenderH $
@@ -1725,15 +1706,14 @@ noActiveBeaconPresent = do
 
   let exp = slotToBeginPOSIXTime def 14
       activeDatum = ActiveDatum'
-        { activeBeacon' = (beaconPolicySymbol,"Active")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 10000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2_000_000)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2_000_000)]
         , loanExpiration' = exp
         , loanOutstanding' = fromInteger 100_000_000 * (fromInteger 1 + unsafeRatio 1 10)
         }

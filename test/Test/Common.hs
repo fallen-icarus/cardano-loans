@@ -17,6 +17,7 @@
 module Test.Common where
 
 import qualified Data.Map as Map
+import Control.Lens hiding (from,index,to)
 import Data.Default
 import Data.Void (Void)
 import Control.Monad (void)
@@ -36,6 +37,7 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Data.List (foldl')
 import Prelude as Haskell (Semigroup (..), String)
+import Cardano.Api.Shelley (ExecutionUnits (..),ProtocolParameters (..))
 
 import CardanoLoans
 
@@ -53,37 +55,35 @@ mustPayToAddressWith addr maybeDatum val =
   Constraints.singleton $ MustPayToAddress addr maybeDatum Nothing val
 
 data LoanDatum'
-  -- | The datum for the ask ask.
+  -- | The datum for the ask phase.
   = AskDatum'
-      { askBeacon' :: (CurrencySymbol,TokenName)
-      , borrowerId' :: (CurrencySymbol,TokenName)
+      { loanBeaconSym' :: CurrencySymbol
+      , borrowerId' :: TokenName
       , loanAsset' :: (CurrencySymbol,TokenName)
       , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , collateral' :: [(CurrencySymbol,TokenName)]
       }
-  -- | The datum for the offer ask.
+  -- | The datum for the offer phase.
   | OfferDatum'
-      { offerBeacon' :: (CurrencySymbol,TokenName)
-      , lenderId' :: (CurrencySymbol,TokenName)
+      { loanBeaconSym' :: CurrencySymbol
+      , lenderId' :: TokenName
       , loanAsset' :: (CurrencySymbol,TokenName)
       , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
-      , loanBacking' :: Integer
-      , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
+      , collateralization' :: [((CurrencySymbol,TokenName),Rational)]
       }
-  -- | The datum for the active ask. This also has information useful for the credit history.
+  -- | The datum for the active phase. This also has information useful for the credit history.
   | ActiveDatum'
-      { activeBeacon' :: (CurrencySymbol,TokenName)
-      , lenderId' :: (CurrencySymbol,TokenName)
-      , borrowerId' :: (CurrencySymbol,TokenName)
+      { loanBeaconSym' :: CurrencySymbol
+      , lenderId' :: TokenName
+      , borrowerId' :: TokenName
       , loanAsset' :: (CurrencySymbol,TokenName)
       , loanPrinciple' :: Integer
       , loanTerm' :: POSIXTime
       , loanInterest' :: Rational
-      , loanBacking' :: Integer
-      , collateralRates' :: [((CurrencySymbol,TokenName),Rational)]
+      , collateralization' :: [((CurrencySymbol,TokenName),Rational)]
       , loanExpiration' :: POSIXTime
       , loanOutstanding' :: Rational
       }
@@ -91,8 +91,8 @@ data LoanDatum'
 
 convert2LoanDatum :: LoanDatum' -> LoanDatum
 convert2LoanDatum (AskDatum' a b c d e f) = AskDatum a b c d e f
-convert2LoanDatum (OfferDatum' a b c d e f g h) = OfferDatum a b c d e f g h
-convert2LoanDatum (ActiveDatum' a b c d e f g h i j k) = ActiveDatum a b c d e f g h i j k
+convert2LoanDatum (OfferDatum' a b c d e f g) = OfferDatum a b c d e f g
+convert2LoanDatum (ActiveDatum' a b c d e f g h i j) = ActiveDatum a b c d e f g h i j
 
 -- | The redeemer for the beacons.
 data BeaconRedeemer'
@@ -210,28 +210,38 @@ testToken1 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestTo
 testToken2 :: (CurrencySymbol,TokenName)
 testToken2 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken2")
 
+testToken3 :: (CurrencySymbol,TokenName)
+testToken3 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken3")
+
+testToken4 :: (CurrencySymbol,TokenName)
+testToken4 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken4")
+
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
   where
     user1 :: Value
     user1 = lovelaceValueOf 1_000_000_000
-         <> (uncurry singleton testToken1) 100
-         <> (uncurry singleton testToken2) 100
+         <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
 
     user2 :: Value
     user2 = lovelaceValueOf 1_000_000_000
-         <> (uncurry singleton testToken1) 100
-         <> (uncurry singleton testToken2) 100
+         <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
          <> singleton beaconPolicySymbol "Offer" 5
          <> singleton beaconPolicySymbol "Ask" 5
+         <> singleton beaconPolicySymbol "Active" 5
     
     user3 :: Value
     user3 = lovelaceValueOf 1_000_000_000
-         <> (uncurry singleton testToken1) 100
+         <> (uncurry singleton testToken1) 1000
+         <> singleton beaconPolicySymbol "Active" 5
     
     user4 :: Value
     user4 = lovelaceValueOf 1_000_000_000
-         <> (uncurry singleton testToken1) 100
+         <> (uncurry singleton testToken1) 1000
   
     wallets :: [(Wallet,Value)]
     wallets = 
@@ -240,6 +250,35 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 3, user3)
       , (knownWallet 4, user4)
       ]
+
+lenientConfig :: EmulatorConfig
+lenientConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{ protocolParamMaxTxSize = 17000
+                     , protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                        ,executionMemory = 24000000})}
+
+benchConfig :: EmulatorConfig
+benchConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{ protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                        ,executionMemory = 9000000})
+                    --  , protocolParamMaxTxSize = 16300
+                     }
 
 -------------------------------------------------
 -- Trace Models

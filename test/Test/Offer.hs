@@ -44,14 +44,13 @@ offerToStakePubKey = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -81,14 +80,13 @@ mintMultipleOfferBeacons = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -118,14 +116,13 @@ mintOfferTokenWithWrongName = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -155,14 +152,13 @@ mintMultipleLenderIds = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -192,14 +188,13 @@ mintWrongLenderId = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -229,14 +224,13 @@ mintAdditionalTokens = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -267,14 +261,13 @@ mintToPaymentPubKey = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (PubKeyCredential $ unPaymentPubKeyHash lenderPubKey)
                      (Just $ StakingHash
@@ -304,14 +297,13 @@ mintToOtherPaymentScript = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential alwaysSucceedValidatorHash)
                      (Just $ StakingHash
@@ -341,14 +333,13 @@ mintToAddressWithoutStaking = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      Nothing
@@ -374,14 +365,13 @@ mintToAddressUsingStakingScript = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -408,14 +398,13 @@ storeOfferBeaconAndLenderIdSeparately = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -441,20 +430,19 @@ storeOfferBeaconAndLenderIdSeparately = do
       , offerAsInline = True
       }
 
-wrongOfferBeacon :: EmulatorTrace ()
-wrongOfferBeacon = do
+wrongBeaconSymbol :: EmulatorTrace ()
+wrongBeaconSymbol = do
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Ofer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = adaSymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -484,14 +472,13 @@ wrongLenderId = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,"pubKeyAsToken lenderPubKey")
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = "pubKeyAsToken lenderPubKey"
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -521,14 +508,13 @@ negativePrinciple = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = -100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -558,14 +544,13 @@ negativeTerm = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = -12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -595,14 +580,13 @@ negativeInterest = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio (-1) 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -632,14 +616,13 @@ emptyCollateral = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = []
+        , collateralization' = []
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -669,14 +652,13 @@ negativeCollateralRate = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2),(testToken2,unsafeRatio (-2) 1)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2),(testToken2,unsafeRatio (-2) 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -706,14 +688,13 @@ notInline = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -743,8 +724,8 @@ datumNotOfferDatum = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -778,14 +759,13 @@ lenderDidNotSign = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100_000_000
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -815,14 +795,13 @@ offerUTxODoesntHaveLoanAmount = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 50
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -846,43 +825,6 @@ offerUTxODoesntHaveLoanAmount = do
       , offerAsInline = True
       }
 
-negativeDownPayment :: EmulatorTrace ()
-negativeDownPayment = do
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-
-  let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
-      offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , loanBacking' = -100_000_000
-        , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"offer" h2 $
-    OfferParams
-      { offerBeaconsMinted = [("Offer",1),(pubKeyAsToken lenderPubKey,1)]
-      , offerBeaconRedeemer = MintOfferToken' lenderPubKey
-      , offerBeaconPolicy = beaconPolicy
-      , offerAddress = addr
-      , offerInfo = 
-          [ ( Just offerDatum
-            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
-           <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
-            )
-          ]
-      , offerAsInline = True
-      }
-
 -- Minimum = 2.116210 ADA
 -- minOfferUTxOTest :: EmulatorTrace ()
 -- minOfferUTxOTest = do
@@ -890,14 +832,13 @@ negativeDownPayment = do
 
 --   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
 --       offerDatum = OfferDatum'
---         { offerBeacon' = (beaconPolicySymbol,"Offer")
---         , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+--         { loanBeaconSym' = beaconPolicySymbol
+--         , lenderId' = pubKeyAsToken lenderPubKey
 --         , loanAsset' = (adaSymbol,adaToken)
 --         , loanPrinciple' = 1
 --         , loanTerm' = 12000
---         , loanBacking' = 100_000_000
 --         , loanInterest' = unsafeRatio 1 10
---         , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+--         , collateralization' = [(testToken1,unsafeRatio 1 2)]
 --         }
 --       addr = Address (ScriptCredential loanValidatorHash)
 --                      (Just $ StakingHash
@@ -936,7 +877,7 @@ tests = do
         (Test.not assertNoFailedTransactions) mintMultipleLenderIds
     , checkPredicateOptions opts "Fail if the lender ID token name does not match the supplied pubkey hash"
         (Test.not assertNoFailedTransactions) mintWrongLenderId
-    , checkPredicateOptions opts "Fail if addition beacons minted in tx"
+    , checkPredicateOptions opts "Fail if additional beacons minted in tx"
         (Test.not assertNoFailedTransactions) mintAdditionalTokens
     , checkPredicateOptions opts "Fail if offer beacon minted to payment pubkey address"
         (Test.not assertNoFailedTransactions) mintToPaymentPubKey
@@ -948,8 +889,8 @@ tests = do
         (Test.not assertNoFailedTransactions) mintToAddressUsingStakingScript
     , checkPredicateOptions opts "Fail if offer beacon and lender ID stored separately"
         (Test.not assertNoFailedTransactions) storeOfferBeaconAndLenderIdSeparately
-    , checkPredicateOptions opts "Fail if output datum has wrong offerBeacon"
-        (Test.not assertNoFailedTransactions) wrongOfferBeacon
+    , checkPredicateOptions opts "Fail if output datum has wrong beacon symbol"
+        (Test.not assertNoFailedTransactions) wrongBeaconSymbol
     , checkPredicateOptions opts "Fail if output datum has wrong lenderId"
         (Test.not assertNoFailedTransactions) wrongLenderId
     , checkPredicateOptions opts "Fail if output datum has loanPrinciple <= 0"
@@ -970,8 +911,6 @@ tests = do
         (Test.not assertNoFailedTransactions) lenderDidNotSign
     , checkPredicateOptions opts "Fail if offer utxo doesn't have loan amount."
         (Test.not assertNoFailedTransactions) offerUTxODoesntHaveLoanAmount
-    , checkPredicateOptions opts "Fail if output datum loanBacking <= 0"
-        (Test.not assertNoFailedTransactions) negativeDownPayment
     , checkPredicateOptions opts "Successfully create loan offer"
         assertNoFailedTransactions offerToStakePubKey
     ]

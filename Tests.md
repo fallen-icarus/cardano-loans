@@ -14,7 +14,7 @@
   - [x] Fail if minted to an address without a staking credential.
 - [x] Must be minted to a dapp address using the supplied pubkey as the staking pubkey.
 - [x] The ask token must be stored with the proper ask datum.
-  - [x] Fail if askBeacon /= (beaconSym,"Ask").
+  - [x] Fail if loanBeaconSym /= beaconSym.
   - [x] Fail is borrowerId /= (beaconSym,supplied pubkey as token).
   - [x] Fail if loanPrinciple <= 0.
   - [x] Fail if loanTerm <= 0.
@@ -38,14 +38,13 @@
 - [x] The offer token and the lender token must be stored in the same utxo at the dapp address.
   - [x] Fail if stored separately at address.
 - [x] The offer datum must be valid.
-  - [x] Fail if offerBeacon /= (beaconSym,"Offer").
-  - [x] Fail if lenderId /= (beaconSym,supplied pubkey as token).
+  - [x] Fail if loanBeaconSym /= beaconSym.
+  - [x] Fail if lenderId /= supplied pubkey as token.
   - [x] Fail if loanPrinciple <= 0.
   - [x] Fail if loanTerm <= 0.
   - [x] Fail if loanInterest <= 0.
   - [x] Fail if collateral list is empty.
   - [x] Fail if not all collateral rates > 0
-  - [x] Fail if loanDownPayment <= 0.
   - [x] Fail if datum not OfferDatum.
   - [x] Fail if datum not inline.
 - [x] Offer beacon must be stored with the asked loan amount.
@@ -103,26 +102,23 @@
   - [x] Fail if no output to dapp address.
   - [x] Fail if more than one output to dapp address.
 - [x] The output must contain the proper active datum.
-  - [x] Fail if activeBeacon /= (beaconSym,"Active").
+  - [x] Fail if loanBeaconSym /= beaconSym.
   - [x] Fail if lenderId /= lenderId offerDatum.
   - [x] Fail if borrowerId /= borrowerId askDatum.
   - [x] Fail if loanAsset /= loanAsset askDatum.
   - [x] Fail if loanPrinciple /= loanPrinciple askDatum.
   - [x] Fail if loanTerm /= loanTerm askDatum.
   - [x] Fail if loanInterest /= loanInterest offerDatum.
-  - [x] Fail if loanDownPayment /= loanDownPayment offerDatum.
-  - [x] Fail if collateralRates /= collateralRates offerDatum.
-  - [x] Fail if loanExpiration /= TTL + loanTerm offerDatum.
+  - [x] Fail if collateralization /= collateralization offerDatum.
+  - [x] Fail if loanExpiration /= invalid-before + loanTerm offerDatum.
   - [x] Fail if loanOutstanding /= loanPrinciple askDatum * (1 + loanInterest offerDatum).
   - [x] Fail if datum is not ActiveDatum.
   - [x] Fail if datum is not inline.
-- [x] The required amount of collateral must be posted to address - based on loanDownPayment.
+- [x] The required amount of collateral must be posted to address.
   - [x] Fail if not enough collateral posted.
-  - [x] Allow undercollateralized loans.
-  - [x] Allow overcollateralized loans.
 - [x] The active beacon must be minted and stored in the dapp address.
   - [x] Fail if the active beacon is stored in another address.
-- [x] Fail if TTL not specified.
+- [x] Fail if invalid-before not specified.
 
 ### CloseAsk
 - [x] The input utxo must have an AskDatum.
@@ -154,7 +150,7 @@
   - [x] The output must have the same datum accept for the updated loanOutstanding.
   - [x] Fail if output datum not inline.
   - [x] If newOutstanding <= 0
-    - [x] Allows reclaiming remaing collateral for over-collateralized loan.
+    - [x] Allows reclaiming collateral.
     - [x] The borrower ID must be burned.
       - [x] Fail if the borrower ID not burned.
     - [x] No other tokens can be minted/burned in tx.
@@ -162,12 +158,12 @@
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.
   - [x] Else
-    - [x] Fail if any collateral take during partial payment.
+    - [x] Fail if any collateral taken.
     - [x] The output must have the active beacon, borrower ID, and the lender ID.
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.
       - [x] Fail if output missing borrower ID.
-  - [x] Fail if TTE not specified.
+  - [x] Fail if invalid-hereafter not specified.
 - [x] Allow reclaiming utxo when active beacon missing.
 
 ### Claim

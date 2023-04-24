@@ -44,8 +44,8 @@ askWithStakePubKey = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -77,8 +77,8 @@ mintMultipleAskTokens = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -110,8 +110,8 @@ mintAskTokenWithDifferentName = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -143,8 +143,8 @@ mintToPaymentPubKey = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -176,8 +176,8 @@ mintToDifferentScriptAddress = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -209,8 +209,8 @@ mintToAddressWithoutStaking = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -238,8 +238,8 @@ mintToAddressUsingStakingScript = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -269,8 +269,8 @@ mintWithDifferentPubkeyInRedeemer = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -302,8 +302,8 @@ mintToAddressWithDifferentStakingPubKey = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -329,14 +329,14 @@ mintToAddressWithDifferentStakingPubKey = do
       , askAsInline = True
       }
 
-wrongAskBeaconInDatum :: EmulatorTrace ()
-wrongAskBeaconInDatum = do
+wrongBeaconSymbolInDatum :: EmulatorTrace ()
+wrongBeaconSymbolInDatum = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"As")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = adaSymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -368,8 +368,8 @@ wrongBorrowerIdInDatum = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken $ mockWalletPaymentPubKeyHash $ knownWallet 3)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken $ mockWalletPaymentPubKeyHash $ knownWallet 3
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -401,8 +401,8 @@ negativePrinciple = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = -100_000_000
         , loanTerm' = 12000
@@ -434,8 +434,8 @@ negativeTerm = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = -12000
@@ -467,8 +467,8 @@ emptyCollateral = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -500,8 +500,8 @@ notInline = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -533,8 +533,8 @@ receivingAddressDidNotSign = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -566,8 +566,8 @@ mintMultipleKindsOfTokens = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -601,14 +601,13 @@ notAnAskDatum = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Ask")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
         , loanInterest' = unsafeRatio 1 10
-        , loanBacking' = 100
-        , collateralRates' = [(testToken1,unsafeRatio 1 1)]
+        , collateralization' = [(testToken1,unsafeRatio 1 1)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -655,8 +654,8 @@ tests = do
         (Test.not assertNoFailedTransactions) mintWithDifferentPubkeyInRedeemer
     , checkPredicateOptions opts "Fail if receiving address uses a different pubkey hash than redeemer"
         (Test.not assertNoFailedTransactions) mintToAddressWithDifferentStakingPubKey
-    , checkPredicateOptions opts "Fail if output datum has wrong askBeacon"
-        (Test.not assertNoFailedTransactions) wrongAskBeaconInDatum
+    , checkPredicateOptions opts "Fail if output datum has wrong beacon symbol"
+        (Test.not assertNoFailedTransactions) wrongBeaconSymbolInDatum
     , checkPredicateOptions opts "Fail if output datum has wrong borrower ID"
         (Test.not assertNoFailedTransactions) wrongBorrowerIdInDatum
     , checkPredicateOptions opts "Fail if output datum has loanPrinciple <= 0"

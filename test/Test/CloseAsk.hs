@@ -44,8 +44,8 @@ closeSingleAsk = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -94,8 +94,8 @@ stakingCredDidNotApprove = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -143,8 +143,8 @@ notAllBeaconsBurned = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -192,14 +192,13 @@ wrongDatumType = do
 
   let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
       offerDatum = OfferDatum'
-        { offerBeacon' = (beaconPolicySymbol,"Offer")
-        , lenderId' = (beaconPolicySymbol,pubKeyAsToken lenderPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , lenderId' = pubKeyAsToken lenderPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
-        , loanBacking' = 100_000_000
         , loanInterest' = unsafeRatio 1 10
-        , collateralRates' = [(testToken1,unsafeRatio 1 2)]
+        , collateralization' = [(testToken1,unsafeRatio 1 2)]
         }
       addr = Address (ScriptCredential loanValidatorHash)
                      (Just $ StakingHash
@@ -246,8 +245,8 @@ closeWithoutBurning = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
@@ -295,8 +294,8 @@ closeMultipleAsks = do
 
   let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
       askDatum = AskDatum'
-        { askBeacon' = (beaconPolicySymbol,"Ask")
-        , borrowerId' = (beaconPolicySymbol,pubKeyAsToken borrowerPubKey)
+        { loanBeaconSym' = beaconPolicySymbol
+        , borrowerId' = pubKeyAsToken borrowerPubKey
         , loanAsset' = (adaSymbol,adaToken)
         , loanPrinciple' = 100_000_000
         , loanTerm' = 12000
