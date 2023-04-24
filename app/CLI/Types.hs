@@ -14,6 +14,11 @@ data Command
   | CreateLoanRedeemer LoanRedeemer FilePath
   | CreateBeaconRedeemer BeaconRedeemer FilePath
   | QueryBeacons Query
+  | Convert Convert
+
+data Convert
+  = POSIXTimeToSlot POSIXTime
+  | SlotToPOSIXTime Slot
 
 data Query
   = QueryAllAsks Network CurrencySymbol Output

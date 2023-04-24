@@ -25,6 +25,8 @@ parseCommand = hsubparser $ mconcat
       (info parseCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
   , command "query"
       (info parseQueryBeacons $ progDesc "Query the dApp's beacons.")
+  , command "convert"
+      (info pConvert $ progDesc "Convert POSIXTime <--> Slot.")
   ]
 
 -------------------------------------------------
@@ -192,6 +194,26 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
 
     pBorrowerHistory :: Parser Query
     pBorrowerHistory = QueryBorrowerHistory <$> pNetwork <*> pBeaconPolicy <*> pBorrowerId <*> pOutput
+
+-------------------------------------------------
+-- Convert Parser
+-------------------------------------------------
+pConvert :: Parser Command
+pConvert = Convert <$> (pPOSIXTime <|> pSlot)
+  where
+    pPOSIXTime :: Parser Convert
+    pPOSIXTime = POSIXTimeToSlot . POSIXTime <$> option auto
+      (  long "posix-time"
+      <> metavar "INT"
+      <> help "Convert POSIX time to slot number."
+      )
+
+    pSlot :: Parser Convert
+    pSlot = SlotToPOSIXTime . Slot <$> option auto
+      (  long "slot"
+      <> metavar "INT"
+      <> help "Convert slot number to POSIX time."
+      )
 
 -------------------------------------------------
 -- Basic Helper Parsers

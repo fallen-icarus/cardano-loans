@@ -18,6 +18,7 @@ runCommand cmd = case cmd of
   CreateLoanRedeemer r file -> writeData file r
   CreateBeaconRedeemer r file -> writeData file r
   QueryBeacons query -> runQuery query
+  Convert convert -> runConversion convert
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
@@ -44,6 +45,10 @@ runQuery query = case query of
     runQueryAllLenderLoans network policyId lenderPubKeyHash >>= toOutput output
   QueryBorrowerHistory network policyId borrowerStakeKeyHash output ->
     runQueryBorrowerHistory network policyId borrowerStakeKeyHash >>= toOutput output
+
+runConversion :: Convert -> IO ()
+runConversion (POSIXTimeToSlot p) = print $ getSlot $ posixTimeToSlot p
+runConversion (SlotToPOSIXTime s) = print $ getPOSIXTime $ slotToPOSIXTime s
 
 -------------------------------------------------
 -- Helper Functions
