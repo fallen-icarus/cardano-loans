@@ -10,11 +10,10 @@ loanScriptFile="${dir}loan.plutus"
 beaconPolicyFile="${dir}beacons.plutus"
 
 borrowerPubKeyFile="../assets/wallets/01Stake.vkey"
-borrowerPubKeyHashFile="../assets/wallets/01Stake.pkh"
 
 loanAddrFile="${dir}loan.addr"
 
-askDatumFile="${dir}ask.json"
+askDatumFile="${dir}askDatum.json"
 
 beaconRedeemerFile="${dir}mintAsk.json"
 
@@ -28,9 +27,8 @@ cardano-loans export-script \
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
-cardano-cli stake-address key-hash \
-  --stake-verification-key-file $borrowerPubKeyFile \
-  --out-file $borrowerPubKeyHashFile
+borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file $borrowerPubKeyFile)
 
 ## Create the loan address.
 echo "Creating the borrower's loan address..."
@@ -46,10 +44,16 @@ cardano-loans export-script \
   --beacon-policy \
   --out-file $beaconPolicyFile
 
+## Get the beacon policy id.
+echo "Calculating the beacon policy id..."
+beaconPolicyId=$(cardano-cli transaction policyid \
+  --script-file $beaconPolicyFile) 
+
 ## Create the Ask datum.
 echo "Creating the ask datum..."
-cardano-loans borrower ask-datum \
-  --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
+cardano-loans loan-datum ask-datum \
+  --beacon-policy-id $beaconPolicyId \
+  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
   --loan-asset-is-lovelace \
   --principle 10000000 \
   --loan-term 3600 \
@@ -57,16 +61,11 @@ cardano-loans borrower ask-datum \
   --collateral-asset-token-name 4f74686572546f6b656e0a \
   --out-file $askDatumFile
 
-## Create the MintAskToken beacon policy redeemer.
+## Create the MintAsk beacon policy redeemer.
 echo "Creating the minting redeemer..."
-cardano-loans borrower ask-beacon \
-  --borrower-stake-pubkey-hash "$(cat $borrowerPubKeyHashFile)" \
+cardano-loans beacon-redeemer mint-ask \
+  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
   --out-file $beaconRedeemerFile
-
-## Get the beacon policy id.
-echo "Calculating the beacon policy id..."
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file $beaconPolicyFile) 
 
 ## Helper Ask beacon variable
 askBeacon="${beaconPolicyId}.${askTokenName}"
@@ -77,15 +76,15 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in e5b4c3b3d8b408e923644e73ef010ae4180cd60acf3441e72ad581901e9e5579#1 \
+  --tx-in 9f7143d32545ac4c2c1ce0833b3f75a0a2969279cfc855f44ee5442417c99b18#2 \
   --tx-out "$(cat ${loanAddrFile}) + 2000000 lovelace + 1 ${askBeacon}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
-  --required-signer-hash "$(cat $borrowerPubKeyHashFile)" \
+  --required-signer-hash $borrowerPubKeyHash \
   --change-address "$(cat ../assets/wallets/01.addr)" \
-  --tx-in-collateral d5046a4d5a9c0a0ec6a9eabd0eb1524d54c3473459889b67ec17604f3c2e861b#0 \
+  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"

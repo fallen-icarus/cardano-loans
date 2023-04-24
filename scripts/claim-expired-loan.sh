@@ -10,7 +10,6 @@ loanScriptFile="${dir}loan.plutus"
 beaconPolicyFile="${dir}beacons.plutus"
 
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
-lenderPaymentPubKeyHashFile="../assets/wallets/02.pkh"
 
 ### Change this to your target borrower.
 borrowerPubKeyHash="3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa"
@@ -18,52 +17,50 @@ borrowerPubKeyHash="3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa"
 claimRedeemerFile="${dir}claim.json"
 beaconRedeemerFile="${dir}burn.json"
 
-### The time used for claiming.
-claimTime=23638305
+### Expiration slot for loan + 1.
+### Make sure to add 1 to the expiration slot number.
+expirationTime=$((26655777 + 1))
 
 ### This is the hexidecimal encoding for 'Active'.
 activeTokenName="416374697665"
 
-## Export the loan validator script.
-echo "Exporting the loan validator script..."
-cardano-loans export-script \
-  --loan-script \
-  --out-file $loanScriptFile
-
 ## Generate the hash for the lender's payment pubkey.
 echo "Calculating the hash of the lender's payment verification key..."
-cardano-cli address key-hash \
-  --payment-verification-key-file $lenderPaymentPubKeyFile \
-  --out-file $lenderPaymentPubKeyHashFile
+lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
+  --payment-verification-key-file $lenderPaymentPubKeyFile)
 
-## Export the beacon policy.
-echo "Exporting the beacon policy script..."
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file $beaconPolicyFile
+# ## Export the loan validator script.
+# echo "Exporting the loan validator script..."
+# cardano-loans export-script \
+#   --loan-script \
+#   --out-file $loanScriptFile
 
-## Create the BurnBeaconToken beacon policy redeemer.
-echo "Creating the burn redeemer..."
-cardano-loans lender burn-beacons \
-  --out-file $beaconRedeemerFile
-
-## Create the ClaimLoan redeemer.
-echo "Creating the spending redeemer..."
-cardano-loans lender claim-loan \
-  --out-file $claimRedeemerFile
+# ## Export the beacon policy.
+# echo "Exporting the beacon policy script..."
+# cardano-loans export-script \
+#   --beacon-policy \
+#   --out-file $beaconPolicyFile
 
 ## Get the beacon policy id.
 echo "Calculating the beacon policy id..."
 beaconPolicyId=$(cardano-cli transaction policyid \
   --script-file $beaconPolicyFile)
 
+## Create the BurnBeacons beacon policy redeemer.
+echo "Creating the burn redeemer..."
+cardano-loans beacon-redeemer burn-beacons \
+  --out-file $beaconRedeemerFile
+
+## Create the Claim redeemer.
+echo "Creating the spending redeemer..."
+cardano-loans loan-redeemer \
+  --claim \
+  --out-file $claimRedeemerFile
+
 ## Helper beacon variables
+lenderBeacon="${beaconPolicyId}.${lenderPaymentPubKeyHash}"
 activeBeacon="${beaconPolicyId}.${activeTokenName}"
 borrowerBeacon="${beaconPolicyId}.${borrowerPubKeyHash}"
-
-## Helper Lender ID beacon variable.
-lenderPaymentPubKeyHash=$(cat $lenderPaymentPubKeyHashFile)
-lenderBeacon="${beaconPolicyId}.${lenderPaymentPubKeyHash}"
 
 ## Create and submit the transaction.
 cardano-cli query protocol-parameters \
@@ -71,21 +68,21 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 76a5888a1efe6199b73487824b1ecba06e8a5f0382ec32eb0f2a1052a145fc37#1 \
-  --tx-in 48c65de6874878bf6025c83c74788373ac8e61c442eed74ab31b7238cd649fd9#0 \
+  --tx-in 4808fc52c0f0264a7876792bb0591c6fe60081ea2c49e3d7cffa99c972f87f9a#1 \
+  --tx-in 9f7143d32545ac4c2c1ce0833b3f75a0a2969279cfc855f44ee5442417c99b18#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $claimRedeemerFile \
-  --tx-out "$(cat ../assets/wallets/02.addr) + 2000000 lovelace + 40 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --required-signer-hash "$(cat $lenderPaymentPubKeyHashFile)" \
+  --tx-out "$(cat ../assets/wallets/02.addr) + 2000000 lovelace + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --required-signer-hash $lenderPaymentPubKeyHash \
   --mint "-1 ${activeBeacon} + -1 ${borrowerBeacon} + -1 ${lenderBeacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
   --change-address "$(cat ../assets/wallets/02.addr)" \
-  --tx-in-collateral 71c87734cbab0e152b3619b6506ab6f6cebbabe76f56c6a0605f41f5f5c51d91#0 \
+  --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
+  --invalid-before $expirationTime \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --invalid-before $claimTime \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \
