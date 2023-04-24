@@ -959,5 +959,5 @@ instance ToJSON LoanDatum where
            , "interest" .= loanInterest
            , "collateralization" .= map (\(x,y) -> (toAsset x, y)) collateralization
            , "expiration_slot" .= getSlot (posixTimeToSlot loanExpiration)
-           , "balanced_owed" .= loanOutstanding
+           , "balance_owed" .= loanOutstanding
            ]
