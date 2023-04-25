@@ -150,7 +150,7 @@
   - [x] The output must have the same datum accept for the updated loanOutstanding.
   - [x] Fail if output datum not inline.
   - [x] If newOutstanding <= 0
-    - [x] Allows reclaiming collateral.
+    - [x] Allows reclaiming remaining collateral.
     - [x] The borrower ID must be burned.
       - [x] Fail if the borrower ID not burned.
     - [x] No other tokens can be minted/burned in tx.
@@ -158,7 +158,8 @@
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.
   - [x] Else
-    - [x] Fail if any collateral taken.
+    - [x] collateralTaken / collateralization * (1 + interest) <= loanRepaid
+      - [x] Fail if not enough loan repaid.
     - [x] The output must have the active beacon, borrower ID, and the lender ID.
       - [x] Fail if output missing active beacon.
       - [x] Fail if output missing lender ID.

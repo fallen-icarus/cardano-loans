@@ -354,7 +354,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- | If new loanOutstanding <= 0, then the loan is fully repaid.
         if newOutstanding <= fromInteger 0
         then
-          -- | All collateral is unlocked.
+          -- | All remaining collateral is unlocked.
           -- | The only borrower ID in the tx must be burned.
           traceIfFalse "Borrower ID not burned" 
             (valueOf minted (loanBeaconSym loanDatum) (borrowerId loanDatum) == -1) &&
@@ -368,8 +368,9 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
               valueOf oVal (loanBeaconSym loanDatum) (TokenName "Active") == 1)
         -- | Otherwise this is a partial payment.
         else 
-          -- | No collateral can be taken.
-          traceIfFalse "No collateral can be taken" noCollateralTaken &&
+          -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+          traceIfFalse "Fail: sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid"
+            repaymentCheck &&
           -- | The output to this address must have the active beacon, borrower ID, and lender ID.
           traceIfFalse "Output to address must have active beacon, borrower ID, and lender ID"
             ( valueOf oVal (loanBeaconSym loanDatum) (lenderId loanDatum) == 1 &&
@@ -490,13 +491,27 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     repaidAmount :: Rational
     repaidAmount = fromInteger $ uncurry (valueOf addrDiff) $ loanAsset loanDatum
 
-    -- | Checks that no collateral is taken during RepayLoan (unless loan fully paid off).
-    noCollateralTaken :: Bool
-    noCollateralTaken =
+    -- | This is converted into units of the loan asset by dividing by the collateral rates.
+    collateralReclaimed :: Rational
+    collateralReclaimed = 
       let foo _ acc [] = acc
-          foo val !acc ((collatAsset,_):xs) =
-            foo val (acc && uncurry (valueOf val) collatAsset == 0) xs
-      in foo addrDiff True (collateralization loanDatum)
+          foo val !acc ((collatAsset,price):xs) = 
+            foo val 
+                (acc + Ratio.negate (fromInteger $ uncurry (valueOf val) collatAsset) * recip price)
+                xs
+      in foo addrDiff (fromInteger 0) (collateralization loanDatum)
+
+    repaymentCheck :: Bool
+    repaymentCheck = 
+      collateralReclaimed * (fromInteger 1 + loanInterest loanDatum) <= repaidAmount
+
+    -- -- | Checks that no collateral is taken during RepayLoan (unless loan fully paid off).
+    -- noCollateralTaken :: Bool
+    -- noCollateralTaken =
+    --   let foo _ acc [] = acc
+    --       foo val !acc ((collatAsset,_):xs) =
+    --         foo val (acc && uncurry (valueOf val) collatAsset == 0) xs
+    --   in foo addrDiff True (collateralization loanDatum)
 
     -- | This checks that enough collateral is posted when a loan offer is accepted.
     enoughCollateral :: Bool
