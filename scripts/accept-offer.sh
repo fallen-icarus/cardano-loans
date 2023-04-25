@@ -30,24 +30,24 @@ askTokenName="41736b"
 ### This is the hexidecimal encoding for 'Offer'.
 offerTokenName="4f66666572"
 
-start=26664990 # Slot number for start of loan.
+start=26750275 # Slot number for start of loan.
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the borrower's stake pubkey hash..."
 borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $borrowerPubKeyFile)
 
-# ## Export the loan validator script.
-# echo "Exporting the loan validator script..."
-# cardano-loans export-script \
-#   --loan-script \
-#   --out-file $loanScriptFile
+## Export the loan validator script.
+echo "Exporting the loan validator script..."
+cardano-loans export-script \
+  --loan-script \
+  --out-file $loanScriptFile
 
-# ## Export the beacon policy.
-# echo "Exporting the beacon policy script..."
-# cardano-loans export-script \
-#   --beacon-policy \
-#   --out-file $beaconPolicyFile
+## Export the beacon policy.
+echo "Exporting the beacon policy script..."
+cardano-loans export-script \
+  --beacon-policy \
+  --out-file $beaconPolicyFile
 
 ## Get the beacon policy id.
 echo "Calculating the beacon policy id..."
@@ -99,19 +99,19 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 3aa90ec234b31c11f1346c3fdc04f2ab6b5279b893519f0545cbb013b53af7bd#1 \
-  --tx-in 9f7143d32545ac4c2c1ce0833b3f75a0a2969279cfc855f44ee5442417c99b18#1 \
-  --tx-in 7b025d0b57dccf535f9eff36c377b83bbcbb2753314604d17136bea84d2183ab#0 \
+  --tx-in ddcce58ba2e32d0b7d9385951f1b986d35de849cf62939c2e968d72186c6c34f#1 \
+  --tx-in aadb8f997d84aa4ddbac4e2d49f01626758ded73cf778a9d76eabb5c21fefd55#1 \
+  --tx-in 5691e25c50bebe82f8c92193d513bb9594787a52a8141d9f8e089d8fec3829e3#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $acceptOfferRedeemerFile \
-  --tx-in 3aa90ec234b31c11f1346c3fdc04f2ab6b5279b893519f0545cbb013b53af7bd#0 \
+  --tx-in ddcce58ba2e32d0b7d9385951f1b986d35de849cf62939c2e968d72186c6c34f#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $acceptOfferRedeemerFile \
   --tx-out "$(cat ${loanAddrFile}) + 3000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon} + 1 ${borrowerBeacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ../assets/wallets/01.addr) + 3000000 lovelace + 580 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ../assets/wallets/01.addr) + 3000000 lovelace + 560 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --mint "1 ${activeBeacon} + 1 ${borrowerBeacon} + -1 ${askBeacon} + -1 ${offerBeacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \

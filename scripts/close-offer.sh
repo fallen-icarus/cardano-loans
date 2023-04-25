@@ -59,7 +59,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 9d218ef3a59f83a6789e05a9bc2014cf9c252826f0617086a20cef02ebe044a2#0 \
+  --tx-in c5d98a661f09ff6998ff3a449909d4f20c13780e816d949f31f20d39a53f5005#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $closeOfferRedeemerFile \

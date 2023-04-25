@@ -14,7 +14,7 @@ lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 claimRedeemerFile="${dir}claim.json"
 beaconRedeemerFile="${dir}burn.json"
 
-currentTime=26665886
+currentTime=26750987
 
 ### This is the hexidecimal encoding for 'Active'.
 activeTokenName="416374697665"
@@ -62,7 +62,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 95e9112380578f7a7e8144346206de56f2144e45c58da6580fa8bcdaa65fd4ab#0 \
+  --tx-in c6b2515baa9c1aa146da9a914161b28f7ee8189b24cc51ce9e1ed8662fcd2446#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $claimRedeemerFile \

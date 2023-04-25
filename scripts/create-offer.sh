@@ -17,18 +17,18 @@ lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
 
 ## Change this to your target borrower.
-loanAddr="addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct"
+loanAddr="addr_test1zz4la2l6a2qcua98fh2r4gc4hveyptphkrfs05ujptxc58eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq2qjf20"
 
 ## Generate the hash for the lender's payment pubkey.
 echo "Calculating the lender's pubkey hash..."
 lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
   --payment-verification-key-file $lenderPaymentPubKeyFile)
 
-# ## Export the beacon policy.
-# echo "Exporting the beacon policy script..."
-# cardano-loans export-script \
-#   --beacon-policy \
-#   --out-file $beaconPolicyFile
+## Export the beacon policy.
+echo "Exporting the beacon policy script..."
+cardano-loans export-script \
+  --beacon-policy \
+  --out-file $beaconPolicyFile
 
 ## Get the beacon policy id.
 echo "Calculating the beacon policy id..."
@@ -67,7 +67,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 38c7cd3ae8558fd41b85478402da02ee08789be43a1d5b51437e613c63bb01d7#1 \
+  --tx-in c5d98a661f09ff6998ff3a449909d4f20c13780e816d949f31f20d39a53f5005#1 \
   --tx-out "${loanAddr} + 13000000 lovelace + 1 ${offerBeacon} + 1 ${lenderBeacon}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${lenderBeacon}" \

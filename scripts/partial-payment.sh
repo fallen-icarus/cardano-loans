@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # A helper script for showing how to make a partial loan payment as a borrower.
+# You can take the collateral back proportionally to what you repay.
 
 ## Variables
 dir="../assets/loan-files/"
@@ -20,7 +21,7 @@ repayRedeemerFile="${dir}repayRedeemer.json"
 ### This is the lender's ID.
 lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
 
-expirationTime=26668590 ### The slot where the loan will expire.
+expirationTime=26753875 ### The slot where the loan will expire.
 
 activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
 
@@ -84,13 +85,14 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in aadb8f997d84aa4ddbac4e2d49f01626758ded73cf778a9d76eabb5c21fefd55#2 \
-  --tx-in aadb8f997d84aa4ddbac4e2d49f01626758ded73cf778a9d76eabb5c21fefd55#0 \
+  --tx-in d7a3e4a4950981e120b9c343a3172d46915218849805e7cf6f83ae74fc4274bd#2 \
+  --tx-in d7a3e4a4950981e120b9c343a3172d46915218849805e7cf6f83ae74fc4274bd#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $repayRedeemerFile \
-  --tx-out "$(cat ${loanAddrFile}) + 8000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon} + 1 ${borrowerBeacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ${loanAddrFile}) + 8000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon} + 1 ${borrowerBeacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $repayDatumFile \
+  --tx-out "$(cat ../assets/wallets/01.addr) + 2000000 lovelace + 9 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --required-signer-hash $borrowerPubKeyHash \
   --change-address "$(cat ../assets/wallets/01.addr)" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \

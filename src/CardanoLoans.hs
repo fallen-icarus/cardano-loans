@@ -505,14 +505,6 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     repaymentCheck = 
       collateralReclaimed * (fromInteger 1 + loanInterest loanDatum) <= repaidAmount
 
-    -- -- | Checks that no collateral is taken during RepayLoan (unless loan fully paid off).
-    -- noCollateralTaken :: Bool
-    -- noCollateralTaken =
-    --   let foo _ acc [] = acc
-    --       foo val !acc ((collatAsset,_):xs) =
-    --         foo val (acc && uncurry (valueOf val) collatAsset == 0) xs
-    --   in foo addrDiff True (collateralization loanDatum)
-
     -- | This checks that enough collateral is posted when a loan offer is accepted.
     enoughCollateral :: Bool
     enoughCollateral =

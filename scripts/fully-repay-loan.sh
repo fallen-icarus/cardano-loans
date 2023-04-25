@@ -21,7 +21,7 @@ beaconRedeemerFile="${dir}burn.json"
 ### This is the lender's ID.
 lenderPubKeyHash="ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2"
 
-expirationTime=26668590 ### The slot where the loan will expire.
+expirationTime=26753875 ### The slot where the loan will expire.
 
 activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
 
@@ -90,14 +90,14 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 23e4f42bb91731bfcbb441f2ade863121226d433fd38524065defe36eea5f67d#1 \
-  --tx-in 23e4f42bb91731bfcbb441f2ade863121226d433fd38524065defe36eea5f67d#0 \
+  --tx-in d83d370cbe2151ac88b700338c113088e8c1e93ca1b9f1cc2f3fbcb1e9061e8f#2 \
+  --tx-in d83d370cbe2151ac88b700338c113088e8c1e93ca1b9f1cc2f3fbcb1e9061e8f#0 \
   --tx-in-script-file $loanScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $repayRedeemerFile \
   --tx-out "$(cat ${loanAddrFile}) + 14000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon}" \
   --tx-out-inline-datum-file $repayDatumFile \
-  --tx-out "$(cat ../assets/wallets/01.addr) + 2000000 lovelace + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ../assets/wallets/01.addr) + 2000000 lovelace + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --mint "-1 ${borrowerBeacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
