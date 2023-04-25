@@ -366,31 +366,25 @@ The presence of the BorrowerID in an expired loan indicates a default. When coll
 ## Features Discussion
 Here are some unique features that distinguish Cardano-Loans from other lending/borrowing protocols:
 
-
 ### On-Chain Credit History
 Beacon Tokens can be used as "DID-like" identifiers that attest the borrowing history of their associated address. Using an off-chain API, it is easy to query whether a loan was repaid in full or defaulted (indicated by the burning of three Beacon Tokens in the same TX). Although the contract logic treats all "defaulted" loans identically, it may be the case that the loan was almost completely repaid. How much of a defaulted loan was repaid is easily queryable, so the mere fact of a default is **not** a binary indicator of a borrower's credit-worthiness. Lenders and/or third-party rating agencies can use this history (possibly in combination with other factors, such as an associated DID) to determine the credit-worthiness of a borrower.
 
 ### Trustless p2p Negotiations
-Negotiation, acceptance, and repayment of loans occur fully p2p. All assets are always in control of either the borrower or lender, no middleman contracts/addresses are necessary.
-
-Tokens in the "Offer" Phase are held in UTxOs that reside in the borrower's address. The borrower cannot *spend* this UTxO unless they proceed with moving the loan into the "Active" Phase, but they *do* have staking rights over the UTxO. Lenders are therefore incentivized to keep offer periods short, since the offer's stake is controlled by the borrower.
+Negotiation, acceptance, and repayment of loans occur fully p2p. All assets are always in control of either the borrower or lender, no middleman contracts/addresses are necessary. Tokens in the "Offer" Phase are held in UTxOs that reside in the borrower's address. The borrower cannot *spend* this UTxO unless they proceed with moving the loan into the "Active" Phase, but they *do* have staking rights over the UTxO. Lenders are therefore incentivized to keep offer periods short, since the offer's stake is controlled by the borrower.
 
 ### Partial Repayments
-Borrowers may repay their loans and reclaim collateral incrementally, proportional to the agreed upon collateral ratio. A loan is considered defaulted if it is not paid back in full by the agreed upon slot. However, 
-
+Borrowers may repay their loans and reclaim collateral incrementally, proportional to the agreed upon collateral ratio. A loan is considered defaulted if it is not paid back in full by the agreed upon slot. However, the extent to which the loan was paid off is reflected on-chain, so not all defaults (should) impact creditworthiness in the same way.
 
 
 ### Endogenous Price & Interest Rate Discovery
-Cardano-Loans is designed to be wholly divorced from the traditional financial system, in favor of endogenously producing its own. As such, every piece of a loan, including the relative values of assets & collateral, interest rates, and collateralization ratios are all negotiated and agreed upon fully p2p. No oracle feeds are necessary. 
+Cardano-Loans is designed to be independent from the traditional financial system, in favor of endogenously producing its own. As such, every piece of a loan, including the relative values of assets & collateral, interest rates, and collateralization ratios are all negotiated and agreed upon fully p2p. No oracle feeds are necessary. 
 
 Although this (at first) presents a bootstrapping problem, it may be overcome by the fact that this protocol may be the fastest way for the most financially underserved peoples to begin building a credit history. Prospective borrowers are incentivized to build p2p relationships within a global marketplace of prospective lenders, who themselves are incentivized to lend by the relatively high rates that financially underserved borrowers would be willing to pay.  
 
 With enough users & liquidity, this protocol may eventually *serve* as the de-facto oracle for market-driven rate discovery.
 
 
-
 ## Future Directions and Considerations
-
 Being a PoC, v1 of Cardano-loans is intended to demonstrate the capacity for fully p2p lending/borrowing on the CSL. As such, there are a number of features that may be implemented in future version of the protocol, discussed below.
 
 Note: Cardano-Loans v1 is written in IOG's PlutusTx. Although this is a great choice for prototyping & auditing, it is very resource-intensive. Many of the features discussed in this section are bottlenecked by current script execution limits. Future increases to this limit, as well as utilizing newer, more resource-efficient languages (such as Aiken) can result in up to 100x more headroom for additional features. 
@@ -447,8 +441,5 @@ Although a single field is enough to losslessly convey all necessary information
 
 
 ## Conclusion
-The Cardano-Loans protocol is a first-attempt at rethinking how the economy of Cardano could evolve. It forgoes reliance on global/external token prices in favor of incentivizing the creation of a CSL-native p2p credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. 
-
-
-Endogenous price & rate discovery empowers users to create their own economy, one that is (at least initially) decoupled from the existing financial system, in pursuit of something more fair, equal, and accessible to all.
+The Cardano-Loans protocol is a first-attempt at rethinking how the economy of Cardano could evolve. It forgoes reliance on global/external token prices in favor of incentivizing the creation of a CSL-native p2p credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. Wallets and other frontends can integrate the protocol into their UI, and even provide all necessary API query services. Endogenous price & rate discovery empowers users to create their own economy, one that is (at least initially) decoupled from the existing financial system, in pursuit of something more fair, equal, and accessible to all.
 
