@@ -561,7 +561,7 @@ borrowerBeacon="${beaconPolicyId}.${borrowerPubKeyHash}"
 ``` Bash
 cardano-loans loan-redeemer \
   --repay \
-  --out-file $repayRedeemerFile
+  --out-file repayLoan.json
 ```
 
 8. If the loan is being fully paid off, you will also need the `BurnBeaconToken` redeemer.
@@ -605,6 +605,8 @@ cardano-cli transaction submit \
 ```
 
 The amount actually repaid must exactly match that specified in the `payment-amount` field when creating the new active datum.
+
+If the borrower is making a partial payment, they can reclaim collateral proportionally to what they repay.
 
 If the borrower is fully paying off the loan, then he/she must also burn the `borrowerBeacon` and withdraw the collateral in this transaction. **There are no checks to make sure the collateral is taken. If the borrower misses this opportunity to take his/her collateral, custody of the collateral will be transferred to the lender.**
 
