@@ -310,7 +310,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- This will throw the proper error message.
       validActiveDatum (parseLoanDatum od) &&
       -- | The required amount of collateral must be posted. The total amount of collateral that
-      -- must be posted is determined by the loanBacking field in the OfferDatum.
+      -- must be posted is determined by the loanPrinciple field in the OfferDatum.
       traceIfFalse "Not enough collateral posted for loan" enoughCollateral &&
       -- | The following function checks:
       -- 1) The active beacon must be minted and stored in this address.
@@ -645,8 +645,8 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- 1) Must be minted to an address protected by the dappHash.
       -- 2) Must be minted to an address with a staking pubkey matching the supplied pubkey.
       -- 3) The ask token must be stored with the proper inline ask datum.
-      --     - askBeacon == (beaconSym, TokenName "Ask")
-      --     - borrowerId == (beaconSym,pubkeyAsToken pkh)
+      --     - loanBeaconSym == beaconSym
+      --     - borrowerId == pubkeyAsToken pkh
       --     - loanPrinciple > 0
       --     - loanTerm > 0
       --     - collateral list not empty
@@ -664,17 +664,16 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
       -- 2) Must be minted to an address with a staking pubkey.
       -- 3) The offer token and lender ID must be stored in the same utxo at the dapp address.
       -- 4) The tokens must be stored with the proper inline offer datum.
-      --     - offerBeacon == (beaconSym,TokenName "Offer")
-      --     - lenderId == (beaconSym,pubKeyAsToken pkh)
+      --     - loanBeaconSym == beaconSym
+      --     - lenderId == pubKeyAsToken pkh
       --     - loanPrinciple > 0.
       --     - loanTerm > 0.
       --     - loanInterest > 0.
-      --     - loanBacking > 0.
       --     - collateralization not null
       --     - all collaterale rates > 0.
       -- 5) The offer token must be stored with the amount of the loan asset specified in
       -- the datum. If the loan asset is ADA, an additional 3 ADA is required to account for
-      -- the presence of the beacon tokens.
+      -- the presence of the beacon tokens after the loan is accepted.
       destinationCheck r &&
       -- | The lender pkh must sign the tx.
       traceIfFalse "Lender did not sign tx" (signed (txInfoSignatories info) pkh)
