@@ -519,6 +519,23 @@ All of the following estimations are for loans only using a single asset as coll
 During testing, it was possible to use 9 different assets as collateral for a loan before hitting the transaction limits. The bottleneck is in the `AcceptLoan` step.
 
 
+## End-to-End Example (Simplified)
+
+```
+Alice would like to use some AGIX and DUST tokens as collateral to borrow 100 ADA for 100 slots. 
+She uses Cardano-Loans to ask for a loan with those terms.
+Bob queries all open asks and sees Alice's request.
+Bob looks up Alice's credit history and sees that she has successfully paid back 3 prior loans.
+Bob offers Alice a slightly under-collateralized loan, asking for AGIX at 2/1 and DUST at 5/1 at a 10% interest.
+Alice accepts Bob's offer and locks 140 AGIX and 150 DUST as collateral.
+The total amount owed by Alice is 110 ADA.
+After 30 slots, Alice repays half the loan and reclaims half her collateral.
+Alice's new outstanding balance is 55 ADA and the Active UTxO now has 70 AGIX, 75 DUST, and 55 ADA.
+Alice's plans go awry and she defaults on the remainder of the loan.
+Once the loan is expire, Bob claims all remaining assets in the Active UTxO.
+Alice's default is now recorded on-chain for future lenders to see.
+```
+
 ## Features Discussion
 Here are some unique features that distinguish Cardano-Loans from other lending/borrowing protocols:
 
