@@ -526,7 +526,7 @@ Alice would like to use some AGIX and DUST tokens as collateral to borrow 100 AD
 She uses Cardano-Loans to ask for a loan with those terms.
 Bob queries all open asks and sees Alice's request.
 Bob looks up Alice's credit history and sees that she has successfully paid back 3 prior loans.
-Bob offers Alice a slightly under-collateralized loan, asking for AGIX at 2/1 and DUST at 5/1 at a 10% interest.
+Bob offers Alice an under-collateralized loan at 10% interest, and AGIX at 2/1 and DUST at 5/1.
 Alice accepts Bob's offer and locks 140 AGIX and 150 DUST as collateral.
 The total amount owed by Alice is 110 ADA.
 After 30 slots, Alice repays half the loan and reclaims half her collateral.
