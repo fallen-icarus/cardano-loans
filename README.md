@@ -527,8 +527,11 @@ She uses Cardano-Loans to ask for a loan with those terms.
 Bob queries all open asks and sees Alice's request.
 Bob looks up Alice's credit history and sees that she has successfully paid back 3 prior loans.
 Bob offers Alice an under-collateralized loan at 10% interest, and AGIX at 2/1 and DUST at 5/1.
+Mike also sees Alice's request.
+Mike offers Alice an over-collateralized loan at 8% interest, and AGIX at 3/1 and Dust at 10/1.
 Alice accepts Bob's offer and locks 140 AGIX and 150 DUST as collateral.
 The total amount owed by Alice is 110 ADA.
+Mike sees that Alice accepted another offer and closes his own offer.
 After 30 slots, Alice repays half the loan and reclaims half her collateral.
 Alice's new outstanding balance is 55 ADA and the Active UTxO now has 70 AGIX, 75 DUST, and 55 ADA.
 Alice's plans go awry and she defaults on the remainder of the loan.
@@ -550,6 +553,8 @@ Borrowers may repay their loans incrementally, and withdraw collateral in propor
 
 ### Endogenous Price & Interest Rate Discovery
 Cardano-Loans is designed to be independent from the traditional financial system, in favor of endogenously producing its own. As such, every piece of a loan, including the relative values of assets to collateral, interest rates, and term length are all negotiated and agreed upon fully p2p. No oracle feeds are necessary. 
+
+Furthermore, since all Offers are public, lenders can see what other lenders are offering and can decide whether to offer better terms. This natural competition between lenders helps facilitate price and interest rate discovery.
 
 Although this (at first) presents a bootstrapping problem, it may be overcome by the fact that this protocol may be the fastest way for the most financially underserved peoples to begin building a credit history. Prospective borrowers are incentivized to build p2p relationships within a global marketplace of prospective lenders, who themselves are incentivized to lend by the relatively high rates that financially underserved borrowers would be willing to pay.  
 
