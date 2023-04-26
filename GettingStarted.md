@@ -38,6 +38,8 @@ If the beacon has not been minted before, this URL does not exist yet. Once the 
   - [Checking all current loans](#checking-all-current-loans-1)
   - [Claiming an expired/paid loan](#claiming-an-expiredpaid-loan)
   - [Closing an offer](#closing-an-offer)
+  - [Check competing offers](#check-competing-offers)
+  - [Check loan history](#check-loan-history)
 - [Convert POSIX time <--> Slot](#convert-posix-time----slot)
 
 ---
@@ -1229,6 +1231,176 @@ cardano-cli transaction submit \
   --testnet-magic 1 \
   --tx-file tx.signed
 ```
+
+### Check competing offers
+This feature allows the lender to see what other lenders are offering.
+
+``` Bash
+cardano-loans query all-offers \
+  --preprod-testnet $(cat api.txt) \
+  --beacon-policy-id <beacon_policy_id> \
+  --loan-address <target_borrower_addr> \
+  --stdout
+```
+
+Here is an example response when piped to `jq`:
+``` JSON
+[
+  {
+    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
+    "loan_info": {
+      "collateralization": [
+        [
+          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+          {
+            "denominator": 500000,
+            "numerator": 1
+          }
+        ]
+      ],
+      "interest": {
+        "denominator": 10,
+        "numerator": 1
+      },
+      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+      "loan_asset": "lovelace",
+      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
+      "principle": 10000000,
+      "term": 3600
+    },
+    "output_index": "0",
+    "tx_hash": "7b025d0b57dccf535f9eff36c377b83bbcbb2753314604d17136bea84d2183ab",
+    "type": "Offer",
+    "utxo_assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 13000000
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.4f66666572",
+        "quantity": 1
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "quantity": 1
+      }
+    ]
+  }
+]
+```
+
+Only one offer has been made so far. You can choose whether to try offering a better rate.
+
+### Check loan history
+This query allows the lender to easily track their performance history.
+
+``` Bash
+cardano-loans query lender-history \
+  --preprod-testnet $(cat api.txt) \
+  --beacon-policy-id <beacon_policy_id> \
+  --lender-payment-pubkey-hash <lender_payment_pubkey_hash> \
+  --stdout
+```
+
+Here is an example response (when piped to `jq`):
+``` JSON
+[
+  {
+    "loan_info": {
+      "balance_owed": {
+        "denominator": 1,
+        "numerator": 11000000
+      },
+      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+      "collateralization": [
+        [
+          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+          {
+            "denominator": 500000,
+            "numerator": 1
+          }
+        ]
+      ],
+      "expiration_slot": 26655777,
+      "interest": {
+        "denominator": 10,
+        "numerator": 1
+      },
+      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+      "loan_asset": "lovelace",
+      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
+      "principle": 10000000,
+      "term": 600
+    },
+    "utxo_assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 3000000
+      },
+      {
+        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+        "quantity": 20
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+        "quantity": 1
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
+        "quantity": 1
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "loan_info": {
+      "balance_owed": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
+      "collateralization": [
+        [
+          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+          {
+            "denominator": 500000,
+            "numerator": 1
+          }
+        ]
+      ],
+      "expiration_slot": 26668590,
+      "interest": {
+        "denominator": 10,
+        "numerator": 1
+      },
+      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+      "loan_asset": "lovelace",
+      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
+      "principle": 10000000,
+      "term": 3600
+    },
+    "utxo_assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 14000000
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
+        "quantity": 1
+      },
+      {
+        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
+        "quantity": 1
+      }
+    ]
+  }
+]
+```
+
+By comparing the `principle` to what assets were actually in the UTxO, the lender can see whether they profited from the loan or lost money.
 
 ---
 ## Convert POSIX time <--> Slot

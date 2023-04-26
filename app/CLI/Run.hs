@@ -45,6 +45,8 @@ runQuery query = case query of
     runQueryAllLenderLoans network policyId lenderPubKeyHash >>= toOutput output
   QueryBorrowerHistory network policyId borrowerStakeKeyHash output ->
     runQueryBorrowerHistory network policyId borrowerStakeKeyHash >>= toOutput output
+  QueryLenderHistory network policyId lenderPubKeyHash output ->
+    runQueryLenderHistory network policyId lenderPubKeyHash >>= toOutput output
 
 runConversion :: Convert -> IO ()
 runConversion (POSIXTimeToSlot p) = print $ getSlot $ posixTimeToSlot p

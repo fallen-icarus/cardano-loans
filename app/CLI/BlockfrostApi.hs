@@ -16,7 +16,8 @@ module CLI.BlockfrostApi
   queryOwnOffers,
   queryAllBorrowerLoans,
   queryAllLenderLoans,
-  queryBorrowerHistory
+  queryBorrowerHistory,
+  queryLenderHistory,
 ) where
 
 import Servant.API
@@ -274,6 +275,20 @@ queryBorrowerHistory apiKey policyId borrowerPubKeyHash = do
   activeDatums <- fetchDatumsLenient apiKey $ map rawLoanDataHash loanInfos
   return $ zipWith (convertToLoanHistory activeDatums) defaultStatuses loanInfos
 
+queryLenderHistory :: BlockfrostApiKey -> String -> String -> ClientM [LenderHistory]
+queryLenderHistory apiKey policyId lenderPubKeyHash = do
+  let lenderBeacon = BeaconId (policyId,lenderPubKeyHash)
+      activeBeacon = policyId <> "416374697665"
+  -- | Get all the burn transactions for the lender ID.
+  burnTxs <- filter ((== "burned") . rawAssetHistoryAction) <$> assetHistoryApi apiKey lenderBeacon
+  -- | Get the loan info for each tx. Active beacons are searched for here since Lender IDs
+  -- can also be found with Offers. Closing Offers are also returned by the API.
+  loanInfos <- filterForAsset' activeBeacon . concatMap unRawLoan
+           <$> mapM (\z -> loanInfoApi apiKey z) burnTxs
+  -- | Get the active datums.
+  activeDatums <- fetchDatumsLenient apiKey $ map rawLoanDataHash loanInfos
+  return $ convertToLenderHistory activeDatums loanInfos
+
 -------------------------------------------------
 -- Helper Functions
 -------------------------------------------------
@@ -329,3 +344,14 @@ convertToLoanHistory datumMap (RawDefaultStatus s) (RawLoanInfo amount dHash) =
     , remainingUTxOValue = map convertToAsset amount
     , loan = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
     }
+
+convertToLenderHistory :: Map String LoanDatum -> [RawLoanInfo] -> [LenderHistory]
+convertToLenderHistory _ [] = []
+convertToLenderHistory datumMap ((RawLoanInfo amount dHash):xs) = 
+   info : convertToLenderHistory datumMap xs
+  where
+    info =
+      LenderHistory
+        { uTxOClaimed = map convertToAsset amount
+        , loanTerms = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
+        }

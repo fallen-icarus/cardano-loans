@@ -171,6 +171,8 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
         (info pAllLenderLoans $ progDesc "Query all the lender's current loans.")
     , command "borrower-history"
         (info pBorrowerHistory $ progDesc "Query the borrower's credit history.")
+    , command "lender-history"
+        (info pLenderHistory $ progDesc "Query the lender's loan history.")
     ]
   where
     pAllAsks :: Parser Query
@@ -194,6 +196,9 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
 
     pBorrowerHistory :: Parser Query
     pBorrowerHistory = QueryBorrowerHistory <$> pNetwork <*> pBeaconPolicy <*> pBorrowerId <*> pOutput
+
+    pLenderHistory :: Parser Query
+    pLenderHistory = QueryLenderHistory <$> pNetwork <*> pBeaconPolicy <*> pLenderId <*> pOutput
 
 -------------------------------------------------
 -- Convert Parser

@@ -10,7 +10,8 @@ module CLI.Query
   runQueryOwnOffers,
   runQueryAllBorrowerLoans,
   runQueryAllLenderLoans,
-  runQueryBorrowerHistory
+  runQueryBorrowerHistory,
+  runQueryLenderHistory,
 ) where
 
 import Servant.Client
@@ -97,6 +98,21 @@ runQueryBorrowerHistory (PreProdTestnet apiKey) currSym borrowerPubKeyHash = do
                         apiKey' 
                         (show currSym) 
                         (show borrowerPubKeyHash)
+                    ) 
+                    env
+  case res of
+    Right r -> return r
+    Left err -> throw err
+
+runQueryLenderHistory :: Network -> CurrencySymbol -> PaymentPubKeyHash -> IO [LenderHistory]
+runQueryLenderHistory (PreProdTestnet apiKey) currSym lenderPubKeyHash = do
+  manager' <- newManager tlsManagerSettings
+  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
+      apiKey' = BlockfrostApiKey apiKey
+  res <- runClientM ( Blockfrost.queryLenderHistory 
+                        apiKey' 
+                        (show currSym) 
+                        (show lenderPubKeyHash)
                     ) 
                     env
   case res of

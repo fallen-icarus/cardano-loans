@@ -28,6 +28,7 @@ data Query
   | QueryAllBorrowerLoans Network CurrencySymbol PaymentPubKeyHash LoanAddress Output
   | QueryAllLenderLoans Network CurrencySymbol PaymentPubKeyHash Output
   | QueryBorrowerHistory Network CurrencySymbol PaymentPubKeyHash Output
+  | QueryLenderHistory Network CurrencySymbol PaymentPubKeyHash Output
 
 data Script = BeaconPolicy | LoanScript
 
@@ -143,4 +144,15 @@ instance ToJSON LoanHistory where
     object [ "default" .= defaultStatus
            , "utxo_assets" .= remainingUTxOValue
            , "loan_info" .= toJSON loan
+           ]
+
+data LenderHistory = LenderHistory
+  { uTxOClaimed :: [Asset]
+  , loanTerms :: LoanDatum
+  }
+
+instance ToJSON LenderHistory where
+  toJSON LenderHistory{..} =
+    object [ "utxo_assets" .= uTxOClaimed
+           , "loan_info" .= loanTerms
            ]
