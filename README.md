@@ -527,8 +527,11 @@ She uses Cardano-Loans to ask for a loan with those terms.
 Bob queries all open asks and sees Alice's request.
 Bob looks up Alice's credit history and sees that she has successfully paid back 3 prior loans.
 Bob offers Alice an under-collateralized loan at 10% interest, and AGIX at 2/1 and DUST at 5/1.
+Mike also sees Alice's request.
+Mike offers Alice an over-collateralized loan at 8% interest, and AGIX at 3/1 and Dust at 10/1.
 Alice accepts Bob's offer and locks 140 AGIX and 150 DUST as collateral.
 The total amount owed by Alice is 110 ADA.
+Mike sees that Alice accepted another offer and closes his own offer.
 After 30 slots, Alice repays half the loan and reclaims half her collateral.
 Alice's new outstanding balance is 55 ADA and the Active UTxO now has 70 AGIX, 75 DUST, and 55 ADA.
 Alice's plans go awry and she defaults on the remainder of the loan.
