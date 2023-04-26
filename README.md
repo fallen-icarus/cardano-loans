@@ -44,16 +44,16 @@ Cardano-Loans gives users the great power (and responsibility) to create a fully
 
 1. **Ask Phase** - Alice initiates this phase by "broadcasting" her (easily queryable) loan request for a *specific quantity of a certain token, collateralized by a certain token, to be repaid over a specific timeframe.*
 
-2. **Offer Phase** - Bob determines that Alice is creditworthy (via her on-chain credit history) and initiates an offer to fulfill the loan *in the amount and over a timeframe that Alice* has specified, *with a collateral type, relative price-point, collateral ratio and interest rate that Bob* specifies. 
+2. **Offer Phase** - Bob determines that Alice is creditworthy (via her on-chain credit history) and initiates an offer to fulfill the loan *in the amount and over a timeframe that Alice* has specified, *with a collateral ratio and interest rate that Bob* specifies. 
    
-3. **Active Phase** - Alice accepts the loan terms Bob has offered by spending his "Offer" UTxO, thereby gaining full control over the requested assets and locking her collateral. Alice may incrementally pay off the loan, and can reclaim her collateral once the loan is fully paid off. If the loan expires, Alice can no longer repay the outstanding amount, and Bob can claim the collateral. Note that Alice maintains staking rights over her locked collateral through the length of the loan.
+3. **Active Phase** - Alice accepts the loan terms Bob has offered by spending his Offer UTxO, thereby gaining full control over the requested assets, and locking her collateral into a time-locked Active UTxO. Alice may incrementally pay off the loan, and can reclaim her collateral once the loan is fully paid off. If the loan expires, Alice can no longer repay the outstanding amount, and Bob can claim the collateral. Note that Alice maintains staking rights over her locked collateral through the length of the loan.
 
 All three of these phases are expanded upon in the [Specification Section](#specification) below
 
-###### Distinguishing features specific to Cardano-loans:
+###### Distinguishing features specific to Cardano-Loans:
 
-1. **On-Chain Credit History** - the status/conditions of current & past loans associated with a borrower's address are easily queryable by prospective lenders and third-party data miners.
-2. **Trustless Negotiations** - all loan conditions are negotiated in a fully p2p fashion - interest rates, collateral (token type(s) and relative prices), and length of the loan - all are negotiable parameters. Multiple tokens can be used as collateral, even NFTs. Over/under collateralization is implied in the lender's offer, which is impacted by the borrower's credit history.
+1. **On-Chain Credit History** - the status/conditions of current & past loans associated with a borrower are easily queryable by prospective lenders and third-party data miners.
+2. **Trustless Negotiations** - all loan conditions are negotiated in a fully p2p fashion - interest rates, collateral (token type(s) and relative prices), and length of the loan - all are negotiable parameters. Multiple tokens can be used as collateral, even NFTs. Over/under collateralization is implied by the relative prices in the lender's offer, which is impacted by the borrower's credit history.
 3. **Partial Repayments** - borrowers can repay loans incrementally and withdraw collateral in proportion to the repayment. If an outstanding balance remains at expiry, the lender may withdraw the remaining collateral. 
 4. **No Auto-liquidation** - All loan terms (including relative token prices) are agreed upon explicitly by both parties, so "margin" is constant throughout the length of the loan, and does *not* change with global price movements. 
 5. **Endogenous Price & Interest Rate Discovery** - instead of relying on oracles or trusted actors, relative token prices and interest rates are explicitly agreed upon during loan negotiations, resulting in true market-driven discovery. In due time and with enough users, sufficiently distributed dApps may *serve* as oracles, instead of having to consume them.
@@ -523,13 +523,13 @@ During testing, it was possible to use 9 different assets as collateral for a lo
 Here are some unique features that distinguish Cardano-Loans from other lending/borrowing protocols:
 
 ### On-Chain Credit History
-Beacon Tokens can be used as "DID-like" identifiers that attest the (current and past) borrowing history of their associated address. Using an off-chain API, it is easy to query whether a loan was repaid in full or defaulted (indicated by the burning of three Beacon Tokens in the same TX). Although the contract logic treats all "defaulted" loans identically, it may be the case that the loan was almost completely repaid. How much of a defaulted loan was repaid is easily queryable, so the mere fact of a default is **not** a binary indicator of a borrower's credit-worthiness. Lenders and/or third-party rating agencies can use this history (possibly in combination with other factors, such as an associated DID) to determine the credit-worthiness of a borrower. All current and past loan conditions are visible to the third-party.
+Beacon Tokens can be used as "DID-like" identifiers that attest the (current and past) borrowing history of their associated address. Using an off-chain API, it is easy to query whether a loan was repaid in full or defaulted on. Although the contract logic treats all "defaulted" loans identically, it may be the case that the loan was almost completely repaid. How much of a defaulted loan was repaid is easily queryable, so the mere fact of a default is **not** a binary indicator of a borrower's credit-worthiness. Lenders and/or third-party rating agencies can use this history (possibly in combination with other factors, such as an associated DID) to determine the credit-worthiness of a borrower. All current and past loan conditions are visible to the third-party.
 
 ### Trustless p2p Negotiations
-Negotiation, acceptance, and repayment of loans occur fully p2p. All assets are always in control of either the borrower or lender, no middleman contracts/addresses are necessary. Tokens in the "Offer" Phase are held in UTxOs that reside in the borrower's address. The borrower cannot *spend* this UTxO unless they proceed with moving the loan into the "Active" Phase, but they *do* have staking rights over the UTxO. Lenders are therefore incentivized to keep offer periods short, since the offer's stake is controlled by the borrower.
+Negotiation, acceptance, and repayment of loans occur fully p2p. All assets are always in control of either the borrower or lender, no middleman contracts/addresses are necessary. Tokens in the Offer Phase are held in UTxOs that reside in the borrower's address. The borrower cannot *spend* this UTxO unless they proceed with moving the loan into the "Active" Phase, but they *do* have staking rights over the UTxO. Lenders are therefore incentivized to keep offer periods short, since the offer's stake is controlled by the borrower.
 
 ### Partial Repayments
-Borrowers may repay their loans incrementally, and withdraw collateral in proportion to the amount repaid. A loan is considered defaulted if it is not paid back in full by the agreed upon slot, at which point the lender may claim any remaining collateral. The extent to which the loan was paid off is visible on-chain, so not all defaults (should) impact creditworthiness in the same way.
+Borrowers may repay their loans incrementally, and withdraw collateral in proportion to the amount repaid. A loan is considered defaulted on if it is not paid back in full by the agreed upon slot, at which point the lender may claim any remaining collateral. The extent to which the loan was paid off is visible on-chain, so not all defaults (should) impact creditworthiness in the same way.
 
 ### Endogenous Price & Interest Rate Discovery
 Cardano-Loans is designed to be independent from the traditional financial system, in favor of endogenously producing its own. As such, every piece of a loan, including the relative values of assets to collateral, interest rates, and term length are all negotiated and agreed upon fully p2p. No oracle feeds are necessary. 
@@ -540,7 +540,7 @@ With enough users & liquidity, this protocol may eventually *serve* as the de-fa
 
 
 ## Future Directions and Considerations
-Being a PoC, v1 of Cardano-loans is intended to demonstrate the capacity for fully p2p lending/borrowing on the CSL. As such, there are a number of features that may be implemented in future version of the protocol, discussed below.
+Being a PoC, v1 of Cardano-Loans is intended to demonstrate the capacity for fully p2p lending/borrowing on the CSL using the eUTxO model. As such, there are a number of features that may be implemented in future version of the protocol, discussed below.
 
 Note: Cardano-Loans v1 is written in IOG's PlutusTx. Although this is a great choice for prototyping & auditing, it is very resource-intensive. Many of the features discussed in this section are bottlenecked by current script execution limits. Future increases to this limit, as well as utilizing newer, more resource-efficient languages (such as Aiken) can result in up to 100x more headroom for additional features. 
 
@@ -550,24 +550,24 @@ In the future, fully p2p contracts may utilize both approaches: an audit-friendl
 A non-exhaustive list of features that may be implemented in the future:
 
 #### Transferrable Credit/Debt
-Borrowers may "refinance" their debt by selling it to another lender in exchange for a new loan with more favorable conditions. Lenders may also sell their credit to a willing third party. The *ability* for either party to engage in such transfers may itself be negotiated in advance. For example, lenders may not want borrowers to sell their debt, since the loan offer was contingent on a particular borrower's creditworthiness.
+Borrowers may "refinance" their debt by using a new loan with more favorable conditions to pay off the first loan. Lenders may also sell their credit to a willing third party. The *ability* for either party to engage in such transfers may itself be negotiated in advance.
 
 Note: This feature will likely require the introduction of additional Beacon Tokens.
 
 #### Multi-Asset Loans
-In addition to using multiple collaterals for loans (which is already implemented), it is possible create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
+In addition to using multiple collateral assets for loans (which is already implemented), it is possible create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
 
 #### Term Extensions/Renegotiations
 A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the nature/creditworthiness of the borrower.
 
 #### Linkable Credit-History
-By introducing additional Beacon Tokens (and associated standards), it may be possible to link together previously unrelated/pseudonymous borrower addresses into a set of *related* (but still pseudonymous) addresses, at the borrower's discretion.
+By introducing additional Beacon Tokens (and associated standards), it may be possible to link together previously unrelated/pseudonymous borrower IDs into a set of *related* (but still pseudonymous) IDs, at the borrower's discretion.
 
 #### DID Compatibility
-Upon the maturation of standards, decentralized identifiers (DIDs) can be incorporated with Cardano-loans, further amplifying utility and interoperability.
+Upon the maturation of standards, decentralized identifiers (DIDs) can be incorporated with Cardano-Loans, further amplifying utility and interoperability.
 
 #### Support for Staking Scripts
-Due to the aforementioned execution limit, only staking keys may be used for the staking credential; staking scripts are currently unsupported. Support for staking scripts easily be added in the future.
+Due to trying to keep the v1 PoC simple, staking scripts are not supported. Support for staking scripts can easily be added in the future.
 
 :notebook: Technically, the loan validator already has logic *in case* a staking script is used, but this is currently only to prevent accidental locking if the wrong address is configured.
 
@@ -575,12 +575,14 @@ Due to the aforementioned execution limit, only staking keys may be used for the
 ### Other Considerations
 
 #### Multi Loan Repayments
-Currently, borrowers are not able to make payments on multiple loans in a single transaction. This is not an essential feature, but is important for leveling the playing field for small lenders. If a large borrower is able to pay multiple loans in a single TX, they are *not* disincentivized (due to high fees) from fractionalizing their loan across a number of small lenders. This means small lenders can stay competitive with larger lenders, which breeds healthier markets.
+Currently, borrowers are not able to make payments on multiple loans in a single transaction - this was to keep the first design simple. A future version should ideally allow borrowers to make payments on mulitple loans in a given transaction. This is not an essential feature, but is important for leveling the playing field for small lenders. 
 
-:notebook: This feature may be optimized not only with more efficient contract languages, but with optimizations to Plutus itself. See the [Redundant Executions CPS](https://github.com/cardano-foundation/CIPs/pull/418) for more details. 
+Imagine if Alice wants to borrow 1000 ADA and Mike has 2000 ADA while Charlie has 500 ADA. If Alice asks for 1000 ADA in one loan, only Mike can be her lender due to the all-or-nothing way the dApp works. However, if she instead broke her 1000 ADA loan up into two 500 ADA loans, now both Mike and Charlie can be her lender. Alice is incentivized to due this because lender competition can result in better terms overall for Alice. This scenario is also better for Charlie since he is just as competitive as the bigger lender, Mike. However, if Alice must use separate transactions to make payments for each loan, the extra fees can easily add up. These fees actually disincentivize borrowers from "fractionalizing" their loans. In order to level the playing field between large and small lenders as much as possible, using fractional loans must be as cheap as possible.
+
+This design can be adapted to allow for multi-loan repayments. The main issue would then be the transaction limits. While using a more efficient language can help, the [Redundant Executions CPS](https://github.com/cardano-foundation/CIPs/pull/418) are also a problem. The full impact of these redundant executions is still being explored.
 
 #### Version Compatibility
-Different versions of Cardano-loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses) allows them to maintain their pseudonymous identities. 
+Different versions of Cardano-Loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses) allows them to maintain their pseudonymous identities across versions. 
 
 
 ## Conclusion
