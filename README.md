@@ -40,7 +40,7 @@ To appreciate the necessity for new lending/borrowing protocols on Cardano, it i
 ### The Cardano-Loans Protocol
 Cardano-Loans gives users the great power (and responsibility) to create a fully on-chain debt market. It is entirely divorced from "global" off-chain markets, in favor of a bottom-up, or *endogenous*, approach to price & interest rate discovery. 
 
-###### The protocol is broadly comprised of three distinct phases:
+##### The protocol is broadly comprised of three distinct phases:
 
 1. **Ask Phase** - Alice initiates this phase by "broadcasting" her (easily queryable) loan request for a *specific quantity of a certain token, collateralized by a certain token, to be repaid over a specific timeframe.*
 
@@ -50,7 +50,7 @@ Cardano-Loans gives users the great power (and responsibility) to create a fully
 
 All three of these phases are expanded upon in the [Specification Section](#specification) below
 
-###### Distinguishing features specific to Cardano-Loans:
+##### Distinguishing features specific to Cardano-Loans:
 
 1. **On-Chain Credit History** - the status/conditions of current & past loans associated with a borrower are easily queryable by prospective lenders and third-party data miners.
 2. **Trustless Negotiations** - all loan conditions are negotiated in a fully p2p fashion - interest rates, collateral (token type(s) and relative prices), and length of the loan - all are negotiable parameters. Multiple tokens can be used as collateral, even NFTs. Over/under collateralization is implied by the relative prices in the lender's offer, which is impacted by the borrower's credit history.
@@ -59,7 +59,7 @@ All three of these phases are expanded upon in the [Specification Section](#spec
 5. **Endogenous Price & Interest Rate Discovery** - instead of relying on oracles or trusted actors, relative token prices and interest rates are explicitly agreed upon during loan negotiations, resulting in true market-driven discovery. In due time and with enough users, sufficiently distributed dApps may *serve* as oracles, instead of having to consume them.
 
 
-###### Features that Cardano-Loans shares with other *distributed dApp* protocols:
+##### Features that Cardano-Loans shares with other *distributed dApp* protocols:
 
 - **Full Custody** - users always maintain full spending *and* delegation control over their assets.
 - **Natural Concurrency** - throughput scales *with* the number of users. No specialized batchers/indexers are necessary, though they *may* be used in proprietary backends of large lending providers.
