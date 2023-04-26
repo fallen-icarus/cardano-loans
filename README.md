@@ -514,7 +514,7 @@ All of the following estimations are for loans only using a single asset as coll
 | Make a partial payment | 0.957785 ADA |
 | Fully pay off loan | 1.175260 ADA |
 | Claim an expired loan | 0.994895 ADA |
-| Claim a fully paid loan | 0.920759 |
+| Claim a fully paid loan | 0.920759 ADA |
 
 During testing, it was possible to use 9 different assets as collateral for a loan before hitting the transaction limits. The bottleneck is in the `AcceptLoan` step.
 
