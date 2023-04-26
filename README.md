@@ -532,7 +532,7 @@ The total amount owed by Alice is 110 ADA.
 After 30 slots, Alice repays half the loan and reclaims half her collateral.
 Alice's new outstanding balance is 55 ADA and the Active UTxO now has 70 AGIX, 75 DUST, and 55 ADA.
 Alice's plans go awry and she defaults on the remainder of the loan.
-Once the loan is expire, Bob claims all remaining assets in the Active UTxO.
+Once the loan is expired, Bob claims all remaining assets in the Active UTxO.
 Alice's default is now recorded on-chain for future lenders to see.
 ```
 
