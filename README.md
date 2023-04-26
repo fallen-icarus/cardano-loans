@@ -554,6 +554,8 @@ Borrowers may repay their loans incrementally, and withdraw collateral in propor
 ### Endogenous Price & Interest Rate Discovery
 Cardano-Loans is designed to be independent from the traditional financial system, in favor of endogenously producing its own. As such, every piece of a loan, including the relative values of assets to collateral, interest rates, and term length are all negotiated and agreed upon fully p2p. No oracle feeds are necessary. 
 
+Furthermore, since all Offers are public, lenders can see what other lenders are offering and can decide whether to offer better terms. This natural competition between lenders helps facilitate price and interest rate discovery.
+
 Although this (at first) presents a bootstrapping problem, it may be overcome by the fact that this protocol may be the fastest way for the most financially underserved peoples to begin building a credit history. Prospective borrowers are incentivized to build p2p relationships within a global marketplace of prospective lenders, who themselves are incentivized to lend by the relatively high rates that financially underserved borrowers would be willing to pay.  
 
 With enough users & liquidity, this protocol may eventually *serve* as the de-facto oracle for market-driven rate discovery.
