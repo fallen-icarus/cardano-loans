@@ -300,8 +300,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       -- either the CloseOffer or CloseAsk redeemers. This function will throw error messages
       -- as appropriate.
       validInputs &&
-      -- | No other phase beacons are in the tx inputs. Loans must be treated individually
-      -- due to how the on-chain credit history works.
+      -- | No other phase beacons are in the tx inputs. This is to prevent double satisfaction.
       traceIfFalse "No other phase beacons are allowed in tx" noOtherInputBeacons &&
       -- | The following function checks:
       -- 1) There must only be one output to this address - this ensures proper collateral
@@ -339,7 +338,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         -- 2) There is only one lender ID present.
         -- 3) There is only one valid loan input in tx.
         -- The last point is because treatment of this loan cannot be combined with treatment
-        -- of another loan. This is necessary due to the way the on-chain credit history works.
+        -- of another loan. This is to prevent double satisfaction.
         traceIfFalse "No other phase beacons can be in the tx." noOtherBeacons &&
         -- | No other inputs are allowed from this address. This covers the case of invalid
         -- inputs skewing the repayment calculations.
@@ -355,7 +354,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
         if newOutstanding <= fromInteger 0
         then
           -- | All remaining collateral is unlocked.
-          -- | The only borrower ID in the tx must be burned.
+          -- | The one borrower ID in the tx must be burned.
           traceIfFalse "Borrower ID not burned" 
             (valueOf minted (loanBeaconSym loanDatum) (borrowerId loanDatum) == -1) &&
           -- | No other tokens can be minted/burned in tx. This is to make checking the credit
@@ -368,7 +367,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
               valueOf oVal (loanBeaconSym loanDatum) (TokenName "Active") == 1)
         -- | Otherwise this is a partial payment.
         else 
-          -- | sum (collateral asset taken * collateralRate) * (1 + interest) <= loan asset repaid
+          -- | sum (collateral asset taken / relative value) * (1 + interest) <= loan asset repaid
           traceIfFalse "Fail: sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid"
             repaymentCheck &&
           -- | The output to this address must have the active beacon, borrower ID, and lender ID.
@@ -491,7 +490,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
     repaidAmount :: Rational
     repaidAmount = fromInteger $ uncurry (valueOf addrDiff) $ loanAsset loanDatum
 
-    -- | This is converted into units of the loan asset by dividing by the collateral rates.
+    -- | This is converted into units of the loan asset by dividing by the relative values.
     collateralReclaimed :: Rational
     collateralReclaimed = 
       let foo _ acc [] = acc
@@ -557,7 +556,7 @@ mkLoan loanDatum r ctx@ScriptContext{scriptContextTxInfo=info} = case r of
       traceIfFalse "Offer beacon is missing" 
         (valueOf offerVal (loanBeaconSym loanDatum) (TokenName "Offer") == 1)
     
-    -- | This is only used with AcceptLoan.
+    -- | This is only used with AcceptOffer.
     noOtherInputBeacons :: Bool
     noOtherInputBeacons =
       valueOf allVal (loanBeaconSym loanDatum) (TokenName "Ask") == 1 && 
@@ -880,6 +879,8 @@ writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) f
 writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
 writeData = writeJSON
 
+-- | This function can be used to convert the on-chain JSON format to the internal
+-- data type.
 decodeDatum :: (FromData a) => Aeson.Value -> Maybe a
 decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScriptData)
             . scriptDataFromJson ScriptDataJsonDetailedSchema
@@ -895,9 +896,13 @@ slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
 posixTimeToSlot :: POSIXTime -> Slot
 posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
 
--- | This is normalized by taking a slot time and subtracting the slot number from it. For example,
--- slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number from the time
--- yields the 0 time.
+-- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
+-- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
+-- normalized to "pretend" that the testnet has always used 1 second slot intervals.
+--
+-- The normalization is done by taking a slot time and subtracting the slot number from it.
+-- For example, slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number 
+-- from the time yields the normalized 0 time.
 preprodConfig :: SlotConfig
 preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
 
