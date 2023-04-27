@@ -813,7 +813,7 @@ Here is an example response when piped to `jq`:
 ]
 ```
 
-Two previous loans were found. This borrower successfully paid back the second loan but defaulted on the first. This query also returns the loan terms for each loan as well as the UTxOs at the time of the default / final payment. The terms come from the input in the transaction where the `BorrowerID` beacon was burned.
+Two previous loans were found. This borrower successfully paid back the second loan but defaulted on the first. This query also returns the loan terms for each loan as well as loan's outstanding balance at the time of the default / final payment. The terms come from the input in the transaction where the `BorrowerID` beacon was burned.
 
 The lender is also able to see the borrower's current loans using the following command:
 ``` Bash
@@ -1289,7 +1289,7 @@ Here is an example response when piped to `jq`:
 ]
 ```
 
-Only one offer has been made so far. You can choose whether to try offering a better rate.
+Only one offer has been made so far. The lender can choose whether to try offering a better rate.
 
 ### Check loan history
 This query allows the lender to easily track their performance history.
@@ -1302,7 +1302,7 @@ cardano-loans query lender-history \
   --stdout
 ```
 
-Here is an example response (when piped to `jq`):
+Here is an example response when piped to `jq`:
 ``` JSON
 [
   {
