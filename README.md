@@ -278,10 +278,10 @@ A note on #6, by requiring the lender to store the loan amount with the Offer To
 
 The lender must sign the transaction with the pubkey hash used for the Lender ID so that the Lender ID beacon token will be cryptographically guaranteed to be unique to that lender.
 
-Multiple lenders can make an offer to the borrower. Each lender will have their own "Offer UTxO" located at the borrower's address. The borrower can check his/her own loan address and see what other offers were made. From the `OfferDatum`s, the borrower can see:
+Multiple lenders can make an offer to the borrower. Each lender will have their own Offer UTxO located at the borrower's address. The borrower can check his/her own loan address and see what other offers were made. From the `OfferDatum`s, the borrower can see:
 **1. What the loan's interest rate will be.**
 **2. What the collateralization ratio is for each collateral asset.**
-This breeds natural competition between lenders.
+The lenders are also able to see what other offers have been made to the borrower. This breeds natural competition between lenders.
 
 Even though the lender's assets will be at the borrower's address, the lender will maintain spending custody for their Offer UTxO. The only way the borrower can spend the Offer UTxO is if they are accepting the lender's offer and initiating the loan. Thanks to the Lender ID being a beacon token, it is easy to query all UTxOs associated with that lender.
 
@@ -342,7 +342,7 @@ Accepting an offer requires both the minting policy and the loan validator scrip
 
 In essence, the collateral calculation is this:
 ```
-sum { collateralDeposited / collateralRate } >= loanPrinciple offerDatum
+sum { collateralDeposited / relativeValue } >= loanPrinciple offerDatum
 ```
 
 In summary, the borrower accepts a loan offer via a single transaction with one Offer UTxO, one Ask UTxO, and however many other inputs are necessary to fulfill the collateral requirements. The transaction outputs one, and only one, Active UTxO to the loan address, while the remaining funds (what is actually being borrowed) is output to any address, as specified by the borrower.
@@ -376,7 +376,7 @@ The collateral that can be reclaimed during a partial payment is determined by t
 ```
 sum (collateralTaken / collateralization * (1 + interest)) <= loanRepaid
 ```
-In essence, the relative value of the collateral must be <= the value of the loan asset returned. The dApp does not check if the borrower takes any collateral. It only checks if the borrower took *too much* collateral. If the borrower misses an opportunity to reclaim some collateral, that proportion can only be reclaimed when the loan if fully paid off. A future version can add safeguards so that a partial payment fails unless some collateral is taken.
+In essence, the relative value of the collateral (after correcting for the interest) must be <= the value of the loan asset returned. The dApp does not check if the borrower takes any collateral. It only checks if the borrower took *too much* collateral. If the borrower misses an opportunity to reclaim some collateral, that proportion can only be reclaimed when the loan is fully paid off. A future version can add safeguards so that a partial payment fails unless some collateral is taken.
 
 When a loan is fully paid off, the BorrowerID must be burned by itself, without other tokens being burned in the same tx. This makes it easy to check (in the future) whether the loan ended in default or was repaid. **The borrower must withdraw all of their remaining collateral in the same transaction that the loan is fully paid off.** Once the BorrowerID is burned, it will no longer be possible to reclaim the collateral.
 
@@ -417,7 +417,7 @@ The table below shows which API endpoints are used for this with Blockfrost:
 | Number of Unique Tokens Minted/Burned | [api](https://docs.blockfrost.io/#tag/Cardano-Transactions/paths/~1txs~1%7Bhash%7D/get) |
 | Specific Loan Information | [api](https://docs.blockfrost.io/#tag/Cardano-Transactions/paths/~1txs~1%7Bhash%7D~1utxos/get) |
 
-For the second API, the `asset_mint_or_burn_count` value will either be 1 or 3, specifying a full repayment or default, respectively. For the third API, the input with the Borrower ID token will have the datum of the loan attached. That datum has the terms of that specific loan.
+For the second API, the `asset_mint_or_burn_count` value will either be 1 or 3, specifying a full repayment or default, respectively. For the third API, the input with the Borrower ID token will have the datum of the loan attached. That datum has the terms of that specific loan (you will also need to use this [api](https://docs.blockfrost.io/#tag/Cardano-Scripts/paths/~1scripts~1datum~1%7Bdatum_hash%7D/get) since Blockfrost only returns the hash of the datum in the last query).
 
 The included `cardano-loans` CLI puts this all together. Here is an example query response (when piped to `jq`):
 ``` JSON
@@ -485,9 +485,9 @@ The included `cardano-loans` CLI puts this all together. Here is an example quer
 
 This borrower defaulted on the first loan but successfully paid back the second. From this information, the time of each loan can be deduced (subtract the `term` value from the `expiration_slot` value). Since the `balance_owed` is also returned, lenders can decide for themselves if every default should be treated the same or if exceptions can be made for borrowers who repaid most of the loan before defaulting.
 
-In addition to past loans, lenders can also see the borrower's current loans by looking up all Active UTxOs with that borrower's ID beacon still present (they would all be located at the borrower's loan address). These can only ever be open loans. This Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos~1%7Basset%7D/get) will return that information.
+In addition to past loans, lenders can also see the borrower's current loans by looking up all UTxOs with that borrower's ID beacon (they would all be located at the borrower's loan address). These can only ever be open loans. This Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos~1%7Basset%7D/get) will return that information.
 
-Here is a list of a non-exhaustive list of queries you can make thanks to the beacon tokens:
+Here is a non-exhaustive list of queries you can make thanks to the beacon tokens:
 1. All the borrower's current open Asks.
 2. All current Asks on the dApp.
 3. All Offers made to a borrower.
@@ -576,7 +576,7 @@ Borrowers may "refinance" their debt by using a new loan with more favorable con
 Note: This feature will likely require the introduction of additional Beacon Tokens.
 
 #### Multi-Asset Loans
-In addition to using multiple collateral assets for loans (which is already implemented), it is possible create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
+In addition to using multiple collateral assets for loans (which is already implemented), it is possible to create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
 
 #### Term Extensions/Renegotiations
 A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the nature/creditworthiness of the borrower.
@@ -595,9 +595,14 @@ Due to trying to keep the v1 PoC simple, staking scripts are not supported. Supp
 #### Compound Interest
 Compound interest can be enabled by adding "expiration checkpoints" to the design. Then, instead of the dApp using `invalid-hereafter` to check if the overall loan is expired during every payment, the dApp would use it to check if the next expiration checkpoint has passed. If it has, the borrower would have to "rollover" the loan into the next period by updating the `loanOutstanding` field of the datum to reflect the interest that has accrued.
 
-As an example, imagine if Alice borrows 100 ADA from Bob and they agree to checkpoints at slot 100, slot 200, and slot 300. Before slot 100, Alice can make as many payments as she wants. Once slot 100 occurs, the dApp will prevent her from making any more payments until she updates the datum to reflect that interest has accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200 where she must repeat the rollover process. Alice can still fully pay back a loan in any given period (assuming no rollover is necessary before the next payment). If Alice fully paid back the loan at slot 255, then Alice would not need to rollover the loan into the next period; the loan would stop when she fully repays it.
+As an example, imagine if Alice borrows 100 ADA from Bob and they agree to checkpoints at slot 100, slot 200, and slot 300 - the loan would actually expire at slot 300. Before slot 100, Alice can make as many payments as she wants. Once slot 100 occurs, the dApp will prevent her from making any more payments until she updates the datum to reflect that interest has accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200 where she must repeat the rollover process. Alice can still fully pay back a loan in any given period (assuming no rollover is necessary before the next payment). If Alice fully paid back the loan at slot 255, then Alice would not need to rollover the loan into the next period; the loan would stop when she fully repays it.
 
 With this design, the dApp would be able to tell if the expiration time is just a checkpoint or if the loan is actually expired (there are no more checkpoints after the current one). Further, Alice would actually be incentivized to accrue the interest since otherwise she would not be able to reclaim any more of her collateral nor would she be able to fully pay off the loan and prevent it from hurting her credit history.
+
+If this feature is enabled, the calculation for the amount of collateral allowed to be reclaimed would need to be changed to:
+```
+ratioCollateralTaken <= ratioOutstandingBalanceRepaid
+```
 
 As a final point (alluded to in the above example), these expiration checkpoints can be part of the negotiations.
 
