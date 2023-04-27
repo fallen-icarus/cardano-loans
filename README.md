@@ -93,22 +93,21 @@ Take these two scenarios separately:
 - Borrower accepts loan - The borrower cannot access the funds until the loan starts so they want to set the time as early as possible. However, the loan expiration is calculated by adding the loan term length to the start time. If the borrower sets the time to be earlier than it actually is, the loan expiration would also be earlier than it otherwise would be. This means less time for the loan than the borrower wants. If the borrower sets the time to be later than it actually is so that the loan expiration would be later than it otherwise would be, this transaction would not be valid until the start time *actually* occurs. This means the borrower would only be delaying when they can access the loan asset. Therefore, the borrower is incentivized to set `invalid-before` to be as close to the current time as possible.
 - Lender claims a finished loan - The lender cannot claim a loan unless it is either fully paid or it is expired. Only expiration depends on time. If the lender set the time to be earlier than it actually is, then the dApp will think the loan is still active and therefore the lender cannot claim it. If the lender set the time to be later than it actually is, then the validity interval would say the transaction isn't valid yet which means they need to wait longer to claim what they are owed. These two together result in the lender being incentivized to set `invalid-before` to be as close as the current time as possible.
 
-Now consider the (inclusive) slot interval `(infinity,10]`. This transaction will only be valid until slot 10 finishes. The dApp can interpret this information as "the current time is guaranteed to be <= slot 10". This information is useful when a borrower tries to make a payment. The dApp forces the borrower to specify the "current" time with `invalid-hereafter` so that the dApp can appropriately tell whether the loan is expired. Since the borrower wants as much time with the loan as possible, they are incentivized to set the upper bound as late as possible. However, the dApp compares the upper bound to the loan expiration slot. If the upper bound is > the expiration slot, then the dApp will think the loan is expired. Therefore, the latest possible time the borrower can set `invalid-hereafter` to is the loan expiration slot.
+Now consider the (inclusive) slot interval `[0,10]`. This transaction will only be valid until slot 10 finishes. The dApp can interpret this information as "the current time is guaranteed to be <= slot 10". This information is useful when a borrower tries to make a payment. The dApp forces the borrower to specify the "current" time with `invalid-hereafter` so that the dApp can appropriately tell whether the loan is expired. Since the borrower wants as much time with the loan as possible, they are incentivized to set the upper bound as late as possible. However, the dApp compares the upper bound to the loan expiration slot. If the upper bound is > the expiration slot, then the dApp will think the loan is expired. Therefore, the latest possible time the borrower can set `invalid-hereafter` to is the loan expiration slot.
 
 Thanks to marrying incentives with dApp logic, it is impossible for users to cheat time.
 
 #### Interest
 Unlike other lending/borrowering protocols, Cardano-Loans does not use an algorithm to determine the interest for each loan. Instead, the interest is negotiated between the borrowers and lenders (among other negotiated terms).
 
-**All interest on Cardano-Loans is non-compounding.** The reason for this is two-fold:
-1. Plutus currently does not support exponents which is required for the compound interest calculation. 
-2. While `invalid-hefeafter` can be securely used to determine whether a loan is expired, there is no way to securely determine how many compounding periods have passed. If `invalid-hereafter` is set as close to the current time as possible, then it is possible for the transaction to fail due to sitting in the mempool for too long. If `invalid-before` was used, the value can be used to trick the dApp into thinking the compounding period is earlier than it actually is. The validity intervals can't be reliably used in this context.
+**All interest on Cardano-Loans is non-compounding.** While `invalid-hefeafter` can be securely used to determine whether a loan is expired, there is no way to securely determine how many compounding periods have passed using just the validity intervals. If `invalid-hereafter` is set as close to the current time as possible, then it is possible for the transaction to fail due to sitting in the mempool for too long. If `invalid-before` was used, the value can be used to trick the dApp into thinking the compounding period is earlier than it actually is. The validity intervals alone can't be reliably used in this context. 
+
+There is a way to still enable compound interest with this design, but it adds complexity to the overall design. Since lenders can compensate for the lack of compounding by asking for slightly higher interest rates, the loss of functionality due to a lack of compounding interest seems minor. Therefore, the decision was made to not include compound interest in v1 of this dApp. The method to enable compound interest is discussed in the *Potential Future Features* section of the README. 
 
 Given that loans are non-compounding, the total amount owed for all loans is always:
 ```
 principle * (1 + interest)
 ```
-Lenders can compensate for the lack of compounding by asking for slightly higher interest rates. Due to this, the loss of functionality due to a lack of compounding interest seems minor.
 
 #### The Beacon Tokens
 Cardano-Loans uses 5 types of tokens:
@@ -140,7 +139,7 @@ data LoanDatum
   | OfferDatum
       { loanBeaconSym :: CurrencySymbol -- ^ Policy Id of the beacon minting policy.
       , lenderId :: TokenName -- ^ The payment pubkey hash for the lender.
-      , loanAsset :: (CurrencySymbol,TokenName) -- ^ The asset to be loand out.
+      , loanAsset :: (CurrencySymbol,TokenName) -- ^ The asset to be loaned out.
       , loanPrinciple :: Integer -- ^ The amount of the loan asset to be loaned out.
       , loanTerm :: POSIXTime -- ^ The length of time where the loan will be active.
       , loanInterest :: Rational -- ^ The non-compounding interest rate.
@@ -486,7 +485,7 @@ The included `cardano-loans` CLI puts this all together. Here is an example quer
 
 This borrower defaulted on the first loan but successfully paid back the second. From this information, the time of each loan can be deduced (subtract the `term` value from the `expiration_slot` value). Since the `balance_owed` is also returned, lenders can decide for themselves if every default should be treated the same or if exceptions can be made for borrowers who repaid most of the loan before defaulting.
 
-In addition to past loans, lenders can also see the borrower's current loans by looking up all Active beacons currently located at the borrower's loan address. These can only ever be open loans. This Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos~1%7Basset%7D/get) will return that information.
+In addition to past loans, lenders can also see the borrower's current loans by looking up all Active UTxOs with that borrower's ID beacon still present (they would all be located at the borrower's loan address). These can only ever be open loans. This Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos~1%7Basset%7D/get) will return that information.
 
 Here is a list of a non-exhaustive list of queries you can make thanks to the beacon tokens:
 1. All the borrower's current open Asks.
@@ -502,7 +501,7 @@ Here is a list of a non-exhaustive list of queries you can make thanks to the be
 
 ### Transaction Fee Estimations (YMMV)
 
-All of the following estimations are for loans only using a single asset as collateral.
+All of the following estimations are for loans using a single asset as collateral.
 
 | Action | Fee |
 |--|--|
@@ -516,7 +515,7 @@ All of the following estimations are for loans only using a single asset as coll
 | Claim an expired loan | 0.994895 ADA |
 | Claim a fully paid loan | 0.920759 ADA |
 
-During testing, it was possible to use 9 different assets as collateral for a loan before hitting the transaction limits. The bottleneck is in the `AcceptLoan` step.
+During testing, it was possible to use 9 different assets as collateral for a loan before hitting the transaction limits. The bottleneck is in the `AcceptOffer` step.
 
 
 ## End-to-End Example (Simplified)
@@ -593,20 +592,27 @@ Due to trying to keep the v1 PoC simple, staking scripts are not supported. Supp
 
 :notebook: Technically, the loan validator already has logic *in case* a staking script is used, but this is currently only to prevent accidental locking if the wrong address is configured.
 
+#### Compound Interest
+Compound interest can be enabled by adding "expiration checkpoints" to the design. Then, instead of the dApp using `invalid-hereafter` to check if the overall loan is expired during every payment, the dApp would use it to check if the next expiration checkpoint has passed. If it has, the borrower would have to "rollover" the loan into the next period by updating the `loanOutstanding` field of the datum to reflect the interest that has accrued.
+
+As an example, imagine if Alice borrows 100 ADA from Bob and they agree to checkpoints at slot 100, slot 200, and slot 300. Before slot 100, Alice can make as many payments as she wants. Once slot 100 occurs, the dApp will prevent her from making any more payments until she updates the datum to reflect that interest has accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200 where she must repeat the rollover process. Alice can still fully pay back a loan in any given period (assuming no rollover is necessary before the next payment). If Alice fully paid back the loan at slot 255, then Alice would not need to rollover the loan into the next period; the loan would stop when she fully repays it.
+
+With this design, the dApp would be able to tell if the expiration time is just a checkpoint or if the loan is actually expired (there are no more checkpoints after the current one). Further, Alice would actually be incentivized to accrue the interest since otherwise she would not be able to reclaim any more of her collateral nor would she be able to fully pay off the loan and prevent it from hurting her credit history.
+
+As a final point (alluded to in the above example), these expiration checkpoints can be part of the negotiations.
 
 ### Other Considerations
 
-#### Multi Loan Repayments
-Currently, borrowers are not able to make payments on multiple loans in a single transaction - this was to keep the first design simple. A future version should ideally allow borrowers to make payments on mulitple loans in a given transaction. This is not an essential feature, but is important for leveling the playing field for small lenders. 
+#### Multi Loan Acceptance/Repayments
+Currently, borrowers are not able to accept or make payments on multiple loans in a single transaction - this was to keep the first design simple. A future version should ideally allow borrowers to accept or make payments on mulitple loans in a given transaction. This is not an essential feature, but is important for leveling the playing field for small lenders. 
 
-Imagine if Alice wants to borrow 1000 ADA and Mike has 2000 ADA while Charlie has 500 ADA. If Alice asks for 1000 ADA in one loan, only Mike can be her lender due to the all-or-nothing way the dApp works. However, if she instead broke her 1000 ADA loan up into two 500 ADA loans, now both Mike and Charlie can be her lender. Alice is incentivized to due this because lender competition can result in better terms overall for Alice. This scenario is also better for Charlie since he is just as competitive as the bigger lender, Mike. However, if Alice must use separate transactions to make payments for each loan, the extra fees can easily add up. These fees actually disincentivize borrowers from "fractionalizing" their loans. In order to level the playing field between large and small lenders as much as possible, using fractional loans must be as cheap as possible.
+Imagine if Alice wants to borrow 1000 ADA while Mike has 2000 ADA, Bob has 700 ADA, and Charlie has 500 ADA. If Alice asks for 1000 ADA in one loan, only Mike can be her lender due to the all-or-nothing way the dApp works. However, if she instead broke her 1000 ADA loan up into two 500 ADA loans, now all three of them can be her lender. Alice is incentivized to due this because lender competition can result in better terms overall for Alice. This scenario is also better for Charlie and Bob since they are just as competitive as the bigger lender, Mike. However, if Alice must use separate transactions to make payments for each loan, the extra fees can easily add up. These fees actually disincentivize borrowers from "fractionalizing" their loans. In order to level the playing field between large and small lenders as much as possible, using fractional loans must be as cheap as possible.
 
-This design can be adapted to allow for multi-loan repayments. The main issue would then be the transaction limits. While using a more efficient language can help, the [Redundant Executions](https://github.com/cardano-foundation/CIPs/pull/418) are also a problem. The full impact of these redundant executions is still being explored.
+This design can be adapted to allow for multi-loan acceptance/repayments by using a Loan ID token (a state token that links the input and output for a given loan). The main issue would then be the transaction limits. While using a more efficient language can help, the [Redundant Executions](https://github.com/cardano-foundation/CIPs/pull/418) are also a problem. The full impact of these redundant executions is still being explored.
 
 #### Version Compatibility
-Different versions of Cardano-Loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses) allows them to maintain their pseudonymous identities across versions. 
+Different versions of Cardano-Loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses/beacons) allows them to maintain their pseudonymous identities across versions. 
 
 
 ## Conclusion
 The Cardano-Loans protocol is a first-attempt at rethinking how the economy of Cardano could evolve. It forgoes reliance on global/external token prices in favor of incentivizing the creation of a CSL-native p2p credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. Wallets and other frontends can integrate the protocol into their UI, and even provide all necessary API query services. Endogenous price & rate discovery empowers users to create their own economy, one that is (at least initially) decoupled from the existing financial system, in pursuit of something more fair, equal, and accessible to all.
-
