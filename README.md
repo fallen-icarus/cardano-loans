@@ -1,6 +1,4 @@
 # Cardano-Loans
-Cardano-loans is a *distributed dApp* and thus adheres to the distributed dApp standard
-
 
 :warning: Knowledge of basic Haskell syntax and cardano-cli usage is assumed.
 
@@ -53,9 +51,9 @@ Cardano-Loans gives users the great power (and responsibility) to create a fully
 
 All three of these phases are expanded upon in the [Specification Section](#specification) below
 
-##### Distinguishing features specific to Cardano-loans:
+##### Distinguishing features specific to Cardano-Loans:
 
-1. **On-Chain Credit History** - the status/conditions of current & past loans associated with a borrower's address are easily queryable by prospective lenders and third-party data miners.
+1. **On-Chain Credit History** - the status/conditions of current & past loans associated with a borrower's stake pubkey are easily queryable by prospective lenders and third-party data miners.
 2. **Trustless Negotiations** - all loan conditions are negotiated in a fully p2p fashion - interest rates, collateral (token type(s) and relative prices), and length of the loan - all are negotiable parameters. Multiple tokens can be used as collateral, even NFTs. Over/under collateralization is implied by the relative prices in the lender's offer, which is impacted by the borrower's credit history.
 3. **Partial Repayments** - borrowers can repay loans incrementally and withdraw collateral in proportion to the repayment. If an outstanding balance remains at expiry, the lender may withdraw the remaining collateral. 
 4. **No Auto-liquidation** - All loan terms (including relative token prices) are agreed upon explicitly by both parties, so "margin" is constant throughout the length of the loan, and does *not* change with global price movements. 
@@ -85,31 +83,23 @@ Since negotiations and repayments occur in the borrower's address, the borrower 
 
 :warning: v1.0 does not support staking scripts for the staking credential. All loans are required to use a pubkey for the borrower's staking credential. This restriction helped to simplify the logic. If the address uses a staking script, these UTxOs can still be recovered but no loans can be made to these addresses. The beacon policy will not mint to an address unless it is using a staking pubkey. A future version can allow the use of staking scripts.
 
-:warning: If, at any point, a misconfigured UTxO is sent to a borrower's address, the borrower will get custody. Such UTxOs can only come about by misusing the dApp. As long as beacon tokens are properly minted in the Tx, the resultant UTxO will be locked appropriately, as per the contract. 
+:warning: If, at any point, a misconfigured UTxO is sent to a borrower's address, the borrower will get custody. Such UTxOs can only come about by misusing the dApp. As long as beacon tokens are minted in the Tx, the resultant UTxO will be locked appropriately, as per the contract. 
 
 #### Telling Time
-Cardano-loans enforces time-sensitive logic by marrying user incentives with transaction validity intervals (`invalid-before` and `invalid-hereafter` parameters).
+Cardano-Loans enforces time-sensitive logic by marrying user incentives with transaction validity intervals (`invalid-before` for accepting and reclaiming loans, and `invalid-hereafter` for repaying loans).
 
 Consider the following transaction scenarios separately:
 
 1. **Borrower accepts loan** - The borrower cannot access the funds until the loan starts, so they want to set the time as early as possible. However, the loan expiration is calculated by adding the loan term length to the start time. If the borrower sets the time to be earlier than it actually is, the loan expiration would also be earlier than it otherwise would be. This means less time for the loan than the borrower wants. If the borrower sets the time to be later than it actually is so that the loan expiration would be later than it otherwise would be, the transaction would not be valid until the start time *actually* occurs. This means the borrower would only be delaying when they can access the loan asset. Therefore, **the borrower is incentivized to set `invalid-before` to be as close to the current time as possible.**
    
-2. **Lender claims a finished loan** - The lender cannot claim a loan unless it is either fully paid or it is expired. If the lender set the time to be earlier than it actually is, then the dApp will think the loan is still active and therefore the lender cannot claim it. If the lender set the time to be later than it actually is, then the validity interval would say the transaction isn't valid yet which means they need to wait longer to claim what they are owed. These two together result in **the lender being incentivized to set `invalid-before` to be as close as the current time as possible.**
+2. **Lender claims a finished loan** - The lender cannot claim a loan unless it is either fully paid or it is expired. If the lender set the time to be earlier than it actually is, the loan is still active and the lender cannot claim it. If the lender set the time to be later than it actually is the transaction would not (yet) be valid, so the lender would have to wait longer to claim what they are owed. These two together result in **the lender being incentivized to set `invalid-before` to be as close as the current time as possible.**
 
-----
-### WIP
-3. **Borrower makes a payment** - 
-   
-   The borrower must specify the "current time" with `invalid-hereafter` to 
-
-Now consider the (inclusive) slot interval `[0,10]`. This transaction will only be valid until slot 10 finishes. The dApp can interpret this information as "the current time is guaranteed to be <= slot 10". This information is useful when a borrower tries to make a payment. The dApp forces the borrower to specify the "current" time with `invalid-hereafter` so that the dApp can appropriately tell whether the loan is expired. Since the borrower wants as much time with the loan as possible, they are incentivized to set the upper bound as late as possible. However, the dApp compares the upper bound to the loan expiration slot. If the upper bound is > the expiration slot, then the dApp will think the loan is expired. Therefore, the latest possible time the borrower can set `invalid-hereafter` to is the loan expiration slot.
-### WIP
-----
+3. **Borrower makes a payment** - The borrower cannot make payments once a loan has expired. This is enforced by the borrower having to use `invalid-hereafter` to specify the current time. Since the borrower wants as much time as possible to pay off the loan, but *must* do so prior to expiration slot, **they are incentivized to set `invalid-hereafter` as close the expiration slot as possible.**
 
 #### Interest
 Unlike other lending/borrowering protocols, Cardano-Loans does not use an algorithm to determine the interest rates. Instead, rates are one of the explicitly negotiated terms between borrowers and lenders.
 
-**Cardano-Loans v1 supports fixed, non-compounding interest rates.** Validity intervals alone cannot be relied upon to enforce compounding. However, there is a way implement compounding, though it adds complexity and execution overhead to the overall design. It is explained in detail in the [Future Directions](#future-directions-and-considerations) section.
+**Cardano-Loans v1 utilizes fixed, non-compounding interest rates.** Validity intervals alone cannot be relied upon to enforce compounding. However, there is a way implement compounding, though it adds complexity and execution overhead to the overall design. It is explained in detail in the [Future Directions](#future-directions-and-considerations) section.
 
 Since loans are non-compounding, the total amount owed for all loans is always:
 ```
@@ -212,7 +202,7 @@ data LoanRedeemer
 
 
 ### The Loan Lifecycle
-Cardano-loans is broken up into three distinct phases:
+Cardano-Loans is broken up into three distinct phases:
 
 #### 1. Ask Phase
 Prospective borrowers initiate the Ask Phase by minting an `Ask` Token and storing it inside their borrower address with the desired ask terms. 
@@ -234,7 +224,7 @@ Minting a valid `Ask` token requires all of the following to be true:
 
 - The beacon policy forces the receiving address to use a pubkey for the staking credential.
 - The borrower is able to use multiple assets as collateral for a given loan. Whatever assets *can* (but not necessarily *need* to) be used must appear in the `collateral` list.
-- The signature requirement means that simply stealing/forging a borrower ID is not enough impersonate them. 
+- The signature requirement ensures no one but the borrower open a loan under the same borrowerID.
 
 ##### Closing an Ask
 If the borrower changes their mind about the loan they are asking for, they may close their Ask accordingly:
@@ -246,7 +236,7 @@ If the borrower changes their mind about the loan they are asking for, they may 
     - staking script must be executed (this is in case the wrong address is accidentally configured)
 4. All Ask Tokens among the transaction inputs must be burned.
 
-Here it is not necessary to check for the presence of an Ask token; the address owner gets custody of both valid Ask UTxOs and misconfigured Ask UTxOs. If a UTxO has an `AskDatum` but is missing an Ask token, the address owner can spend the UTxO by way of the staking credential. If a UTxO has an `AskDatum` and an Ask token, the address owner still has custody and can spend the UTxO in the same way, since the Ask token can only be minted to an address using a staking pubkey. In either case, the staking credential must approve, so there is no need to check for the Ask token.
+Here it is not necessary to check for the presence of an Ask token; the address owner gets custody of both valid Ask UTxOs and misconfigured Ask UTxOs. If a UTxO has an `AskDatum` but is missing an Ask token, the address owner can spend the UTxO by way of the staking credential. If a UTxO has an `AskDatum` and an Ask token, the address owner still has custody and can spend the UTxO in the same way. In either case, the staking credential must approve, so there is no need to check for the Ask token.
 
 This redeemer can be used to prevent accidental locking of any misconfigured UTxOs that have an `AskDatum`. This is why the redeemer checks for both a staking pubkey and a staking script (the latter is if the address is configured without a staking pubkey).
 
@@ -288,14 +278,14 @@ The `collateralization` field is *how much of that collateral asset the lender w
 By requiring the lender to store the loan amount with the Offer Token, the borrower is able to accept the loan without any other input from the lender. The additional 3 ADA is required when the loan asset is ADA because storing the beacons requires a minimum amount of ADA, which is unavailable to the borrower when they accept the loan. When the loan is accepted, it will be stored with at least three tokens (the Active token, the LenderID, and the BorrowerID). The minimum amount of ADA required for storing these three tokens is 2.844600 ADA, rounded to 3 ADA for convenience.
 
 Multiple lenders can make an offer to the borrower. Each lender will have their own Offer UTxO located at the borrower's address. The borrower can check his/her own loan address and see what other offers were made. The borrower can check the `OfferDatum` for:
-1. **What the loan's interest rate will be.**
-2. **What the collateralization ratio is for each collateral asset.**
+1. **The loan's interest rate.**
+2. **The relative values of loan asset(s) to collateral asset(s).**
 The lenders are also able to see what other offers have been made to the borrower. This breeds natural competition between lenders.
 
 **Even though the lender's assets are stored at the borrower's address, the lender maintains spending custody of their Offer UTxO.** The only way the borrower can spend the Offer UTxO is if they are accepting the lender's offer and initiating the loan. Thanks to the Lender ID being a beacon token, it is easy to query all UTxOs associated with that lender.
 
 ##### Closing an Offer
-If the lender changes their mind about their offer *prior* to it being accepted by the borrower, or if the borrower accepts a different offer, the lender may close the offer and reclaim their "Offer UTxO" accordingly:
+If the lender changes their mind about their offer *prior* to it being accepted by the borrower, or if the borrower accepts a different offer, the lender may close the offer and reclaim their Offer UTxO accordingly:
 
 1. The `CloseOffer` redeemer must be used for the loan validator and the `BurnBeaconToken` redeemer must be used for the minting policy.
 2. The datum attached to the UTxO must be an `OfferDatum`. If it isn't, then this UTxO cannot possibly be an Offer.
@@ -356,10 +346,10 @@ sum { collateralDeposited / relativeValue } >= loanPrinciple offerDatum
 
 To summarize: the borrower accepts a loan offer via a single transaction with one Offer UTxO, one Ask UTxO, and however many other inputs are necessary to fulfill the collateral requirements. The transaction outputs one, and only one, Active UTxO to the loan address, while the remaining funds (what is actually being borrowed) is output to any address, as specified by the borrower.
 
-There are no checks to ensure that the borrower *only* takes the loan asset from the Offer UTxO. It is assumed that the lender puts only the loan amount (plus the beacons), and nothing else.
+The script checks if the loan in the Offer UTxO is *at least* what is requested in the Ask. Therefore, the lender should not put more than the requested loan amount (plus the beacons) into the Offer UTxO.
 
 ##### Making a Loan Payment
-A loan payment can either be a partial payment or a full payment (relative to the remaining balance). In either case, the `RepayLoan` redeemer is used. If a full payment is being made, the `BurnBeaconToken` redeemer is required for the minting policy. The script can tell whether a partial or full payment is being made.
+A loan payment can either be a partial payment or a full payment (relative to the remaining balance). In either case, the `RepayLoan` redeemer is used. If a full payment is being made, the `BurnBeaconToken` redeemer is required for the minting policy. The loan validator script can tell whether a partial or full payment is being made.
 
 To make a payment, all of the following must be true:
 
@@ -469,7 +459,7 @@ The table below shows which API endpoints are used for this with Blockfrost:
 
 For the second API, the `asset_mint_or_burn_count` value will either be 1 or 3, specifying a full repayment or default, respectively. For the third API, the input with the BorrowerID token will have the datum of the loan attached. That datum has the terms of that specific loan (you will also need to use [this API](https://docs.blockfrost.io/#tag/Cardano-Scripts/paths/~1scripts~1datum~1%7Bdatum_hash%7D/get) since Blockfrost only returns the hash of the datum in the last query).
 
-The included `cardano-loans` CLI puts this all together. Here is an example query response (when piped to `jq`):
+The included `Cardano-Loans` CLI puts this all together. Here is an example query response (when piped to `jq`):
 ``` JSON
 [
   {
@@ -547,7 +537,7 @@ Here is a non-exhaustive list of queries you can make thanks to beacon tokens:
 7. The borrower's credit history.
 8. The lender's loan history.
 
-`cardano-loans` supports all of these queries. To see example responses for all these queries, check out the [GettingStarted](GettingStarted.md).
+`Cardano-Loans` supports all of these queries. To see example responses for all these queries, check out the [GettingStarted](GettingStarted.md).
 
 
 ### Trustless p2p Negotiations
@@ -565,7 +555,7 @@ With enough users & liquidity, this protocol may eventually *serve* as the de-fa
 
 
 ## Future Directions and Considerations
-Being a PoC, v1 of Cardano-loans is intended to demonstrate the capacity for fully p2p lending/borrowing on the CSL. As such, there are a number of features that may be implemented in future version of the protocol, discussed below.
+Being a PoC, v1 of Cardano-Loans is intended to demonstrate the capacity for fully p2p lending/borrowing on the CSL. As such, there are a number of features that may be implemented in future version of the protocol, discussed below.
 
 Note: Cardano-Loans v1 is written in IOG's PlutusTx. Although this is a great choice for prototyping & auditing, it is very resource-intensive. Many of the features discussed in this section are bottlenecked by current script execution limits. Future increases to this limit, as well as utilizing newer, more resource-efficient languages (such as Aiken) can result in up to 100x more headroom for additional features. 
 
@@ -588,19 +578,21 @@ In addition to all previous terms, it is now possible to construct loans with te
 
 :notebook: {X} refers to negotiable terms. 
 
-With this feature is enabled, the calculation for the amount of collateral allowed to be reclaimed would need to be changed to:
+With compound interest enabled, the calculation for the amount of collateral allowed to be reclaimed would need to be changed to:
 ```
 ratioCollateralTaken <= ratioOutstandingBalanceRepaid
 ```
 
 ##### Simple Compounding Example
-Alice borrows 1000 ADA from Bob with a 5% compounding at slots 100,  200, and 300, where slot 300 is the last checkpoint (final expiry). 
-
-Prior to slot 100, Alice can make payments as usual. Once slot 100 passes, Alice will be unable to make any more payments until she updates the datum to reflect the interest accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200, where she must repeat the rollover process. As long as the datum is up to date, Alice can repay as much of the loan as she wants, including the entire outstanding balance (plus interest). Alternatively, she may choose to amortize her payments across the length of the loan, which in this example would come out to 367.21 ADA due at every checkpoint.
-
+Alice borrows 1000 ADA from Bob with a 5% compounding at slots 100,  200, and 300, where slot 300 is the last checkpoint (final expiry). Prior to slot 100, Alice can make payments as usual. Once slot 100 passes, Alice will be unable to make any more payments until she updates the datum to reflect the interest (50 ADA) accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200, where she must repeat the rollover process. As long as the datum is up to date, Alice can repay as much of the loan as she wants, including the entire outstanding balance (plus interest). 
 
 #### Term Extensions/Renegotiations
 A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the nature/creditworthiness of the borrower.
+
+#### Unbonded Repayments
+Currently, borrowers make loan repayments via a transaction that "locks" their payment in the Active UTxO, which can only be claimed by the lender once the loan expires. In future versions of Cardano-Loans, each repayment transaction will output repayments directly to the lender's pre-specified address. 
+
+:notebook: This mechanic is generalizable to royalty payments, and will be expanded upon at a later time. 
 
 #### Transferrable Credit/Debt
 Borrowers may "refinance" their debt by selling it to another lender in exchange for a new loan with more favorable conditions. Lenders may also sell their credit to a willing third party. The *ability* for either party to engage in such transfers may itself be negotiated in advance.
@@ -608,13 +600,13 @@ Borrowers may "refinance" their debt by selling it to another lender in exchange
 Note: This feature will likely require the introduction of additional Beacon Tokens.
 
 #### Multi-Asset Loans
-In addition to using multiple collaterals for loans (which is already implemented), it is possible create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
+In addition to using multiple collaterals for loans (which is already implemented), it is possible to create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
 
 #### Linkable Credit-History
 By introducing additional Beacon Tokens (and associated standards), it may be possible to link together previously unrelated/pseudonymous borrower IDs into a set of *related* (but still pseudonymous) IDs, at the borrower's discretion.
 
 #### DID Compatibility
-Upon the maturation of standards, decentralized identifiers (DIDs) can be incorporated with Cardano-loans, further amplifying utility and interoperability.
+Upon the maturation of standards, decentralized identifiers (DIDs) can be incorporated with Cardano-Loans, further amplifying utility and interoperability.
 
 #### Support for Staking Scripts
 Due to trying to keep the v1 PoC simple, staking scripts are not supported. Support for staking scripts can easily be added in the future.
@@ -623,10 +615,10 @@ Due to trying to keep the v1 PoC simple, staking scripts are not supported. Supp
 
 ### Other Considerations
 
-#### Multi Loan Repayments
+#### Multi-Loan Transactions
 Currently, borrowers are not able to accept or make payments on multiple loans in a single transaction - this was to keep the first design simple. In future versions, borrowers should be able to accept or make payments on multiple loans in one transaction. This feature *limits the disincentive* for large individual borrowers from fractionalizing their loans across many small lenders. This would help keep the playing field level, ensuring that smaller lenders can stay competitive against larger lenders. Here is an example to illustrate:
 
-Imagine if Alice is asking to borrow 1000 ADA. Three lenders, Bob, Charlie, and Mike, who own 2000, 700, and 500 ADA respectively, see her offer. If Alice asks for the full 1000 ADA in one loan, only Bob has enough capital to be her lender. If instead Alice "fractionalized" her 1000 ADA ask into two 500 ADA asks, all three lenders now have enough capital to satisfy her ask. The larger Alice's ask is, the more she is incentivized to fractionalize it across an abundance of small lenders. However, if Alice must use separate transactions to interact with each "fraction" of her loan, the extra fees start to add up, which disincentivizes fractionalization. To keep the playing field level, fractional loans must be as cheap as possible, ideally as close to singular loans (fee-wise) as possible.
+Imagine if Alice is asking to borrow 1000 ADA. Three lenders, Bob, Charlie, and Mike, who own 2000, 700, and 500 ADA respectively, see her offer. If Alice asks for the full 1000 ADA in one loan, only Bob has enough capital to be her lender. If instead Alice "fractionalized" her 1000 ADA ask into two 500 ADA asks, all three lenders now have enough capital to satisfy her ask. The larger Alice's ask is, the more she is incentivized to fractionalize it across many (competitive) small lenders. However, if Alice must use separate transactions to interact with each "fraction" of her loan, the extra fees start to add up, which disincentivizes fractionalization. To keep the playing field level, fractional loans must be as cheap as possible, ideally as close to singular loans (fee-wise) as possible.
 
 :notebook: Cardano-Loans can be adapted to support multi-loan acceptance/repayments by using a Loan ID token (a state token that links the input and output for a given loan). The main issue would again be the transaction limits. While using a more efficient language can help, the [Redundant Executions](https://github.com/cardano-foundation/CIPs/pull/418) are also a problem. The full impact of these redundant executions is still being explored.
 
@@ -634,7 +626,7 @@ Imagine if Alice is asking to borrow 1000 ADA. Three lenders, Bob, Charlie, and 
 #### Version Compatibility
 Different versions of Cardano-Loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses/beacons) allows them to maintain their pseudonymous identities across versions. 
 
-Due to the (potentially) large feature set, it may be the case that not all features can fit into a single script. If high-level language and low level plutus-core optimizations are not enough to address this, it may be necessary to split features across multiple versions of Cardano-Loans. Although mildly inconvenient, this isn't a problem because credit history is associated with keys, not addresses.
+Due to the (potentially) large feature set, it may be the case that not all features can fit into a single script. If high-level language and low level plutus-core optimizations are not enough to address this, it may be necessary to split features across multiple versions of Cardano-Loans. Besides a mild inconvenience, there is no cost to doing this; credit history transcends any one version, and users may choose what version to use depending on what features they need.
 
 
 ## Conclusion
