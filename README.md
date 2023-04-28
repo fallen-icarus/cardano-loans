@@ -224,7 +224,7 @@ Minting a valid `Ask` token requires all of the following to be true:
 
 - The beacon policy forces the receiving address to use a pubkey for the staking credential.
 - The borrower is able to use multiple assets as collateral for a given loan. Whatever assets *can* (but not necessarily *need* to) be used must appear in the `collateral` list.
-- The signature requirement ensures no one but the borrower open a loan under the same borrowerID.
+- The signature requirement ensures no one but the borrower can open a loan under the same borrowerID.
 
 ##### Closing an Ask
 If the borrower changes their mind about the loan they are asking for, they may close their Ask accordingly:
