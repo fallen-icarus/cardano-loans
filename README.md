@@ -99,9 +99,9 @@ Consider the following transaction scenarios separately:
 #### Interest
 Unlike other lending/borrowering protocols, Cardano-Loans does not use an algorithm to determine the interest rates. Instead, rates are one of the explicitly negotiated terms between borrowers and lenders.
 
-**Cardano-Loans v1 utilizes fixed, non-compounding interest rates.** Validity intervals alone cannot be relied upon to enforce compounding. However, there is a way implement compounding, though it adds complexity and execution overhead to the overall design. It is explained in detail in the [Future Directions](#future-directions-and-considerations) section.
+**Cardano-Loans v1 utilizes fixed, non-compounding interest rates.** Validity intervals cannot tell the current time, they can only tell whether a certain time has passed or not. Compounding requires the state of the loan to be periodically updated, which is possible by breaking the loan up into "epochs", using `invalid-hereafter` to check whether the current loan-epoch has passed. This is similar to the expiry check that occurs when the borrower makes a repayment, though it adds complexity and logic to the design. For a more detailed explanation, see the [Future Directions](#future-directions-and-considerations) section.
 
-Since loans are non-compounding, the total amount owed for all loans is always:
+Since Cardano-Loans v1 is non-compounding, the total amount owed for all loans is always:
 ```
 amountOwed = principle * (1 + interestRate)
 ```
