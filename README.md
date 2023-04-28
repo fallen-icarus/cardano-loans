@@ -1,4 +1,5 @@
 # Cardano-Loans
+A p2p lending/borrowing protocol for the Cardano Settlement Layer, with negotiable loan terms, pseudonymous credit histories, and full delegation control.
 
 :warning: Knowledge of basic Haskell syntax and cardano-cli usage is assumed.
 
@@ -32,11 +33,11 @@ To appreciate the necessity for new lending/borrowing protocols on Cardano, it i
 
 1. **Oracles** - dApps that rely on off-chain information feeds are subject to the integrity of the underlying oracle network. Oracles are a nuanced topic that is beyond the scope of this document, but in short, oracles increase the attack surface of dApps, and have a long way to go before they can be safely relied upon by ledger-wide distributed dApps.
 
-2. **Non-negotiable Loan Terms** - lending/borrowing dApps that are mediated by a central contract/entity lack negotiability of all loan terms, resulting in inefficient markets. This is especially troubling for a credit-debt market, whose efficiency is a vital component to a healthy economy.
+2. **Non-negotiable Loan Terms** - lending/borrowing dApps that are mediated by a central contract/entity lack negotiability of all loan terms, which limits sentiment expressiveness, resulting in inefficient markets. This is especially troubling for a credit-debt market, whose efficiency is a vital component to a healthy economy.
    
-3. **Concentrated Lending Pools** - concentrated lending pools (or any concentrated dApp design) are a higher security risk compared to distributed dApps. Aside from catastrophic draining attacks, centralized dApps often have a complex security model that relies on additional entities like DAOs (and associated "dApp Tokens") for upgradeability. This not only increases the technical attack surface, but the social attack surface as well. Furthermore, concentrated dApps do not scale naturally compared to distributed dApp architectures, especially in the context of state channels, like Hydra. 
+3. **Concentrated Lending Pools** - concentrated lending pools (or any concentrated dApp design) are a higher security risk compared to distributed dApps. Aside from catastrophic draining attacks, centralized dApps often have a complex security model that relies on additional entities like DAOs (and associated "dApp Tokens") for management/upgradeability. This increases the technical *and* social attack surfaces, which complicates trust. Furthermore, concentrated dApps do not scale naturally compared to distributed dApp architectures, especially in the context of state channels, like Hydra. 
    
-4. **Inefficient Markets** - concentrated lending pools set interest rates formulaically, rather than emergently. Although the formula may be transparent, a healthy economy *continuously discovers* prices and rates via real-time aggregation of individual interactions, not by formulas. There is no single formula that can optimally capture market sentiment. Even if there was, agreeing on it would be a great challenge in and of itself. 
+4. **Inefficient Markets** - concentrated lending pools set interest rates formulaically, rather than emergently. Although the formula may be transparent, a healthy economy *continuously discovers prices and rates via real-time aggregation of maximally expressive individual interactions*, not by formulas. **There is no single formula that can optimally capture market sentiment.** Even if there was, agreeing on it would be a great challenge in and of itself. 
 
 ### The Cardano-Loans Protocol
 Cardano-Loans gives users the great power (and responsibility) to create a fully on-chain debt market. It is entirely divorced from "global" off-chain markets, in favor of a bottom-up, or *endogenous*, approach to price & interest rate discovery. 
