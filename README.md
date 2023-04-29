@@ -131,8 +131,8 @@ data LoanDatum
       , loanAsset :: (CurrencySymbol,TokenName) -- ^ The asset to be loaned out.
       , loanPrinciple :: Integer -- ^ The amount of the loan asset to be loaned out.
       , loanTerm :: POSIXTime -- ^ The length of time where the loan will be active.
-      , collateral :: [(CurrencySymbol,TokenName)] -- ^ All assets the borrower is willing to use as
-                                                   -- collateral.
+      , collateral :: [(CurrencySymbol,TokenName)] 
+          -- ^ All assets the borrower is willing to use as collateral.
       }
   -- | The datum for the offer phase.
   | OfferDatum
