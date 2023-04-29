@@ -584,7 +584,7 @@ ratioCollateralTaken <= ratioOutstandingBalanceRepaid
 ```
 
 ##### Simple Compounding Example
-Alice borrows 1000 ADA from Bob with a 5% compounding at slots 100,  200, and 300, where slot 300 is the last checkpoint (final expiry). Prior to slot 100, Alice can make payments as usual. Once slot 100 passes, Alice will be unable to make any more payments until she updates the datum to reflect the interest (50 ADA) accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200, where she must repeat the rollover process. As long as the datum is up to date, Alice can repay as much of the loan as she wants, including the entire outstanding balance (plus interest). 
+Alice borrows 1000 ADA from Bob with a 5% compounding at slots 100,  200, and 300, where slot 300 is the last checkpoint (final expiry). Prior to slot 100, Alice can make payments as usual. Once slot 100 passes, Alice will be unable to make any more payments until she updates the datum to reflect the interest accrued on the outstanding balance. Once this is done, she can continue making payments until slot 200, where she must repeat the rollover process. As long as the datum is up to date, Alice can repay as much of the loan as she wants, including the entire outstanding balance. 
 
 #### Term Extensions/Renegotiations
 A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the nature/creditworthiness of the borrower.
