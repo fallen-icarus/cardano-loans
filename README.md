@@ -459,7 +459,7 @@ The table below shows which API endpoints are used for this with Blockfrost:
 
 For the second API, the `asset_mint_or_burn_count` value will either be 1 or 3, specifying a full repayment or default, respectively. For the third API, the input with the BorrowerID token will have the datum of the loan attached. That datum has the terms of that specific loan (you will also need to use [this API](https://docs.blockfrost.io/#tag/Cardano-Scripts/paths/~1scripts~1datum~1%7Bdatum_hash%7D/get) since Blockfrost only returns the hash of the datum in the last query).
 
-The included `Cardano-Loans` CLI puts this all together. Here is an example query response (when piped to `jq`):
+The included `cardano-loans` CLI puts this all together. Here is an example query response (when piped to `jq`):
 ``` JSON
 [
   {
@@ -537,7 +537,7 @@ Here is a non-exhaustive list of queries you can make thanks to beacon tokens:
 7. The borrower's credit history.
 8. The lender's loan history.
 
-`Cardano-Loans` supports all of these queries. To see example responses for all these queries, check out the [GettingStarted](GettingStarted.md).
+`cardano-loans` supports all of these queries. To see example responses for all these queries, check out the [GettingStarted](GettingStarted.md).
 
 
 ### Trustless p2p Negotiations
