@@ -194,7 +194,7 @@ fn valid_datum(sym: PolicyId, redeemer: BeaconRedeemer, datum: LoanDatum) -> Boo
         error @"Invalid OfferDatum loan_principle"
       } else if term <= 0 {
         error @"Invalid OfferDatum loan_term"
-      } else if ratio.lte(interest,ratio.zero()) {
+      } else if ratio.lt(interest,ratio.zero()) {
         error @"Invalid OfferDatum loan_interest"
       } else if claim_period <= 0 {
         error @"Invalid OfferDatum claim_period"
