@@ -227,15 +227,15 @@ fn valid_datum(sym: PolicyId, redeemer: BeaconRedeemer, datum: LoanDatum) -> Boo
 fn loan_principle_met(oval: Value, datum: LoanDatum) -> Bool {
   expect OfferDatum(_,_,_,(asset_sym,asset_name),principle,..) = datum
   if asset_sym == "" {
-    if value.quantity_of(oval,asset_sym,asset_name) != 3_000_000 + principle {
-      error @"Offer not stored with 3 ADA + loan amount"
+    if value.quantity_of(oval,asset_sym,asset_name) != 5_000_000 + principle {
+      error @"Offer not stored with 5 ADA + loan amount"
     } else {
       True
     }
   } else {
-    if value.lovelace_of(oval) != 3_000_000 ||
+    if value.lovelace_of(oval) != 5_000_000 ||
        value.quantity_of(oval,asset_sym,asset_name) != principle {
-      error @"Offer not stored with 3 ADA + loan amount"
+      error @"Offer not stored with 5 ADA + loan amount"
     } else {
       True
     }
