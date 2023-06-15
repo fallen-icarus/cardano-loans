@@ -206,7 +206,7 @@ fn valid_datum(sym: PolicyId, redeemer: BeaconRedeemer, datum: LoanDatum) -> Boo
             let (_,n) = x 
             ratio.gte(n,ratio.zero())
           }) {
-        error @"All collateralizations must be > 0"
+        error @"All collateralizations must be >= 0"
       } else if !all(checkpoints,fn(n) {n > 0}) {
         error @"All checkpoints must be > 0"
       } else if list.sort(checkpoints,int.compare) != checkpoints {
