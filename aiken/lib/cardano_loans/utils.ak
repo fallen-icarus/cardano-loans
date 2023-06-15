@@ -233,7 +233,7 @@ fn loan_principle_met(oval: Value, datum: LoanDatum) -> Bool {
       True
     }
   } else {
-    if value.lovelace_of(oval) != 3_000_000 &&
+    if value.lovelace_of(oval) != 3_000_000 ||
        value.quantity_of(oval,asset_sym,asset_name) != principle {
       error @"Offer not stored with 3 ADA + loan amount"
     } else {
