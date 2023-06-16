@@ -218,7 +218,18 @@ fn valid_datum(sym: PolicyId, redeemer: BeaconRedeemer, datum: LoanDatum) -> Boo
       } else if list.sort(checkpoints,int.compare) != checkpoints {
         error @"Checkpoints must be in ascending order"
       } else {
-        True
+        when list.last(checkpoints) is {
+          Some(x) -> {
+            if x >= term {
+              error @"Final checkpoint must be before expiration"
+            } else {
+              True
+            }
+          }
+          _ -> {
+            True
+          }
+        }
       }
     }
     (MintOfferBeacon(_),_) -> {
