@@ -77,8 +77,10 @@ validator() {
                 utils.all_beacons_burned(sym,"Offer",total_ival,mint) &&
                 utils.all_beacons_burned(sym,lender_id,total_ival,mint)
               }
+            } else if !utils.staking_credential_approves(scred,sigs,wdrw) {
+              error @"Address owner did not approve"
             } else {
-              utils.staking_credential_approves(scred,sigs,wdrw)
+              True
             }
           }
           _ -> {
