@@ -1,5 +1,6 @@
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/time.{PosixTime}
+use aiken/bytearray
 use aiken/transaction/credential.{Address,Credential,Script}
 use aiken/transaction/value.{PolicyId,AssetName}
 use aiken/transaction.{OutputReference,ScriptContext}

@@ -1,4 +1,7 @@
-use aiken/transaction.{Transaction,Datum,InlineDatum,Output,Input}
+use aiken/transaction.{
+  Transaction, Datum, InlineDatum, Output, Input, OutputReference, TransactionId,
+  ValidityRange
+}
 use aiken/transaction/credential.{ 
   Credential, StakeCredential, Inline, VerificationKeyCredential, ScriptCredential, Script,
   Address, VerificationKey
@@ -9,13 +12,16 @@ use aiken/list.{has,is_empty,all}
 use aiken/option.{is_some}
 use aiken/int
 use aiken/string
+use aiken/time.{PosixTime}
+use aiken/interval.{Interval,IntervalBound,Finite}
+use aiken/bytearray
 use aiken/dict.{has_key,Dict}
 use cardano_loans/types.{
   LoanDatum, LoanRedeemer, BeaconRedeemer, AskDatum, OfferDatum, ActiveDatum,
   CloseAsk, CloseOffer, AcceptOffer, MakePayment, Rollover, ClaimExpired, UpdateLenderAddress,
   UnlockLostCollateral, MintAskBeacon, MintOfferBeacon, MintActiveBeacon, BurnBeacons
 }
-use cardano_loans/ratio
+use cardano_loans/ratio.{Rational}
 
 pub fn staking_credential_approves(
   staking_cred: Option<StakeCredential>,
@@ -145,7 +151,7 @@ pub fn mint_check(redeemer: BeaconRedeemer, mint: Dict<AssetName,Int>) -> Bool {
       }
     }
     MintActiveBeacon(_,_) -> {
-      todo
+      error // Never used with this redeemer.
     }
     BurnBeacons -> {
       if dict.foldl(mint,True,fn (_,v,r) {r && v < 0}) {
@@ -316,4 +322,333 @@ pub fn destination_check(
     }
   }
   list.foldl(outputs,True,foo)
+}
+
+fn compare_out_ref(ref1: OutputReference, ref2: OutputReference) -> Ordering {
+  let OutputReference(TransactionId(tx_id1),out_index1) = ref1
+  let OutputReference(TransactionId(tx_id2),out_index2) = ref2
+  when bytearray.compare(tx_id1,tx_id2) is {
+    Less -> { Less }
+    Greater -> { Greater }
+    Equal -> { int.compare(out_index1,out_index2) }
+  }
+}
+
+// They should never be equal so it will crash if two are equal.
+fn compare_active_datums(datum1: LoanDatum, datum2: LoanDatum) -> Ordering {
+  expect ActiveDatum(_,_,_,_,_,_,_,_,_,_,_,_,_,loan_id1) = datum1
+  expect ActiveDatum(_,_,_,_,_,_,_,_,_,_,_,_,_,loan_id2) = datum2
+  when bytearray.compare(loan_id1,loan_id2) is {
+    Less -> { Less }
+    Greater -> { Greater }
+    Equal -> { error @"Duplicate ActiveDatum found" }
+  }
+}
+
+// This is only used on values with a LoanID so it will either throw an error if the LoanID
+// is in both values or return Less.
+fn compare_value(loan_id: AssetName, sym: PolicyId, val1: Value, val2: Value) -> Ordering {
+  if value.quantity_of(val1,sym,loan_id) == value.quantity_of(val2,sym,loan_id) {
+    error @"LoanID used twice in lender payments"
+  } else {
+    Less
+  }
+}
+
+// Get the loan start time from the tx's validity range. Based off the lower bound.
+// This is also used when a lender is claiming a loan to get the claim time.
+pub fn get_start_time(val_range: ValidityRange) -> PosixTime {
+  when val_range is {
+    Interval(IntervalBound(Finite(x),_),_) -> {
+      x
+    }
+    _ -> {
+      error @"invalid-before not specified"
+    }
+  }
+}
+
+// Returns what the loan output should have for the ActiveDatum based on the inputs that were paired.
+fn expected_active_datum(
+  start: PosixTime,
+  ask_datum: LoanDatum,
+  offer_datum: LoanDatum,
+  loan_id: AssetName
+) -> LoanDatum {
+  expect AskDatum(
+    ask_sym,
+    ask_borrower_id,
+    ask_asset,
+    ask_principle,
+    ask_term,
+    ask_collateral
+  ) = ask_datum
+  expect OfferDatum(
+    offer_sym,
+    offer_lender_id,
+    offer_lender_address,
+    offer_asset,
+    offer_principle,
+    offer_checkpoints,
+    offer_term,
+    offer_interest,
+    offer_collateralization,
+    offer_claim_period
+  ) = offer_datum
+  if ask_asset != offer_asset {
+    error @"Datums do not agree on loan asset"
+  } else if ask_principle != offer_principle {
+    error @"Datums do not agree on loan principle"
+  } else if ask_term != offer_term {
+    error @"Datums do not agree on loan term"
+  } else if ask_collateral != list.map(offer_collateralization,fn(x) {let (a,_) = x a}) {
+    error @"Datums do not agree on collateral"
+  } else {
+    ActiveDatum{
+      loan_beacon_sym: offer_sym,
+      borrower_id: ask_borrower_id,
+      lender_address: offer_lender_address,
+      loan_asset: offer_asset,
+      loan_principle: offer_principle,
+      next_checkpoints: list.map(offer_checkpoints,fn(x) { x + start }),
+      past_checkpoitns: [],
+      loan_term: offer_term,
+      loan_interest: offer_interest,
+      collateralization: offer_collateralization,
+      claim_expiration: start + offer_claim_period,
+      loan_expiration: start + offer_term,
+      loan_outstanding: ratio.from_integer(offer_principle),
+      loan_id: loan_id
+    }
+  }
+}
+
+fn is_enough_collateral(
+  principle_taken: Rational,
+  collats: List<((PolicyId,AssetName),Rational)>,
+  oval: Value
+) -> Bool {
+  let foo = fn (collat: ((PolicyId,AssetName),Rational), acc: Rational) {
+    let ((policy,name),price) = collat
+    if price == ratio.zero() {
+      acc
+    } else {
+      ratio.add(
+        acc, 
+        ratio.multiply(
+          ratio.from_integer(value.quantity_of(oval,policy,name)),
+          ratio.recip(price)
+        )
+      )
+    }
+  }
+  ratio.gte(list.foldl(collats,ratio.zero(),foo),principle_taken)
+}
+
+// Goes through the inputs and builds up two maps: one Ask input map and one Offer input map.
+// All inputs from the loan validator must come from the same address and all inputs must
+// have the proper beacon token present. The integer returned is the size of that map.
+fn input_maps (
+  borrower_cred: Credential,
+  ins: List<Input>,
+  sym: PolicyId,
+  dapp_hash: Hash<Blake2b_224,Script>,
+) -> ((Dict<OutputReference,LoanDatum>,Int),(Dict<OutputReference,LoanDatum>,Int)) {
+  let foo = fn (
+    in: Input, 
+    acc: ((Dict<OutputReference,LoanDatum>,Int),(Dict<OutputReference,LoanDatum>,Int))
+  ) {
+    let Input(out_ref,Output(Address(pay_cred,stake_cred),val,d,_)) = in
+    let ((ask_map,asize),(offer_map,osize)) = acc
+    // Check if input has an Ask beacon. This can only be from a dApp address.
+    if value.quantity_of(val,sym,"Ask") == 1 {
+      // Check if it comes from the correct dApp address.
+      if stake_cred == Some(Inline(borrower_cred)) {
+        let datum = parse_datum(d) // Guaranteed to be an AskDatum since the "Ask" beacon is present.
+        let new_ask_map = dict.insert(ask_map,out_ref,datum,compare_out_ref)
+        let new_asize = asize + 1
+        ((new_ask_map,new_asize),(offer_map,osize))
+      } else {
+        error @"Input from wrong dApp address"
+      }
+    // Check if input has an Offer beacon. This can only be from a dApp address.
+    } else if value.quantity_of(val,sym,"Offer") == 1 {
+      // Check if it comes from the correct dApp address.
+      if stake_cred == Some(Inline(borrower_cred)) {
+        let datum = parse_datum(d) // Guaranteed to be an OfferDatum since the "Offer" beacon is present.
+        let new_offer_map = dict.insert(offer_map,out_ref,datum,compare_out_ref)
+        let new_osize = osize + 1
+        ((ask_map,asize),(new_offer_map,new_osize))
+      } else {
+        error @"Input from wrong dApp address"
+      }
+    // Check if input comes from a dApp address. If it does and the previous two checks failed,
+    // this must be an invalid input.
+    } else if pay_cred == ScriptCredential(dapp_hash) {
+      error @"Invalid loan input found"
+    // Otherwise, it is a benign input and can be skipped.
+    } else {
+      acc
+    }
+  }
+  list.foldl(ins,((dict.new(),0),(dict.new(),0)),foo)
+}
+
+// This compares the inputs against the pairings specified in the redeemer. It check:
+// 1) length pairings == size ask map == size offer map
+// 2) all ask and offer inputs are only paired up once
+// 3) the input datums agree
+// It returns a map of required outputs by ActiveDatums since LoanIDs guarantee uniqueness.
+// Internally:
+// - The pay_map is a map of outputs that must go to the lenders.
+// - The loan_map is a map of collateral output datums that must go to the loan address.
+pub fn acceptance_input_checks(
+  borrower_cred: Credential,
+  ins: List<Input>,
+  sym: PolicyId,
+  dapp_hash: Hash<Blake2b_224,Script>,
+  start_time: PosixTime,
+  pairings: List<(OutputReference,OutputReference)>
+) -> ( Dict<Value,Address>, Int , Dict<LoanDatum,AssetName>, Int, Value ) {
+  let ((ask_map,asize),(offer_map,osize)) = input_maps(borrower_cred,ins,sym,dapp_hash)
+  let foo = fn (
+    pair: (OutputReference,OutputReference),
+    acc: ( 
+      Dict<OutputReference,Int>, // This will be dropped before returning the overall result.
+      Dict<Value,Address>, 
+      Int,
+      Dict<LoanDatum,AssetName>,
+      Int, 
+      Value
+    )
+  ) {
+    let (ask_ref,offer_ref) = pair
+    let (used_map,pay_map,pay_size,loan_map,loan_size,req_mint) = acc
+    let OutputReference(TransactionId(offer_id),_) = offer_ref
+    when (dict.get(used_map,ask_ref),dict.get(used_map,offer_ref)) is {
+      // Neither have been used yet.
+      (None,None) -> {
+        when (dict.get(ask_map,ask_ref),dict.get(offer_map,offer_ref)) is {
+          (Some(ask_datum),Some(offer_datum)) -> {
+            expect OfferDatum(_,lender_id,lender_address,..) = offer_datum
+            let pay_lender_val = value.zero() |> 
+              value.add(_,value.ada_policy_id,value.ada_asset_name,5_000_000) |>
+              value.add(_,sym,offer_id,1)
+            let new_req_mint = req_mint |>
+              value.add(_,sym,offer_id,2) |>
+              value.add(_,sym,lender_id,-1) |>
+              value.add(_,sym,"Ask",-1) |>
+              value.add(_,sym,"Offer",-1) |>
+              value.add(_,sym,"Active",1)
+            let new_pay_map = dict.insert(
+              pay_map,
+              pay_lender_val,
+              lender_address,
+              compare_value(offer_id,sym,_,_)
+            )
+            let new_pay_size = pay_size + 1
+            let req_datum = expected_active_datum(start_time,ask_datum,offer_datum,offer_id)
+            let new_loan_map = dict.insert(loan_map,req_datum,lender_id,compare_active_datums)
+            let new_loan_size = loan_size + 1
+            let new_used_map = used_map |>
+              dict.insert(_,offer_ref,1,compare_out_ref) |>
+              dict.insert(_,ask_ref,1,compare_out_ref)
+            (new_used_map,new_pay_map,new_pay_size,new_loan_map,new_loan_size,new_req_mint)
+          }
+          _ -> {
+            error @"Paired input not found"
+          }
+        }
+      }
+      // The input has already been used.
+      _ -> {
+        error @"Input already paired"
+      }
+    }
+  }
+  // Check that there are the same number of Asks and Offers and at least one of each.
+  if asize == osize && asize != 0 {
+    let (_,pay_map,pay_size,loan_map,loan_size,req_mint) = list.foldl(
+      pairings,
+      (dict.new(),dict.new(),0,dict.new(),0,value.zero()),
+      foo
+    )
+    // The loan_map size will be the same as the pay_map size.
+    if pay_size == asize {
+      (pay_map,pay_size,loan_map,loan_size,req_mint)
+    } else {
+      error @"Not all pairs found"
+    }
+  } else {
+    error @"Wrong number of ask and offer inputs"
+  }
+}
+
+// This checks the outputs to ensure:
+// 1) All lenders get the proper LoanID tokens and their deposits back.
+// 2) All loans are properly collateralized at the borrower's address.
+// 3) All collateral UTxOs have the proper LoanID token.
+pub fn acceptance_output_checks(
+  borrower_cred: Credential,
+  pairings: List<(OutputReference,OutputReference)>,
+  sym: PolicyId,
+  dapp_hash: Hash<Blake2b_224,Script>,
+  start_time: PosixTime,
+  pay_map: Dict<Value,Address>,
+  pay_size: Int,
+  loan_map: Dict<LoanDatum,AssetName>,
+  loan_size: Int,
+  outs: List<Output>
+) -> Bool {
+  let borrower_addr = Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred)))
+  let borrower_token = credential_to_asset_name(borrower_cred)
+  let foo = fn (out: Output, acc: (Int,Int)) {
+    let (lenders_paid,collaterals_satisfied) = acc
+    let Output(addr,val,d,_) = out
+    // Check if output is a collateral output.
+    if addr == borrower_addr {
+      let datum = parse_datum(d)
+      when datum is {
+        ActiveDatum(_,_,_,_,_,_,_,_,_,collats,_,_,borrowed,loan_id) -> {
+          // Check if output has enough collateral.
+          if !is_enough_collateral(borrowed,collats,val) {
+            error @"Not enough collateral posted"
+          // Check if output has one LoanID.
+          } else if value.quantity_of(val,sym,loan_id) != 1 {
+            error @"Collateral output must have exactly one LoanID"
+          // Check if output has one BorrowerID.
+          } else if value.quantity_of(val,sym,borrower_token) != 1 {
+            error @"Collateral output must have exactly one BorrowerID"
+          // Check if output has one Active beacon.
+          } else if value.quantity_of(val,sym,"Active") != 1 {
+            error @"Collateral output must have exactly one Active beacon"
+          } else {
+            (lenders_paid,collaterals_satisfied + 1)
+          }
+        }
+        _ -> {
+          error @"Loan output has wrong datum type"
+        }
+      } 
+    // Check if the value is supposed to be a lender payment.
+    } else {
+      when dict.get(pay_map,val) is {
+        Some(lender_addr) -> {
+          if lender_addr == addr {
+            (lenders_paid + 1, collaterals_satisfied)
+          // The above check can only fail if the LoanID was sent to the wrong address.
+          } else {
+            error @"LoanID sent to wrong address."
+          }
+        }
+        _ -> acc
+      }
+    }
+  }
+  let (lenders_paid,collaterals_satisfied) = list.foldl(outs,(0,0),foo)
+  if lenders_paid == pay_size && collaterals_satisfied == loan_size {
+    True
+  } else {
+    error @"Missing required outputs"
+  }
 }

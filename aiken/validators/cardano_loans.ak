@@ -10,23 +10,23 @@ use cardano_loans/types.{
   UnlockLostCollateral, MintAskBeacon, MintOfferBeacon, MintActiveBeacon, BurnBeacons
 }
 use cardano_loans/utils
-use aiken/cbor
+// use aiken/cbor
 
-test cbor_test() {
-  let offer_datum = OfferDatum {
-    loan_beacon_sym: "",
-    lender_id: "",
-    lender_address: Address(credential.VerificationKeyCredential("00"),None),
-    loan_asset: ("",""),
-    loan_principle: 10,
-    loan_checkpoints: [1,2,3],
-    loan_term: 20,
-    loan_interest: ratio.unsafe_ratio(1,2),
-    collateralization: [(("",""),ratio.unsafe_ratio(1,1))],
-    claim_period: 10
-  }
-  cbor.serialise(offer_datum) == #""
-}
+// test cbor_test() {
+//   let offer_datum = OfferDatum {
+//     loan_beacon_sym: "",
+//     lender_id: "",
+//     lender_address: Address(credential.VerificationKeyCredential("00"),None),
+//     loan_asset: ("",""),
+//     loan_principle: 10,
+//     loan_checkpoints: [1,2,3],
+//     loan_term: 20,
+//     loan_interest: ratio.unsafe_ratio(1,2),
+//     collateralization: [(("",""),ratio.unsafe_ratio(1,1))],
+//     claim_period: 10
+//   }
+//   cbor.serialise(offer_datum) == #""
+// }
 
 const app_name = @"testing"
 
@@ -91,7 +91,27 @@ validator() {
       AcceptOffer -> {
         // At least one Active beacon must be minted. The minting policy will do the rest
         // of the checks.
-        todo
+        let Transaction(_,_,_,_,mint,..) = tx_info
+        let mint_as_val = value.from_minted_value(mint)
+        when datum is {
+          AskDatum(sym,..) -> {
+            if value.quantity_of(mint_as_val,sym,"Active") <= 0 {
+              error @"Active beacon not minted"
+            } else {
+              True
+            }
+          }
+          OfferDatum(sym,..) -> {
+            if value.quantity_of(mint_as_val,sym,"Active") <= 0 {
+              error @"Active beacon not minted"
+            } else {
+              True
+            }
+          }
+          _ -> {
+            error @"Invalid input datum"
+          }
+        }
       }
       MakePayment -> {
         // The datum must be an ActiveDatum.
@@ -210,10 +230,37 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // One Active beacon, one BorrowerID, and 2 LoanIDs must be minted for every loan accepted.
         // Only one loan address has inputs in this tx.
         // All loan address inputs must either have an Ask beacon or an Offer beacon.
-        // The datums of the paired inputs must agree:
-          //
+        // The datums of the paired inputs must agree.
         // One of the newly minted LoanIDs must be paid to the corresponding lender + 3 ADA.
-        todo
+        // The borrower must approve the transaction.
+        let Transaction(ins,_,outs,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
+        let start_time = utils.get_start_time(validity_range)
+        let (pay_map,pay_size,loan_map,loan_size,req_mint) = utils.acceptance_input_checks(
+          borrower_cred,
+          ins,
+          policy_id,
+          dapp_hash,
+          start_time,
+          pairs
+        )
+        if value.tokens(req_mint,policy_id) != value.tokens(value.from_minted_value(mint),policy_id) {
+          error @"Wrong beacons minted/burned"
+        } else if !utils.staking_credential_approves(Some(Inline(borrower_cred)),sigs,wdrw) {
+          error @"Borrower did not approve"
+        } else {
+          utils.acceptance_output_checks(
+            borrower_cred,
+            pairs,
+            policy_id,
+            dapp_hash,
+            start_time,
+            pay_map,
+            pay_size,
+            loan_map,
+            loan_size,
+            outs
+          )
+        }
       }
       BurnBeacons -> {
         let Transaction(_,_,_,_,mint,..) = tx_info
