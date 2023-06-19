@@ -1,9 +1,7 @@
-use aiken/hash.{Hash,Blake2b_224}
 use aiken/time.{PosixTime}
-use aiken/bytearray
-use aiken/transaction/credential.{Address,Credential,Script}
+use aiken/transaction/credential.{Address,Credential}
 use aiken/transaction/value.{PolicyId,AssetName}
-use aiken/transaction.{OutputReference,ScriptContext}
+use aiken/transaction.{OutputReference}
 use cardano_loans/ratio.{Rational}
 
 pub type LoanDatum {
@@ -52,7 +50,7 @@ pub type LoanRedeemer {
   MakePayment
   Rollover
   ClaimExpired
-  UpdateLenderAddress
+  UpdateLenderAddress {new_address: Address}
   UnlockLostCollateral
 }
 

@@ -9,17 +9,15 @@ use aiken/transaction/credential.{
 use aiken/transaction/value.{AssetName,PolicyId,Value,MintedValue}
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list.{has,is_empty,all}
-use aiken/option.{is_some}
 use aiken/int
 use aiken/string
 use aiken/time.{PosixTime}
 use aiken/interval.{Interval,IntervalBound,Finite}
-use aiken/bytearray
 use aiken/dict.{has_key,Dict}
+use aiken/bytearray
 use cardano_loans/types.{
-  LoanDatum, LoanRedeemer, BeaconRedeemer, AskDatum, OfferDatum, ActiveDatum,
-  CloseAsk, CloseOffer, AcceptOffer, MakePayment, Rollover, ClaimExpired, UpdateLenderAddress,
-  UnlockLostCollateral, MintAskBeacon, MintOfferBeacon, MintActiveBeacon, BurnBeacons
+  LoanDatum, BeaconRedeemer, AskDatum, OfferDatum, ActiveDatum, 
+  MintAskBeacon, MintOfferBeacon, MintActiveBeacon, BurnBeacons
 }
 use cardano_loans/ratio.{Rational}
 
@@ -83,7 +81,7 @@ fn credential_to_asset_name(cred: Credential) -> AssetName {
     }
 }
 
-fn address_uses_payment_pubkey(addr: Address) -> Bool {
+pub fn address_uses_payment_pubkey(addr: Address) -> Bool {
   when addr is 
     {
       Address(VerificationKeyCredential(_),_) -> True
@@ -465,7 +463,7 @@ fn expected_active_datum(
   loan_id: AssetName
 ) -> LoanDatum {
   expect AskDatum(
-    ask_sym,
+    _,
     ask_borrower_id,
     ask_asset,
     ask_principle,
@@ -474,7 +472,7 @@ fn expected_active_datum(
   ) = ask_datum
   expect OfferDatum(
     offer_sym,
-    offer_lender_id,
+    _,
     offer_lender_address,
     offer_asset,
     offer_principle,
@@ -732,10 +730,8 @@ pub fn acceptance_input_checks(
 // 3) All collateral UTxOs have the proper LoanID token.
 pub fn acceptance_output_checks(
   borrower_cred: Credential,
-  pairings: List<(OutputReference,OutputReference)>,
   sym: PolicyId,
   dapp_hash: Hash<Blake2b_224,Script>,
-  start_time: PosixTime,
   pay_map: Dict<Value,Address>,
   pay_size: Int,
   loan_map: Dict<LoanDatum,AssetName>,
@@ -752,28 +748,39 @@ pub fn acceptance_output_checks(
     if addr == borrower_addr 
       {
         let datum = parse_datum(d)
-        when datum is {
-          ActiveDatum(_,_,_,_,_,_,_,_,_,collats,_,_,borrowed,loan_id) -> 
-            {
-              // Check if output has enough collateral.
-              if !is_enough_collateral(borrowed,collats,val) 
-                { error @"Not enough collateral posted" }
-              // Check if output has one LoanID.
-              else if value.quantity_of(val,sym,loan_id) != 1 
-                { error @"Collateral output must have exactly one LoanID" }
-              // Check if output has one BorrowerID.
-              else if value.quantity_of(val,sym,borrower_token) != 1 
-                { error @"Collateral output must have exactly one BorrowerID" }
-              // Check if output has one Active beacon.
-              else if value.quantity_of(val,sym,"Active") != 1 
-                { error @"Collateral output must have exactly one Active beacon" }
-              else 
-                { (lenders_paid, collaterals_satisfied + 1) }
-            }
+        // Check that the datum is the proper datum.
+        when datum is 
+          {
+            ActiveDatum(_,_,_,_,_,_,_,_,_,collats,_,_,borrowed,loan_id) -> 
+              {
+                // Check if output has enough collateral.
+                if !is_enough_collateral(borrowed,collats,val) 
+                  { error @"Not enough collateral posted" }
+                // Check if output has one LoanID.
+                else if value.quantity_of(val,sym,loan_id) != 1 
+                  { error @"Collateral output must have exactly one LoanID" }
+                // Check if output has one BorrowerID.
+                else if value.quantity_of(val,sym,borrower_token) != 1 
+                  { error @"Collateral output must have exactly one BorrowerID" }
+                // Check if output has one Active beacon.
+                else if value.quantity_of(val,sym,"Active") != 1 
+                  { error @"Collateral output must have exactly one Active beacon" }
+                else 
+                  { 
+                    // Check that the output has one of the expected datums.
+                    when dict.get(loan_map,datum) is
+                      {
+                        None -> error @"Collateral ouptut has wrong datum"
+                        Some(_) -> (lenders_paid,collaterals_satisfied + 1)
 
-          _ -> error @"Loan output has wrong datum type"
-        } 
-      } 
+                      }
+                  }
+              }
+
+            _ -> error @"Loan output has wrong datum type"
+          } 
+      }
+
 
     // Check if the value is supposed to be a lender payment.
     else 
@@ -867,38 +874,51 @@ pub fn collateral_taken_check(
   collateralization: List<((PolicyId,AssetName),Rational)>
 ) -> Bool {
   // Calculate the proportion of the loan that was repaid.
-  let den = ratio.recip(outstanding)
-  let goal = ratio.multiply(paid,den)
-  let foo = fn (collat: ((PolicyId,AssetName),Rational), acc: Rational) {
+  let goal = ratio.multiply(paid,ratio.recip(outstanding))
+  // Returns the the total amount of collateral taken (in units of the loan asset) and\
+  // the total starting balance for collateral (in units of the loan asset).
+  let foo = fn (collat: ((PolicyId,AssetName),Rational), acc: (Rational,Rational)) {
     let ((policy,name),price) = collat
+    let (collat_taken,starting_collat) = acc
     // If the price is zero, the accumulator will remain unchanged.
+    // The lender does not care about this asset.
     if price == ratio.zero()
       { acc }
-    // Calculate the equivalent proportion of the loan asset the taken collateral represents.
+    // Calculate the proportion taken for this collateral asset.
     else
       {
-        // It is possible for this to be negative in the case where collateral is deposited. More of
-        // another collateral can be taken if this collateral asset is deposited.
-        let taken_as_loan_asset = 
-          value.quantity_of(collat_flux,policy,name) // Get quantity of collateral. Neg means deposited.
-          |> ratio.from_integer(_) // Convert to rational.
-          |> ratio.multiply(_,ratio.recip(price)) // Convert to units of the loan asset.
-          |> ratio.multiply(_,den) // Calculate proportion of total.
-            
-        ratio.add(taken_as_loan_asset,acc) // Add to running total.
+        let recip_price = ratio.recip(price)
+        let new_starting_collat = 
+          value.quantity_of(in_val,policy,name) // Get quantity of collateral in starting balance.
+          |> ratio.from_integer(_) // Convert to Rational.
+          |> ratio.multiply(_,recip_price) // Convert to units of the loan asset.
+          |> ratio.add(_,starting_collat) // Add to running total.
+
+        // It is possible for the quantity of the collateral to be negative in the case where 
+        // collateral is deposited. If this asset is deposited, more of another asset can be taken.
+        let new_collat_taken = 
+          value.quantity_of(collat_flux,policy,name) // Get quantity fo collateral taken.
+          |> ratio.from_integer(_) // Convert to Rational.
+          |> ratio.multiply(_,recip_price) // Convert to units of the loan asset.
+          |> ratio.add(_,collat_taken) // Add to running total.
+
+        (new_collat_taken,new_starting_collat)
       }
   }
 
-  // The proportion of collateral taken must be less than or equal to the proportion of the loan
-  // repaid.
-  if ratio.gt(list.foldl(collateralization,ratio.zero(),foo),goal)
+  // The proportion of collateral taken must be less than or equal to the proportion of the
+  // loan repaid.
+  let (collat_taken,starting_collat) = 
+    list.foldl(collateralization,(ratio.zero(),ratio.zero()),foo)
+  let prop_collat_taken = ratio.multiply(collat_taken,ratio.recip(starting_collat))
+  if ratio.gt(prop_collat_taken,goal)
     { error @"Too much collateral taken" }
   else 
     { True }
 }
 
-// Returns True or throws an error.
-pub fn rollover_check(
+// Returns True or throws an error. Used for rollovers and updating lender address.
+pub fn update_datum_check(
   sym: PolicyId,
   loan_addr: Address,
   loan_id: AssetName,

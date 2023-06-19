@@ -1,11 +1,10 @@
 use aiken/hash.{Hash,Blake2b_224}
-use aiken/time.{PosixTime}
-use aiken/transaction/credential.{Address,Credential,Script,ScriptCredential,Inline}
-use aiken/transaction/value.{PolicyId,AssetName}
-use aiken/transaction.{OutputReference,ScriptContext,Transaction,Input,Output} as tx
+use aiken/transaction/credential.{Address,Script,Inline}
+use aiken/transaction/value
+use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/list
 use aiken/option
-use cardano_loans/ratio.{Rational}
+use cardano_loans/ratio
 use cardano_loans/types.{
   LoanDatum, LoanRedeemer, BeaconRedeemer, AskDatum, OfferDatum, ActiveDatum,
   CloseAsk, CloseOffer, AcceptOffer, MakePayment, Rollover, ClaimExpired, UpdateLenderAddress,
@@ -335,7 +334,7 @@ validator() {
                           ratio.multiply(outstanding,ratio.add(ratio.from_integer(1),interest)),
                           loan_id
                         )
-                        utils.rollover_check(sym,Address(pcred,scred),loan_id,ival,expected_datum,outs)
+                        utils.update_datum_check(sym,Address(pcred,scred),loan_id,ival,expected_datum,outs)
                       }
                   }
 
@@ -343,34 +342,168 @@ validator() {
               }
           }
 
-        ClaimExpired -> {
-          // The datum must be an ActiveDatum.
-          // The input must have an Active beacon.
-          // The loan must be expired or fully repaid.
-          // The Active beacon must be burned.
-          // Two LoanIDs must be burned.
-          // If the BorrowerID is still present, it must also be burned.
-          todo
-        }
-        UpdateLenderAddress -> {
-          // The datum must be an ActiveDatum.
-          // The input must have a LoanID.
-          // There must be two LoanIDs among the tx inputs.
-          // There must be an output to this address with:
-            // The same exact value as the input.
-            // The same datum accept the new address.
-            // The new address must use a payment pubkey.
-          todo
-        }
-        UnlockLostCollateral -> {
-          // The datum must be an ActiveDatum.
-          // The claim period must have passed.
-          // The address' staking credential must signal approval.
-          // All Active beacons among tx inputs must be burned.
-          // All LoanIDs among tx inputs must be burned.
-          // All BorrwoerIDs among tx inputs must be burned.
-          todo
-        }
+        ClaimExpired -> 
+          {
+            // The datum must be an ActiveDatum.
+            when datum is
+              {
+                ActiveDatum(
+                  sym,
+                  borrower_id,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  expiration,
+                  outstanding,
+                  loan_id
+                ) ->
+                {
+                  let Transaction(ins,_,_,_,mint,_,_,validity_range,_,..) = tx_info
+                  expect Some(Input(_, Output(_, ival, _, _))) = 
+                    tx.find_input(ins,out_ref)
+                  let claim_time = utils.get_start_time(validity_range)
+                  // The input must have an Active beacon.
+                  if value.quantity_of(ival,sym,"Active") != 1
+                    { error @"Missing Active beacon" }
+                  // The loan must be expired or fully repaid.
+                  else if claim_time <= expiration && ratio.gt(outstanding,ratio.zero())
+                    { error @"Loan is still active" }
+                  // Two LoanIDs must be burned: lock and key.
+                  else if value.quantity_of(value.from_minted_value(mint),sym,loan_id) != -2
+                    { error @"Two LoanIDs not burned" }
+                  else
+                    {
+                      let total_ival = utils.total_input_value(ins)
+                      // All Active beacons among inputs must be burned.
+                      utils.all_beacons_burned(sym,"Active",total_ival,mint) &&
+                      // If the BorrowerID is still present, it must also be burned.
+                      utils.all_beacons_burned(sym,borrower_id,total_ival,mint)
+                    }
+                }
+
+                _ -> error @"Datum is not an ActiveDatum"
+              }
+          }
+
+        UpdateLenderAddress(new_address) -> 
+          {
+            // The datum must be an ActiveDatum.
+            when datum is
+              {
+                ActiveDatum(
+                  sym,
+                  borrower_id,
+                  _,
+                  loan_asset,
+                  principle,
+                  next_checkpoints,
+                  past_checkpoints,
+                  term,
+                  interest,
+                  collateralization,
+                  claim,
+                  expiration,
+                  outstanding,
+                  loan_id
+                ) -> 
+                {
+                  let Transaction(ins,_,outs,..) = tx_info
+                  expect Some(Input(_, Output(Address(pcred,scred), ival, _, _))) = 
+                    tx.find_input(ins,out_ref)
+                  // The input must have a LoanID.
+                  if value.quantity_of(ival,sym,loan_id) != 1
+                    { error @"Input missing LoanID" }
+                  // There must be two LoanIDs among the tx inputs.
+                  else if value.quantity_of(utils.total_input_value(ins),sym,loan_id) != 2
+                    { error @"Must have two LoanIDs among inputs" }
+                  // The new address must use a payment pubkey.
+                  else if !utils.address_uses_payment_pubkey(new_address)
+                    { error @"Lender address must use payment pubkey" }
+                  // There must be an output to this address with:
+                    // The same exact value as the input.
+                    // The same datum except the new address.
+                  else 
+                    {
+                      let req_datum = ActiveDatum(
+                          sym,
+                          borrower_id,
+                          new_address,
+                          loan_asset,
+                          principle,
+                          next_checkpoints,
+                          past_checkpoints,
+                          term,
+                          interest,
+                          collateralization,
+                          claim,
+                          expiration,
+                          outstanding,
+                          loan_id
+                        )
+                      utils.update_datum_check(sym,Address(pcred,scred),loan_id,ival,req_datum,outs)
+                    }
+                }
+
+                _ -> error @"Datum is not an ActiveDatum"
+              }
+          }
+
+        UnlockLostCollateral -> 
+          {
+            // The datum must be an ActiveDatum.
+            when datum is
+              {
+                ActiveDatum(
+                  sym,
+                  borrower_id,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  claim_expiration,
+                  _,
+                  _,
+                  loan_id
+                ) ->
+                {
+                  let Transaction(ins,_,_,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
+                  expect Some(Input(_, Output(Address(_,scred), ival, _, _))) = 
+                    tx.find_input(ins,out_ref)
+                  let claim_time = utils.get_start_time(validity_range)
+                  // The claim period must have passed.
+                  if claim_time <= claim_expiration
+                    { error @"Claim period has not passed" }
+                  // The address' staking credential must signal approval.
+                  else if !utils.staking_credential_approves(scred,sigs,wdrw)
+                    { error @"Address owner did not approve" }
+                  // Input must have an Active beacon.
+                  else if value.quantity_of(ival,sym,"Active") != 1
+                    { error @"Input missing Active beacon" }
+                  else 
+                    {
+                      let total_ival = utils.total_input_value(ins)
+                      // All Active beacons among tx inputs must be burned.
+                      utils.all_beacons_burned(sym,"Active",total_ival,mint) &&
+                      // All LoanIDs among tx inputs must be burned.
+                      utils.all_beacons_burned(sym,loan_id,total_ival,mint) &&
+                      // All BorrowerIDs among tx inputs must be burned.
+                      utils.all_beacons_burned(sym,borrower_id,total_ival,mint)
+                    }
+                }
+
+                _ -> error "Datum is not an ActiveDatum"
+              }
+          }
       }
   }
 }
@@ -457,10 +590,8 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         } else {
           utils.acceptance_output_checks(
             borrower_cred,
-            pairs,
             policy_id,
             dapp_hash,
-            start_time,
             pay_map,
             pay_size,
             loan_map,
