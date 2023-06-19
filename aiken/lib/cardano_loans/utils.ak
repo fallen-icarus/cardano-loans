@@ -804,24 +804,95 @@ pub fn acceptance_output_checks(
    { error @"Missing required outputs" }
 }
 
-pub fn amount_paid(
+// Gets the amount paid to the lender, the flux for this loan's collateral, and the new datum
+// attached to the collateral output.
+pub fn payment_info(
   lender_addr: Address,
+  sym: PolicyId,
   loan_asset: (PolicyId,AssetName),
   loan_id: AssetName,
+  starting_val: Value, // Collateral starting value.
+  loan_addr: Address,
+  borrower_id: AssetName,
   outs: List<Output>
-) -> Int {
+) -> (Int,Value,Option<LoanDatum>) {
   let (policy,name) = loan_asset
-  let foo = fn (out: Output, acc: Int) {
+  let foo = fn (out: Output, acc: (Int,Value,Option<LoanDatum>)) {
     let Output(addr,val,d,_) = out
+    let (paid,flux,collat_datum) = acc
+
+    // Check if this output is to the lender.
     if addr == lender_addr 
       {
+        // The output must have a unique datum that links it to the target loan.
+        // This guarantees a unique output for every loan payment to prevent double satisfaction.
+        // The payment will only count if the datum is correct. This flexibility allows the borrower
+        // to make multiple payments to a given lender when they have multiple loans from that lender.
         if parse_payment_datum(d) != loan_id 
-          { error @"Payment output has wrong datum" } 
+          { acc } 
         else 
-          { acc + value.quantity_of(val,policy,name) }
+          { (paid + value.quantity_of(val,policy,name), flux, collat_datum) }
       } 
+    
+    // Check if the output contains a LoanID.
+    else if value.quantity_of(val,sym,loan_id) == 1 
+      {
+        // The LoanID must be re-output to the loan address.
+        if addr != loan_addr
+          { error @"LoanID sent to wrong address" }
+        // The output must have the BorrowerID.
+        else if value.quantity_of(val,sym,borrower_id) != 1
+          { error @"Collateral output missing BorrowerID" }
+        // The output must have the Active beacon.
+        else if value.quantity_of(val,sym,"Active") != 1
+          { error @"Collateral output missing Active beacon" }
+        // Return the info.
+        else
+          { (paid,value.merge(flux,value.negate(val)), Some(parse_datum(d)))}
+      }
+
+    // Otherwise, this is a benign output.
     else 
       { acc }
   }
-  list.foldl(outs,0,foo)
+  list.foldl(outs,(0,starting_val,None),foo)
+}
+
+// Returns True or throws an error.
+pub fn collateral_taken_check(
+  in_val: Value,
+  collat_flux: Value,
+  paid: Rational,
+  outstanding: Rational,
+  collateralization: List<((PolicyId,AssetName),Rational)>
+) -> Bool {
+  // Calculate the proportion of the loan that was repaid.
+  let den = ratio.recip(outstanding)
+  let goal = ratio.multiply(paid,den)
+  let foo = fn (collat: ((PolicyId,AssetName),Rational), acc: Rational) {
+    let ((policy,name),price) = collat
+    // If the price is zero, the accumulator will remain unchanged.
+    if price == ratio.zero()
+      { acc }
+    // Calculate the equivalent proportion of the loan asset the taken collateral represents.
+    else
+      {
+        // It is possible for this to be negative in the case where collateral is deposited. More of
+        // another collateral can be taken if this collateral asset is deposited.
+        let taken_as_loan_asset = 
+          value.quantity_of(collat_flux,policy,name) // Get quantity of collateral. Neg means deposited.
+          |> ratio.from_integer(_) // Convert to rational.
+          |> ratio.multiply(_,ratio.recip(price)) // Convert to units of the loan asset.
+          |> ratio.multiply(_,den) // Calculate proportion of total.
+            
+        ratio.add(taken_as_loan_asset,acc) // Add to running total.
+      }
+  }
+
+  // The proportion of collateral taken must be less than or equal to the proportion of the loan
+  // repaid.
+  if ratio.gt(list.foldl(collateralization,ratio.zero(),foo),goal)
+    { error @"Too much collateral taken" }
+  else 
+    { True }
 }

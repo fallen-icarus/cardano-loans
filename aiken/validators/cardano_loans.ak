@@ -135,24 +135,6 @@ validator() {
         MakePayment -> 
           {
             // The datum must be an ActiveDatum.
-            // The address' staking credential must signal approve.
-            // If an Active beacon is present:
-              // The loan must not be expired.
-              // The next checkpoint must not have passed.
-              // A payment must be made to the lender's address with the loan ID in the datum.
-              // If the loan is fully paid off:
-                // The BorrowerID must be burned.
-                // No other tokens can be minted/burned in the tx.
-                // All remaining collateral is unlocked.
-              // Otherwise:
-                // proportion of collateral reclaimed <= proportion of loan repaid
-                // There must be an output to this address with the proper datum and value:
-                  // Datum: Same as input with loan_outstanding updated.
-                  // Value: Must have the LoanID, BorrowerID, Active beacon, and remaining collateral.
-            // Otherwise:
-              // The conditions have already been satisfied.
-
-            // The datum must be an ActiveDatum.
             when datum is 
               {
                 ActiveDatum(
@@ -160,20 +142,20 @@ validator() {
                   borrower_id,
                   lender_address,
                   loan_asset,
-                  _,
+                  principle,
                   next_checkpoints,
                   past_checkpoints,
-                  _,
-                  _,
+                  term,
+                  interest,
                   collateralization,
-                  _,
+                  claim,
                   expiration,
                   outstanding,
                   loan_id
                   ) -> 
                     {
                       let Transaction(ins,_,outs,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
-                      expect Some(Input(_, Output(Address(_,scred), ival, _, _))) = 
+                      expect Some(Input(_, Output(Address(pcred,scred), ival, _, _))) = 
                         tx.find_input(ins,out_ref)
                       
                       // The address' staking credential must signal approval.
@@ -184,6 +166,20 @@ validator() {
                         {
                           let payment_time = utils.get_payment_time(validity_range)
                           let next = list.head(next_checkpoints)
+                          
+                          // Get the total amount paid to the lender.
+                          let (total_paid_,collat_flux,collat_datum) = 
+                            utils.payment_info(
+                              lender_address,
+                              sym,
+                              loan_asset,
+                              loan_id,
+                              ival,
+                              Address(pcred,scred),
+                              borrower_id,
+                              outs
+                            )
+                          let total_paid = ratio.from_integer(total_paid_)
 
                           // The loan must not be expired.
                           if payment_time >= expiration 
@@ -193,10 +189,6 @@ validator() {
                             { error @"The next checkpoint has passed" } 
                           else 
                             {
-                              // Get the total amount paid to the lender.
-                              let total_paid = 
-                                utils.amount_paid(lender_address,loan_asset,loan_id,outs) 
-                                |> ratio.from_integer(_)
                               // If the total amount paid is greater than or equal to the outstanding
                               // balance, the loan is fully paid off:
                               if ratio.gte(total_paid,outstanding) 
@@ -227,11 +219,45 @@ validator() {
                               // Otherwise, this is a partial payment.
                               else 
                                 {
-                                  // proportion of collateral reclaimed <= proportion of loan repaid
-                                  // There must be an output to this address with the proper datum and value:
-                                    // Datum: Same as input with loan_outstanding updated.
-                                    // Value: Must have the LoanID, BorrowerID, Active beacon, and remaining collateral.
-                                  todo
+                                  when collat_datum is 
+                                    {
+                                      None -> error @"Corresponding collateral output not found"
+                                      Some(d) -> 
+                                        {
+                                          // The datum must be the same as the input except the
+                                          // outstanding balance must be updated.
+                                          let expected_datum = ActiveDatum(
+                                            sym,
+                                            borrower_id,
+                                            lender_address,
+                                            loan_asset,
+                                            principle,
+                                            next_checkpoints,
+                                            past_checkpoints,
+                                            term,
+                                            interest,
+                                            collateralization,
+                                            claim,
+                                            expiration,
+                                            ratio.subtract(outstanding,total_paid),
+                                            loan_id
+                                          )
+                                          if d != expected_datum 
+                                            { error @"Collateral output has wrong datum" }
+
+                                          // for all collateral:
+                                          // proportion of collateral reclaimed <= proportion of loan repaid
+                                          else 
+                                            { utils.collateral_taken_check(
+                                                ival,
+                                                collat_flux,
+                                                total_paid,
+                                                outstanding,
+                                                collateralization
+                                              )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         } 
