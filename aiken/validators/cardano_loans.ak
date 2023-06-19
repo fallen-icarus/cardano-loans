@@ -271,19 +271,78 @@ validator() {
                 _ -> error @"Datum is not an ActiveDatum"
               }
           }
-        Rollover -> {
-          // The datum must be an ActiveDatum.
-          // The address' staking credential must signal approval.
-          // The UTxO must have an Active beacon.
-          // The loan must not be expired.
-          // There must be an output to this address with:
-            // An updated datum:
-              // The loan outstanding must acrue interest.
-              // The passed checkpoint must be removed from next_checkpoints and added to
-              //   past_checkpoints.
-            // The exact same value as the input.
-          todo
-        }
+
+        Rollover -> 
+          {
+            // The datum must be an ActiveDatum.
+            when datum is 
+              {
+                ActiveDatum(
+                  sym,
+                  borrower_id,
+                  lender_address,
+                  loan_asset,
+                  principle,
+                  next_checkpoints,
+                  past_checkpoints,
+                  term,
+                  interest,
+                  collateralization,
+                  claim,
+                  expiration,
+                  outstanding,
+                  loan_id
+                  ) ->
+                  {
+                    let Transaction(ins,_,outs,_,_,_,wdrw,validity_range,sigs,..) = tx_info
+                    expect Some(Input(_, Output(Address(pcred,scred), ival, _, _))) = 
+                      tx.find_input(ins,out_ref)
+                    let payment_time = utils.get_payment_time(validity_range)
+
+                    // The address' staking credential must signal approval.
+                    if !utils.staking_credential_approves(scred,sigs,wdrw) 
+                      { error @"Borrower did not approve" }
+                    // The UTxO must have an Active beacon.
+                    else if value.quantity_of(ival,sym,"Active") != 1 
+                      { error @"UTxO missing Active beacon" }
+                    // The loan must not be expired.
+                    else if payment_time >= expiration 
+                      { error @"Loan is expired" }
+                    // There must be an output to this address with:
+                      // An updated datum:
+                        // The loan outstanding must acrue interest.
+                        // The passed checkpoint must be removed from next_checkpoints and added to
+                        //   past_checkpoints.
+                      // The exact same value as the input.
+                    else
+                      {
+                        expect [x,..later_checks] = next_checkpoints
+                        let new_past = list.push(past_checkpoints,x)
+                        let expected_datum = ActiveDatum(
+                          sym,
+                          borrower_id,
+                          lender_address,
+                          loan_asset,
+                          principle,
+                          later_checks, // remove current checkpoint
+                          new_past, // add current checkpoint to history
+                          term,
+                          interest,
+                          collateralization,
+                          claim,
+                          expiration,
+                          // accrue interest
+                          ratio.multiply(outstanding,ratio.add(ratio.from_integer(1),interest)),
+                          loan_id
+                        )
+                        utils.rollover_check(sym,Address(pcred,scred),loan_id,ival,expected_datum,outs)
+                      }
+                  }
+
+                _ -> error @"Datum is not an ActiveDatum"
+              }
+          }
+
         ClaimExpired -> {
           // The datum must be an ActiveDatum.
           // The input must have an Active beacon.

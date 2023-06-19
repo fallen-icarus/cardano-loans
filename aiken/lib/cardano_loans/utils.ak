@@ -896,3 +896,41 @@ pub fn collateral_taken_check(
   else 
     { True }
 }
+
+// Returns True or throws an error.
+pub fn rollover_check(
+  sym: PolicyId,
+  loan_addr: Address,
+  loan_id: AssetName,
+  req_val: Value,
+  req_datum: LoanDatum,
+  outs: List<Output>
+) -> Bool {
+  let foo = fn (out: Output, acc: Bool)
+    {
+      let Output(addr,oval,d,_) = out
+      // Check if the output has the LoanID.
+      if value.quantity_of(oval,sym,loan_id) == 1 
+        {
+          // The output must be to the loan address.
+          if addr != loan_addr 
+            { error @"LoanID locked at wrong address" }
+          // The value of the UTxO must be the same as the input value.
+          else if oval != req_val
+            { error @"UTxO value changed" }
+          // The datum must be updated correctly.
+          else if parse_datum(d) != req_datum
+            { error @"Incorrect ActiveDatum" }
+          else 
+            { True }
+        }
+      
+      // Otherwise it is a benign output.
+      else
+        { acc }
+    }
+  if !list.foldl(outs,False,foo)
+    { error @"LoanID not found among outputs" }
+  else 
+    { True }
+}
