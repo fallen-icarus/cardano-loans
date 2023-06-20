@@ -512,98 +512,113 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
   fn mint(redeemer: BeaconRedeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext(tx_info,purpose) = ctx
     expect tx.Mint(policy_id) = purpose
-    when redeemer is {
-      MintAskBeacon(borrower_cred) -> {
-        // Only Ask beacons can be minted and they must use the token name 'Ask'.
-        // The Ask beacons must be minted to an address protected by the dapp_hash.
-        // The Ask beacons must be minted to an address using a staking credential that matches the
-        //   credential passed with the redeemer.
-        // The Ask beacons must be stored with the proper inline AskDatum:
-          // loan_beacon_sym == this policy id.
-          // borrower_id == credential in redeemer as a token name.
-          // loan_principle > 0.
-          // loan_term > 0.
-          // collateral list must not be empty.
-        // The Ask beacons must be stored individually at the loan address.
-        // The receiving staking credential must signal approval.
-        let Transaction(_,_,_,_,mint,_,wdrw,_,sigs,..) = tx_info
-        utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id)) &&
-        utils.destination_check(dapp_hash,policy_id,redeemer,tx_info,app_name) && 
-        if !utils.staking_credential_approves(Some(Inline(borrower_cred)),sigs,wdrw) {
-          error @"Borrower did not approve"
-        } else {
-          True
-        }
+    when redeemer is 
+      {
+        MintAskBeacon(borrower_cred) -> 
+          {
+            let Transaction(_,_,_,_,mint,_,wdrw,_,sigs,..) = tx_info
+
+            // Only Ask beacons can be minted and they must use the token name 'Ask'.
+            utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id)) &&
+
+            // The Ask beacons must be minted to an address protected by the dapp_hash.
+            // The Ask beacons must be minted to an address using a staking credential that matches the
+            //   credential passed with the redeemer.
+            // The Ask beacons must be stored with the proper inline AskDatum:
+              // loan_beacon_sym == this policy id.
+              // borrower_id == credential in redeemer as a token name.
+              // loan_principle > 0.
+              // loan_term > 0.
+              // collateral list must not be empty.
+            // The Ask beacons must be stored individually at the loan address.
+            utils.destination_check(dapp_hash,policy_id,redeemer,tx_info,app_name) && 
+
+            // The receiving staking credential must signal approval.
+            if !utils.staking_credential_approves(Some(Inline(borrower_cred)),sigs,wdrw) 
+              { error @"Borrower did not approve" } 
+            else 
+              { True }
+          }
+
+        MintOfferBeacon(lender_cred) -> 
+          {
+            let Transaction(_,_,_,_,mint,_,wdrw,_,sigs,..) = tx_info
+
+            // Only one Offer beacon and one LenderID can be minted. The Offer beacon must have the
+            //   token name 'Offer'. The LenderID must use the credential hash in the redeemer as 
+            //   the token name.
+            utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id)) &&
+
+            // The beacons must be minted to an address protected by the dapp_hash.
+            // The beacons must be minted to an address with a staking credential.
+            // The beacons must be stored together in the same UTxO.
+            // The beacons must be stored with the proper inline OfferDatum:
+              // loan_beacon_sym == this policy id.
+              // lender_id == credential hash as token name.
+              // lender_address must use a payment script.
+              // loan_principle > 0.
+              // loan_checkpoints must all be >= 0 and in ascending order. It can be empty. No duplicates.
+              // loan_term > 0.
+              // 0 <= loan_interest <= 1.
+              // collateralization list must not be empty and all relative prices >= 0.
+              // claim_period > 0.
+            // The Offer UTxO must be stored with 5 ADA + the amount of the loan asset.
+            utils.destination_check(dapp_hash,policy_id,redeemer,tx_info,app_name) &&
+
+            // The credential in the redeemer must signal approval.
+            if !utils.staking_credential_approves(Some(Inline(lender_cred)),sigs,wdrw) 
+              { error @"Lender did not approve" } 
+            else 
+              { True }
+          }
+
+        MintActiveBeacon(borrower_cred,pairs) -> 
+          {
+            // All Offer beacons must be burned.
+            // All LenderIDs must be burned.
+            // All Ask beacons must be burned.
+            // One Active beacon, one BorrowerID, and 2 LoanIDs must be minted for every loan accepted.
+            // Only one loan address has inputs in this tx.
+            // All loan address inputs must either have an Ask beacon or an Offer beacon.
+            // The datums of the paired inputs must agree.
+            // One of the newly minted LoanIDs must be paid to the corresponding lender + 3 ADA.
+            // The borrower must approve the transaction.
+            let Transaction(ins,_,outs,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
+            let start_time = utils.get_start_time(validity_range)
+            let (pay_map,pay_size,loan_map,loan_size,req_mint) = utils.acceptance_input_checks(
+              borrower_cred,
+              ins,
+              policy_id,
+              dapp_hash,
+              start_time,
+              pairs
+            )
+            if value.tokens(req_mint,policy_id) != value.tokens(value.from_minted_value(mint),policy_id) 
+              { error @"Wrong beacons minted/burned" } 
+            else if !utils.staking_credential_approves(Some(Inline(borrower_cred)),sigs,wdrw) 
+              { error @"Borrower did not approve" } 
+            else 
+              {
+                utils.acceptance_output_checks(
+                  borrower_cred,
+                  policy_id,
+                  dapp_hash,
+                  pay_map,
+                  pay_size,
+                  loan_map,
+                  loan_size,
+                  outs
+                )
+              }
+          }
+
+        BurnBeacons -> 
+          {
+            let Transaction(_,_,_,_,mint,..) = tx_info
+
+            // Allowed as long as the redeemer is only used to burn.
+            utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id))
+          }
       }
-      MintOfferBeacon(lender_cred) -> {
-        // Only one Offer beacon and one LenderID can be minted. The Offer beacon must have the
-        //   token name 'Offer'. The LenderID must use the credential hash in the redeemer as 
-        //   the token name.
-        // The beacons must be minted to an address protected by the dapp_hash.
-        // The beacons must be minted to an address with a staking credential.
-        // The beacons must be stored together in the same UTxO.
-        // The beacons must be stored with the proper inline OfferDatum:
-          // loan_beacon_sym == this policy id.
-          // lender_id == credential hash as token name.
-          // lender_address must use a payment script.
-          // loan_principle > 0.
-          // loan_checkpoints must all be >= 0 and in ascending order. It can be empty. No duplicates.
-          // loan_term > 0.
-          // 0 <= loan_interest <= 1.
-          // collateralization list must not be empty and all relative prices >= 0.
-          // claim_period > 0.
-        // The Offer UTxO must be stored with 3 ADA + the amount of the loan asset.
-        // The credential in the redeemer must signal approval.
-        let Transaction(_,_,_,_,mint,_,wdrw,_,sigs,..) = tx_info
-        utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id)) &&
-        utils.destination_check(dapp_hash,policy_id,redeemer,tx_info,app_name) &&
-        if !utils.staking_credential_approves(Some(Inline(lender_cred)),sigs,wdrw) {
-          error @"Lender did not approve"
-        } else {
-          True
-        }
-      }
-      MintActiveBeacon(borrower_cred,pairs) -> {
-        // All Offer beacons must be burned.
-        // All LenderIDs must be burned.
-        // All Ask beacons must be burned.
-        // One Active beacon, one BorrowerID, and 2 LoanIDs must be minted for every loan accepted.
-        // Only one loan address has inputs in this tx.
-        // All loan address inputs must either have an Ask beacon or an Offer beacon.
-        // The datums of the paired inputs must agree.
-        // One of the newly minted LoanIDs must be paid to the corresponding lender + 3 ADA.
-        // The borrower must approve the transaction.
-        let Transaction(ins,_,outs,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
-        let start_time = utils.get_start_time(validity_range)
-        let (pay_map,pay_size,loan_map,loan_size,req_mint) = utils.acceptance_input_checks(
-          borrower_cred,
-          ins,
-          policy_id,
-          dapp_hash,
-          start_time,
-          pairs
-        )
-        if value.tokens(req_mint,policy_id) != value.tokens(value.from_minted_value(mint),policy_id) {
-          error @"Wrong beacons minted/burned"
-        } else if !utils.staking_credential_approves(Some(Inline(borrower_cred)),sigs,wdrw) {
-          error @"Borrower did not approve"
-        } else {
-          utils.acceptance_output_checks(
-            borrower_cred,
-            policy_id,
-            dapp_hash,
-            pay_map,
-            pay_size,
-            loan_map,
-            loan_size,
-            outs
-          )
-        }
-      }
-      BurnBeacons -> {
-        let Transaction(_,_,_,_,mint,..) = tx_info
-        utils.mint_check(redeemer,value.tokens(value.from_minted_value(mint),policy_id))
-      }
-    }
   }
 }
