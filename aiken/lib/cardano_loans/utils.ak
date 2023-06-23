@@ -546,13 +546,13 @@ fn input_maps (
   ins: List<Input>,
   sym: PolicyId,
   dapp_hash: Hash<Blake2b_224,Script>,
-) -> ((Dict<OutputReference,LoanDatum>,Int),(Dict<OutputReference,LoanDatum>,Int)) {
+) -> (Dict<OutputReference,LoanDatum>,Int,Dict<OutputReference,LoanDatum>,Int) {
   let foo = fn (
     in: Input, 
-    acc: ((Dict<OutputReference,LoanDatum>,Int),(Dict<OutputReference,LoanDatum>,Int))
+    acc: (Dict<OutputReference,LoanDatum>,Int,Dict<OutputReference,LoanDatum>,Int)
   ) {
       let Input(out_ref,Output(Address(pay_cred,stake_cred),val,d,_)) = in
-      let ((ask_map,asize),(offer_map,osize)) = acc
+      let (ask_map,asize,offer_map,osize) = acc
       // Check if input has an Ask beacon. This can only be from a dApp address.
       if value.quantity_of(val,sym,"Ask") == 1 
         {
@@ -567,7 +567,7 @@ fn input_maps (
               let new_asize = asize + 1
 
               // Return the accumulator.
-              ((new_ask_map,new_asize),(offer_map,osize))
+              (new_ask_map,new_asize,offer_map,osize)
             } 
           else 
             { error @"Input from wrong dApp address" }
@@ -586,7 +586,7 @@ fn input_maps (
               let new_osize = osize + 1
 
               // Return the accumulator.
-              ((ask_map,asize),(new_offer_map,new_osize))
+              (ask_map,asize,new_offer_map,new_osize)
             } 
           else
             { error @"Input from wrong dApp address" }
@@ -599,7 +599,61 @@ fn input_maps (
       else
         { acc }
     }
-  list.foldl(ins,((dict.new(),0),(dict.new(),0)),foo)
+  list.foldl(ins,(dict.new(),0,dict.new(),0),foo)
+}
+
+test input_maps_test1() {
+  let borrower_cred = VerificationKeyCredential("00")
+  let dapp_hash = "01"
+  let offer_value = value.from_asset("00","Offer",1)
+  let offer_datum = OfferDatum{
+    loan_beacon_sym: "00",
+    lender_id: "11",
+    lender_address: Address(VerificationKeyCredential("11"),None),
+    loan_asset: ("",""),
+    loan_principle: 1000000,
+    loan_checkpoints: [],
+    loan_term: 10,
+    loan_interest: ratio.unsafe_ratio(1,10),
+    collateralization: [],
+    claim_period: 10
+  }
+  let ask_value = value.from_asset("00","Ask",1)
+  let ask_datum = AskDatum{
+    loan_beacon_sym: "00",
+    borrower_id: credential_to_asset_name(borrower_cred),
+    loan_asset: ("",""),
+    loan_principle: 1000000,
+    loan_term: 10,
+    collateral: []
+  }
+  let offer_input_ref = OutputReference(TransactionId("00"),0)
+  let offer_input = Input(
+    offer_input_ref,
+    Output(
+      Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred))),
+      offer_value,
+      InlineDatum(offer_datum),
+      None
+    )
+  )
+  let ask_input_ref = OutputReference(TransactionId("00"),1)
+  let ask_input = Input(
+    ask_input_ref,
+    Output(
+      Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred))),
+      ask_value,
+      InlineDatum(ask_datum),
+      None
+    )
+  )
+
+  input_maps(borrower_cred,[offer_input,ask_input],"00",dapp_hash) == (
+    dict.from_list([(ask_input_ref,ask_datum)],compare_out_ref),
+    1,
+    dict.from_list([(offer_input_ref,offer_datum)],compare_out_ref),
+    1
+  )
 }
 
 // This compares the inputs against the pairings specified in the redeemer. It check:
@@ -618,8 +672,8 @@ pub fn acceptance_input_checks(
   dapp_hash: Hash<Blake2b_224,Script>,
   start_time: PosixTime,
   pairings: List<(OutputReference,OutputReference)>
-) -> ( Dict<Value,Address>, Int , Dict<LoanDatum,AssetName>, Int, Value ) {
-  let ((ask_map,asize),(offer_map,osize)) = input_maps(borrower_cred,ins,sym,dapp_hash)
+) -> ( Dict<Value,Address>, Int, Dict<LoanDatum,AssetName>, Int, Value ) {
+  let (ask_map,asize,offer_map,osize) = input_maps(borrower_cred,ins,sym,dapp_hash)
   let foo = fn (
     pair: (OutputReference,OutputReference),
     acc: ( 
@@ -648,8 +702,7 @@ pub fn acceptance_input_checks(
                     // Calculate the amount owed to the lender upon acceptance:
                     // 1) Offer deposit
                     // 2) One of the two minted LoanIDs
-                    let pay_lender_val = value.zero() |> 
-                      value.add(_,value.ada_policy_id,value.ada_asset_name,5_000_000) |>
+                    let pay_lender_val = value.from_lovelace(5_000_000) |>
                       value.add(_,sym,offer_id,1)
 
                     // Update the required mint:
@@ -683,7 +736,7 @@ pub fn acceptance_input_checks(
                     let req_datum = expected_active_datum(start_time,ask_datum,offer_datum,offer_id)
 
                     // Add the collateral datum to the loan_map.
-                    let new_loan_map = dict.insert(loan_map,req_datum,lender_id,compare_active_datums)
+                    let new_loan_map = dict.insert(loan_map,req_datum,offer_id,compare_active_datums)
 
                     // Increment the loan_map size by one.
                     let new_loan_size = loan_size + 1
@@ -692,6 +745,8 @@ pub fn acceptance_input_checks(
                     let new_used_map = used_map |>
                       dict.insert(_,offer_ref,1,compare_out_ref) |>
                       dict.insert(_,ask_ref,1,compare_out_ref)
+
+                    // Return the updated accumulator.
                     (new_used_map,new_pay_map,new_pay_size,new_loan_map,new_loan_size,new_req_mint)
                   }
                 _ -> error @"Paired input not found"
@@ -722,6 +777,90 @@ pub fn acceptance_input_checks(
     } 
   else 
     { error @"Wrong number of ask and offer inputs" }
+}
+
+test acceptance_input_checks_test1() {
+  let borrower_cred = VerificationKeyCredential("02")
+  let dapp_hash = "01"
+  let offer_value = value.from_asset("00","Offer",1)
+  let offer_datum = OfferDatum{
+    loan_beacon_sym: "00",
+    lender_id: "11",
+    lender_address: Address(VerificationKeyCredential("11"),None),
+    loan_asset: ("",""),
+    loan_principle: 1000000,
+    loan_checkpoints: [],
+    loan_term: 10,
+    loan_interest: ratio.unsafe_ratio(1,10),
+    collateralization: [],
+    claim_period: 10
+  }
+  let ask_value = value.from_asset("00","Ask",1)
+  let ask_datum = AskDatum{
+    loan_beacon_sym: "00",
+    borrower_id: credential_to_asset_name(borrower_cred),
+    loan_asset: ("",""),
+    loan_principle: 1000000,
+    loan_term: 10,
+    collateral: []
+  }
+  let offer_input_ref = OutputReference(TransactionId("00"),0)
+  let offer_input = Input(
+    offer_input_ref,
+    Output(
+      Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred))),
+      offer_value,
+      InlineDatum(offer_datum),
+      None
+    )
+  )
+  let ask_input_ref = OutputReference(TransactionId("00"),1)
+  let ask_input = Input(
+    ask_input_ref,
+    Output(
+      Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred))),
+      ask_value,
+      InlineDatum(ask_datum),
+      None
+    )
+  )
+
+  let lender_value = value.add(value.from_asset("00","00",1),"","",5000000)
+  let active_datum = ActiveDatum{
+    loan_beacon_sym: "00",
+    borrower_id: credential_to_asset_name(borrower_cred),
+    lender_address: Address(VerificationKeyCredential("11"),None),
+    loan_asset: ("",""),
+    loan_principle: 1000000,
+    next_checkpoints: [],
+    past_checkpoitns: [], // Included for credit history.
+    loan_term: 10, // Included for credit history
+    loan_interest: ratio.unsafe_ratio(1,10),
+    collateralization: [],
+    claim_expiration: 30, // The time at which collateral is considered "Lost".
+    loan_expiration: 20,
+    loan_outstanding: ratio.from_integer(1000000),
+    loan_id: "00"
+  }
+
+  let req_mint = value.zero()
+    |> value.add(_,"00","Offer",-1)
+    |> value.add(_,"00","Ask",-1)
+    |> value.add(_,"00","11",-1)
+    |> value.add(_,"00","Active",1)
+    |> value.add(_,"00","00",2)
+    |> value.add(_,"00","02",1)
+
+  acceptance_input_checks(
+    borrower_cred,[offer_input,ask_input],"00",dapp_hash,10,[(ask_input_ref,offer_input_ref)]
+  ) == (
+    dict.from_list([(lender_value,Address(VerificationKeyCredential("11"),None))],compare_value("00","00",_,_)),
+    // dict.new(),
+    1,
+    dict.from_list([(active_datum,"00")],compare_active_datums),
+    1,
+    req_mint
+  )
 }
 
 // This checks the outputs to ensure:
