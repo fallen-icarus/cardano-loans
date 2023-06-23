@@ -672,7 +672,7 @@ pub fn acceptance_input_checks(
   dapp_hash: Hash<Blake2b_224,Script>,
   start_time: PosixTime,
   pairings: List<(OutputReference,OutputReference)>
-) -> ( Dict<Value,Address>, Int, Dict<LoanDatum,AssetName>, Int, Value ) {
+) -> ( Dict<Value,Address>, Int, Dict<LoanDatum,Int>, Int, Value ) {
   let (ask_map,asize,offer_map,osize) = input_maps(borrower_cred,ins,sym,dapp_hash)
   let foo = fn (
     pair: (OutputReference,OutputReference),
@@ -680,7 +680,7 @@ pub fn acceptance_input_checks(
       Dict<OutputReference,Int>, // This will be dropped before returning the overall result.
       Dict<Value,Address>, 
       Int,
-      Dict<LoanDatum,AssetName>,
+      Dict<LoanDatum,Int>,
       Int, 
       Value
     )
@@ -736,7 +736,7 @@ pub fn acceptance_input_checks(
                     let req_datum = expected_active_datum(start_time,ask_datum,offer_datum,offer_id)
 
                     // Add the collateral datum to the loan_map.
-                    let new_loan_map = dict.insert(loan_map,req_datum,offer_id,compare_active_datums)
+                    let new_loan_map = dict.insert(loan_map,req_datum,0,compare_active_datums)
 
                     // Increment the loan_map size by one.
                     let new_loan_size = loan_size + 1
@@ -857,7 +857,7 @@ test acceptance_input_checks_test1() {
     dict.from_list([(lender_value,Address(VerificationKeyCredential("11"),None))],compare_value("00","00",_,_)),
     // dict.new(),
     1,
-    dict.from_list([(active_datum,"00")],compare_active_datums),
+    dict.from_list([(active_datum,0)],compare_active_datums),
     1,
     req_mint
   )
@@ -873,7 +873,7 @@ pub fn acceptance_output_checks(
   dapp_hash: Hash<Blake2b_224,Script>,
   pay_map: Dict<Value,Address>,
   pay_size: Int,
-  loan_map: Dict<LoanDatum,AssetName>,
+  loan_map: Dict<LoanDatum,Int>,
   loan_size: Int,
   outs: List<Output>
 ) -> Bool {
