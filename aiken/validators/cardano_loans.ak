@@ -167,7 +167,7 @@ validator() {
                           let next = list.head(next_checkpoints)
                           
                           // Get the total amount paid to the lender.
-                          let (total_paid_,collat_flux,collat_datum) = 
+                          let (total_paid_,collat_flux,collat_info) = 
                             utils.payment_info(
                               lender_address,
                               sym,
@@ -203,7 +203,7 @@ validator() {
                                       [(cn,tn,n)] -> 
                                         {
                                           if cn != sym || tn != borrower_id || 
-                                            n != value.quantity_of(in_val,sym,borrower_id) 
+                                            n != (-value.quantity_of(in_val,sym,borrower_id))
                                             { error @"All BorrowerIDs must be burned and no other assets minted/burned in tx" } 
                                           else 
                                             { True }
@@ -218,10 +218,10 @@ validator() {
                               // Otherwise, this is a partial payment.
                               else 
                                 {
-                                  when collat_datum is 
+                                  when collat_info is 
                                     {
                                       None -> error @"Corresponding collateral output not found"
-                                      Some(d) -> 
+                                      Some((d,id_present)) -> 
                                         {
                                           // The datum must be the same as the input except the
                                           // outstanding balance must be updated.
@@ -243,9 +243,11 @@ validator() {
                                           )
                                           if d != expected_datum 
                                             { error @"Collateral output has wrong datum" }
-
+                                          else if !id_present
+                                            { error @"Colalteral output missing BorrowerID" }
                                           // for all collateral:
-                                          // proportion of collateral reclaimed <= proportion of loan repaid
+                                          // proportion of collateral reclaimed <= 
+                                          //   proportion of loan repaid
                                           else 
                                             { utils.collateral_taken_check(
                                                 ival,

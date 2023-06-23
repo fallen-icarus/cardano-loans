@@ -961,11 +961,11 @@ pub fn payment_info(
   loan_addr: Address,
   borrower_id: AssetName,
   outs: List<Output>
-) -> (Int,Value,Option<LoanDatum>) {
+) -> (Int,Value,Option<(LoanDatum,Bool)>) {
   let (policy,name) = loan_asset
-  let foo = fn (out: Output, acc: (Int,Value,Option<LoanDatum>)) {
+  let foo = fn (out: Output, acc: (Int,Value,Option<(LoanDatum,Bool)>)) {
     let Output(addr,val,d,_) = out
-    let (paid,flux,collat_datum) = acc
+    let (paid,flux,collat_info) = acc
 
     // Check if this output is to the lender.
     if addr == lender_addr 
@@ -977,7 +977,7 @@ pub fn payment_info(
         if parse_payment_datum(d) != loan_id 
           { acc } 
         else 
-          { (paid + value.quantity_of(val,policy,name), flux, collat_datum) }
+          { (paid + value.quantity_of(val,policy,name), flux, collat_info) }
       } 
     
     // Check if the output contains a LoanID.
@@ -986,15 +986,20 @@ pub fn payment_info(
         // The LoanID must be re-output to the loan address.
         if addr != loan_addr
           { error @"LoanID sent to wrong address" }
-        // The output must have the BorrowerID.
-        else if value.quantity_of(val,sym,borrower_id) != 1
-          { error @"Collateral output missing BorrowerID" }
         // The output must have the Active beacon.
         else if value.quantity_of(val,sym,"Active") != 1
           { error @"Collateral output missing Active beacon" }
         // Return the info.
         else
-          { (paid,value.merge(flux,value.negate(val)), Some(parse_datum(d)))}
+          { ( paid,
+              value.merge(flux,value.negate(val)),
+              // Return the datum used and whether or not the BorrowerID is present in output.
+              Some(( parse_datum(d),
+                     value.quantity_of(val,sym,borrower_id) == 1
+                   )
+                  )
+            )
+          }
       }
 
     // Otherwise, this is a benign output.
