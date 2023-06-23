@@ -581,7 +581,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
             // Only one loan address has inputs in this tx.
             // All loan address inputs must either have an Ask beacon or an Offer beacon.
             // The datums of the paired inputs must agree.
-            // One of the newly minted LoanIDs must be paid to the corresponding lender + 3 ADA.
+            // One of the newly minted LoanIDs must be paid to the corresponding lender + 5 ADA.
             // The borrower must approve the transaction.
             let Transaction(ins,_,outs,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
             let start_time = utils.get_start_time(validity_range)
