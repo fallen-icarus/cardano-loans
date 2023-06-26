@@ -61,12 +61,12 @@ fn parse_datum(raw_datum: Datum) -> LoanDatum {
     }
 }
 
-fn parse_payment_datum(raw_datum: Datum) -> AssetName {
+fn parse_payment_datum(raw_datum: Datum) -> (PolicyId,AssetName) {
   when raw_datum is 
     {
       InlineDatum(d) -> 
         {
-          expect datum: AssetName = d // This will error if datum is not AssetName.
+          expect datum: (PolicyId,AssetName) = d // This will error if datum is not AssetName.
           datum
         }
       _ -> error @"All payment datums must be inline datums"
@@ -974,7 +974,7 @@ pub fn payment_info(
         // This guarantees a unique output for every loan payment to prevent double satisfaction.
         // The payment will only count if the datum is correct. This flexibility allows the borrower
         // to make multiple payments to a given lender when they have multiple loans from that lender.
-        if parse_payment_datum(d) != loan_id 
+        if parse_payment_datum(d) != (sym,loan_id)
           { acc } 
         else 
           { (paid + value.quantity_of(val,policy,name), flux, collat_info) }
