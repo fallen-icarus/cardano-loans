@@ -66,7 +66,7 @@ fn parse_payment_datum(raw_datum: Datum) -> (PolicyId,AssetName) {
     {
       InlineDatum(d) -> 
         {
-          expect datum: (PolicyId,AssetName) = d // This will error if datum is not AssetName.
+          expect datum: (PolicyId,AssetName) = d
           datum
         }
       _ -> error @"All payment datums must be inline datums"
