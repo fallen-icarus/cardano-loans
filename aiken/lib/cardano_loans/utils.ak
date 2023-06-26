@@ -1002,6 +1002,23 @@ pub fn payment_info(
           }
       }
 
+    // Check if a BorrowerID is found in any other UTxO. This check is meant to make it so
+    // that a BorrowerID from a fully paid loan cannot be found in any output UTxO.
+    // It must be burned.
+    else if value.quantity_of(val,sym,borrower_id) > 0
+      {
+        // Check if the BorrowerID is grouped up with another loan.
+        if value.quantity_of(val,sym,borrower_id) != 1
+          { error @"One BorrowerID per loan" }
+        // Check if BorrowerID is stored with a valid Active Loan.
+        else if value.quantity_of(val,sym,"Active") != 1
+          { error @"BorrowerID not stored with valid loan" }
+        // If the above two checks passed, then any UTxO with a BorrowerID should be valid.
+        // They cannot go anywhere and therefore extra IDs must be burned.
+        else
+          { acc }
+      }
+
     // Otherwise, this is a benign output.
     else 
       { acc }

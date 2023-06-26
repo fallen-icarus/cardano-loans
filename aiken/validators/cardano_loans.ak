@@ -188,68 +188,68 @@ validator() {
                             { error @"The next checkpoint has passed" } 
                           else 
                             {
-                              // If the total amount paid is greater than or equal to the outstanding
-                              // balance, the loan is fully paid off:
-                              if ratio.gte(total_paid,outstanding) 
+                              when collat_info is
                                 {
-                                  // All BorrowerIDs among tx inputs must be burned.
-                                  // No other tokens can be minted/burned in this tx.
-                                  // Successful loan repayments require only the BorrowerID is 
-                                  // minted/burned in the transaction.
-                                  let in_val = utils.total_input_value(ins)
-
-                                  when value.flatten(value.from_minted_value(mint)) is 
+                                  Some((d,id_present)) ->
                                     {
-                                      [(cn,tn,n)] -> 
+                                      // The datum must be the same as the input except the
+                                      // outstanding balance must be updated.
+                                      let expected_datum = ActiveDatum(
+                                        sym,
+                                        borrower_id,
+                                        lender_address,
+                                        loan_asset,
+                                        principle,
+                                        next_checkpoints,
+                                        past_checkpoints,
+                                        term,
+                                        interest,
+                                        collateralization,
+                                        claim,
+                                        expiration,
+                                        ratio.subtract(outstanding,total_paid),
+                                        loan_id
+                                      )
+                                      // Regardless of full/partial payment, the datum must be correct.
+                                      if d != expected_datum
+                                        { error @"Collateral output has wrong datum" }
+                                      // If the total amount paid is greater than or equal to the
+                                      // outstanding balance, the loan is fully paid of:
+                                      else if ratio.gte(total_paid,outstanding)
                                         {
-                                          if cn != sym || tn != borrower_id || 
-                                            n != (-value.quantity_of(in_val,sym,borrower_id))
-                                            { error @"All BorrowerIDs must be burned and no other assets minted/burned in tx" } 
-                                          else 
-                                            { True }
+                                          // The BorrowerID from the fully paid loan must be burned.
+                                          if id_present
+                                            { error @"BorrowerID from fully paid loan must be burned" }
+                                          else
+                                            {
+                                              when value.flatten(value.from_minted_value(mint)) is
+                                                {
+                                                  // Only the BorrowerIDs can be burned/minted this tx.
+                                                  [(cn,tn,n)] ->
+                                                    {
+                                                      if cn != sym || tn != borrower_id || n >= 0
+                                                        { error @"Extra BorrowerIDs must be burned in isolation" }
+                                                      else
+                                                        { True }
+                                                    }
+
+                                                  _ -> error @"BorrowerIDs must be burned in isolation"
+                                                }
+                                            }
+                                          // All remaining collateral is unlocked.
                                         }
-                                      _ -> 
-                                        { error @"Only BorrowerIDs can be minted/burned in this tx" }
-                                    }
 
-                                  // All remaining collateral is unlocked.
-                                } 
-                              
-                              // Otherwise, this is a partial payment.
-                              else 
-                                {
-                                  when collat_info is 
-                                    {
-                                      None -> error @"Corresponding collateral output not found"
-                                      Some((d,id_present)) -> 
+                                      // Otherwise, this is a partial payment.
+                                      else
                                         {
-                                          // The datum must be the same as the input except the
-                                          // outstanding balance must be updated.
-                                          let expected_datum = ActiveDatum(
-                                            sym,
-                                            borrower_id,
-                                            lender_address,
-                                            loan_asset,
-                                            principle,
-                                            next_checkpoints,
-                                            past_checkpoints,
-                                            term,
-                                            interest,
-                                            collateralization,
-                                            claim,
-                                            expiration,
-                                            ratio.subtract(outstanding,total_paid),
-                                            loan_id
-                                          )
-                                          if d != expected_datum 
-                                            { error @"Collateral output has wrong datum" }
-                                          else if !id_present
-                                            { error @"Colalteral output missing BorrowerID" }
-                                          // for all collateral:
-                                          // proportion of collateral reclaimed <= 
-                                          //   proportion of loan repaid
-                                          else 
-                                            { utils.collateral_taken_check(
+                                          // The BorrowerID must still be stored with the collateral UTxO.
+                                          if !id_present
+                                            { error @"Collateral output missing BorrowerID" }
+                                          // For all collateral:
+                                          // proportion of collateral taken <= proportion of loan repaid
+                                          else
+                                            {
+                                              utils.collateral_taken_check(
                                                 ival,
                                                 collat_flux,
                                                 total_paid,
@@ -259,6 +259,8 @@ validator() {
                                             }
                                         }
                                     }
+
+                                  None -> error @"Collateral output not found"
                                 }
                             }
                         } 
