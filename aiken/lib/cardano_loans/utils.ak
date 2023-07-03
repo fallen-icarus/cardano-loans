@@ -61,6 +61,17 @@ fn parse_datum(raw_datum: Datum) -> LoanDatum {
   }
 }
 
+fn parse_optional_datum(raw_datum: Datum) -> Option<LoanDatum> {
+  when raw_datum is {
+    InlineDatum(d) -> {
+      expect datum: LoanDatum = d // This will error if datum is not LoanDatum
+      Some(datum)
+    }
+
+    _ -> None
+  }
+}
+
 // This is used to parse the datums attached to loan payments. It must include the beacon policy
 // id and the LoanID for the loan being paid. This is to prevent double satisfaction by creating
 // unique UTxOs for every loan payment output.
@@ -1265,9 +1276,7 @@ pub fn collateral_taken_check(
 
 // Returns True or throws an error. Used for rollovers and updating lender address.
 pub fn update_datum_check(
-  sym: PolicyId,
   loan_addr: Address,
-  loan_id: AssetName,
   req_val: Value,
   req_datum: LoanDatum,
   outs: List<Output>
@@ -1275,38 +1284,40 @@ pub fn update_datum_check(
   let foo = fn (out: Output, acc: Bool) {
     let Output(addr,oval,d,_) = out
 
-    // Check if the output has the LoanID.
-    if value.quantity_of(oval,sym,loan_id) == 1 {
-      // The output must be to the loan address.
-      if addr != loan_addr { 
-        error @"LoanID locked at wrong address" 
+    when parse_optional_datum(d) is {
+      None -> acc
+      Some(datum) -> {
+        // Check whether the datum is the required datum. The output must have the required datum.
+        if datum == req_datum {
+          // The output must be to the loan address.
+          if addr != loan_addr {
+            error @"Collateral output sent to wrong address"
+          }
+
+          // The value of the UTxO must be the same as the input value. This ensures
+          // the beacons and collateral are still present.
+          else if oval != req_val {
+            error @"UTxO value changed"
+          }
+
+          // If the above checks passed, then the updated output is valid.
+          else {
+            True
+          }
+        }
+
+        // This can't be the valid output since the datum is wrong.
+        else {
+          acc
+        }
       }
-      
-      // The value of the UTxO must be the same as the input value.
-      else if oval != req_val { 
-        error @"UTxO value changed" 
-      }
-      
-      // The datum must be updated correctly.
-      else if parse_datum(d) != req_datum { 
-        error @"Incorrect ActiveDatum" 
-      }
-      
-      else { 
-        True 
-      }
-    }
-    
-    // Otherwise it is a benign output.
-    else { 
-      acc 
     }
   }
 
   if !list.foldl(outs,False,foo) { 
-    error @"LoanID not found among outputs" 
+    error @"Updated output not found" 
   }
-  
+
   else { 
     True 
   }

@@ -348,7 +348,7 @@ validator() {
                   loan_id
                 )
 
-                utils.update_datum_check(sym,Address(pcred,scred),loan_id,ival,expected_datum,outs)
+                utils.update_datum_check(Address(pcred,scred),ival,expected_datum,outs)
               }
             }
 
@@ -469,7 +469,7 @@ validator() {
                   loan_id
                 )
 
-              utils.update_datum_check(sym,Address(pcred,scred),loan_id,ival,req_datum,outs)
+              utils.update_datum_check(Address(pcred,scred),ival,req_datum,outs)
             }
           }
 
