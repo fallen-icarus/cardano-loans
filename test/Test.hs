@@ -1,23 +1,42 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
+import Ledger (scriptSize,unValidatorScript)
 import Test.Tasty
+import Test.Tasty.HUnit
+import CardanoLoans
 
-import Test.Ask as Ask
-import Test.Offer as Offer
-import Test.AcceptOffer as AcceptOffer
+import Test.CreateAsk as CreateAsk
 import Test.CloseAsk as CloseAsk
+import Test.CreateOffer as CreateOffer
 import Test.CloseOffer as CloseOffer
-import Test.RepayLoan as RepayLoan
-import Test.Claim as Claim
+import Test.AcceptOffer as AcceptOffer
+import Test.MakePayment as MakePayment
+import Test.Rollover as Rollover
+import Test.ClaimExpired as ClaimExpired
+import Test.UpdateAddress as UpdateAddress
+import Test.ClaimLost as ClaimLost
 
 main :: IO ()
-main = defaultMain $ testGroup "Cardano-Loans"
-  [
-    Ask.tests
-  , Offer.tests
-  , AcceptOffer.tests
-  , CloseAsk.tests
-  , CloseOffer.tests
-  , RepayLoan.tests
-  , Claim.tests
-  ]
+main = do
+  testScripts <- genScripts <$> readBlueprints "aiken/plutus.json"
+  
+  -- MakePayment.testTrace testScripts
+
+  -- print $ scriptSize $ unValidatorScript $ spendingValidator testScripts
+  -- print $ scriptSize $ unMintingPolicyScript $ beaconPolicy testScripts
+
+  defaultMain $ testGroup "Cardano-Loans"
+    [ 
+      CreateAsk.tests testScripts
+    , CloseAsk.tests testScripts
+    , CreateOffer.tests testScripts
+    , CloseOffer.tests testScripts
+    , AcceptOffer.tests testScripts
+    , MakePayment.tests testScripts
+    , Rollover.tests testScripts
+    , ClaimExpired.tests testScripts
+    , UpdateAddress.tests testScripts
+    , ClaimLost.tests testScripts
+    ]

@@ -27,354 +27,596 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
-import Ledger.Ada (lovelaceValueOf)
+import Plutus.Script.Utils.Ada (lovelaceValueOf)
 import Data.Default
 import Plutus.V2.Ledger.Api
 import Ledger.Address
+import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash)
 
 import Test.Common
 import CardanoLoans
 
 -------------------------------------------------
--- CloseAsk Scenarios
+-- Close Ask Scenarios
 -------------------------------------------------
-closeSingleAsk :: EmulatorTrace ()
-closeSingleAsk = do
+successfullyCloseSingleAsk :: DappScripts -> EmulatorTrace ()
+successfullyCloseSingleAsk ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
-      askDatum = AskDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , borrowerId' = pubKeyAsToken borrowerPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , collateral' = [testToken1]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
       }
 
   void $ waitUntilSlot 2
 
-  callEndpoint @"close-ask" h1 $
-    CloseAskParams
-      { closeAskBeaconsBurned = [("Ask",-1)]
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
-            )
-          ]
-      }
-
-stakingCredDidNotApprove :: EmulatorTrace ()
-stakingCredDidNotApprove = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-
-  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
-      askDatum = AskDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , borrowerId' = pubKeyAsToken borrowerPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , collateral' = [testToken1]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
-      }
-
-  void $ waitUntilSlot 2
-
-  callEndpoint @"close-ask" h2 $
-    CloseAskParams
-      { closeAskBeaconsBurned = [("Ask",-1)]
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
-            )
-          ]
-      }
-
-notAllBeaconsBurned :: EmulatorTrace ()
-notAllBeaconsBurned = do
-  h1 <- activateContractWallet (knownWallet 2) endpoints
-
-  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
-      askDatum = AskDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , borrowerId' = pubKeyAsToken borrowerPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , collateral' = [testToken1]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 2)
-  
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
-      }
-
-  void $ waitUntilSlot 2
-
-  callEndpoint @"close-ask" h1 $
-    CloseAskParams
-      { closeAskBeaconsBurned = [("Ask",-2)]
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
-            )
-          ]
-      }
-
-wrongDatumType :: EmulatorTrace ()
-wrongDatumType = do
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-
-  let lenderPubKey = mockWalletPaymentPubKeyHash $ knownWallet 2
-      offerDatum = OfferDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , lenderId' = pubKeyAsToken lenderPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , loanInterest' = unsafeRatio 1 10
-        , collateralization' = [(testToken1,unsafeRatio 1 2)]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"offer" h2 $
-    OfferParams
-      { offerBeaconsMinted = [("Offer",1),(pubKeyAsToken lenderPubKey,1)]
-      , offerBeaconRedeemer = MintOfferToken' lenderPubKey
-      , offerBeaconPolicy = beaconPolicy
-      , offerAddress = addr
-      , offerInfo = 
-          [ ( Just offerDatum
-            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
-           <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
-            )
-          ]
-      , offerAsInline = True
-      }
-
-  void $ waitUntilSlot 2
-
-  callEndpoint @"close-ask" h2 $
-    CloseAskParams
-      { closeAskBeaconsBurned = []
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( offerDatum
-            , lovelaceValueOf 103_000_000 <> singleton beaconPolicySymbol "Offer" 1
-           <> singleton beaconPolicySymbol (pubKeyAsToken lenderPubKey) 1
-            )
-          ]
-      }
-
-closeWithoutBurning :: EmulatorTrace ()
-closeWithoutBurning = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-
-  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
-      askDatum = AskDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , borrowerId' = pubKeyAsToken borrowerPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , collateral' = [testToken1]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
-      }
-
-  void $ waitUntilSlot 2
-
-  callEndpoint @"close-ask" h1 $
-    CloseAskParams
-      { closeAskBeaconsBurned = []
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
-            )
-          ]
-      }
-
-closeMultipleAsks :: EmulatorTrace ()
-closeMultipleAsks = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-
-  let borrowerPubKey = mockWalletPaymentPubKeyHash $ knownWallet 1
-      askDatum = AskDatum'
-        { loanBeaconSym' = beaconPolicySymbol
-        , borrowerId' = pubKeyAsToken borrowerPubKey
-        , loanAsset' = (adaSymbol,adaToken)
-        , loanPrinciple' = 100_000_000
-        , loanTerm' = 12000
-        , collateral' = [testToken1]
-        }
-      addr = Address (ScriptCredential loanValidatorHash)
-                     (Just $ StakingHash
-                           $ PubKeyCredential
-                           $ unPaymentPubKeyHash
-                           $ mockWalletPaymentPubKeyHash
-                           $ knownWallet 1)
-  
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
-      }
-
-  void $ waitUntilSlot 2
-
-  callEndpoint @"ask" h1 $
-    AskParams
-      { askBeaconsMinted = [("Ask",1)]
-      , askBeaconRedeemer = MintAskToken' borrowerPubKey
-      , askBeaconPolicy = beaconPolicy
-      , askAddress = addr
-      , askInfo = 
-          [ ( Just askDatum
-            , lovelaceValueOf 2_100_000 <> singleton beaconPolicySymbol "Ask" 1)
-          ]
-      , askAsInline = True
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
       }
 
   void $ waitUntilSlot 4
 
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",1)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = [("Ask",-1)]
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+successfullyCloseMultipleAsks :: DappScripts -> EmulatorTrace ()
+successfullyCloseMultipleAsks ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",2)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_000}
+  
   callEndpoint @"close-ask" h1 $
     CloseAskParams
       { closeAskBeaconsBurned = [("Ask",-2)]
-      , closeAskBeaconRedeemer = BurnBeaconToken'
-      , closeAskBeaconPolicy = beaconPolicy
-      , closeAskLoanVal = loanValidator
-      , closeAskLoanAddress = addr
-      , closeAskSpecificUTxOs = 
-          [ ( askDatum
-            , lovelaceValueOf 2_000_000 <> singleton beaconPolicySymbol "Ask" 1
-            )
-          , ( askDatum
-            , lovelaceValueOf 2_100_000 <> singleton beaconPolicySymbol "Ask" 1
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1,ask2]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+utxoDoesNotHaveAskDatum :: DappScripts -> EmulatorTrace ()
+utxoDoesNotHaveAskDatum ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = credentialAsToken borrowerCred
+        , lenderAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanCheckpoints = []
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 2
+        , collateralization = [(testToken1, unsafeRatio 1 1)]
+        , claimPeriod = 0
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = []
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000
             )
           ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000)
+            askDatum
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = []
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+successfullyCloseInvalidAsk :: DappScripts -> EmulatorTrace ()
+successfullyCloseInvalidAsk ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = []
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000)
+            askDatum
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = []
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+askBeaconNotBurned :: DappScripts -> EmulatorTrace ()
+askBeaconNotBurned ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",1)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = []
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+atLeastOneAskBeaconNotBurned :: DappScripts -> EmulatorTrace ()
+atLeastOneAskBeaconNotBurned ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",2)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_000}
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = [("Ask",-1)]
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1,ask2]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
+borrowerDidNotApprove :: DappScripts -> EmulatorTrace ()
+borrowerDidNotApprove ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",1)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  
+  callEndpoint @"close-ask" h2 $
+    CloseAskParams
+      { closeAskBeaconsBurned = [("Ask",-1)]
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = [ask1]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
       }
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: TestTree
-tests = do
+tests :: DappScripts -> TestTree
+tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  testGroup "Close ask(s)"
-    [ checkPredicateOptions opts "Fail if staking credential did not approve"
-        (Test.not assertNoFailedTransactions) stakingCredDidNotApprove
-    , checkPredicateOptions opts "Fail if not all ask beacons burned"
-        (Test.not assertNoFailedTransactions) notAllBeaconsBurned
-    , checkPredicateOptions opts "Fail if input datum is not an AskDatum"
-        (Test.not assertNoFailedTransactions) wrongDatumType
-    , checkPredicateOptions opts "Fail if ask beacon from address not burned"
-        (Test.not assertNoFailedTransactions) closeWithoutBurning
-    , checkPredicateOptions opts "Successfully close single ask"
-        assertNoFailedTransactions closeSingleAsk
-    , checkPredicateOptions opts "Successfully close multiple asks"
-        assertNoFailedTransactions closeMultipleAsks
+  testGroup "Close Ask(s)"
+    [ checkPredicateOptions opts "Successfully close single Ask"
+        assertNoFailedTransactions (successfullyCloseSingleAsk ts)
+    , checkPredicateOptions opts "Successfully close multiple Asks"
+        assertNoFailedTransactions (successfullyCloseMultipleAsks ts)
+    , checkPredicateOptions opts "Successfully close Ask UTxO that is missing an Ask beacon"
+        assertNoFailedTransactions (successfullyCloseInvalidAsk ts)
+    , checkPredicateOptions opts "Fail if UTxO datum is not an AskDatum"
+        (Test.not assertNoFailedTransactions) (utxoDoesNotHaveAskDatum ts)
+    , checkPredicateOptions opts "Fail if only Ask beacon not burned"
+        (Test.not assertNoFailedTransactions) (askBeaconNotBurned ts)
+    , checkPredicateOptions opts "Fail if at least one Ask beacon not burned"
+        (Test.not assertNoFailedTransactions) (atLeastOneAskBeaconNotBurned ts)
+    , checkPredicateOptions opts "Fail if borrower did not approve"
+        (Test.not assertNoFailedTransactions) (borrowerDidNotApprove ts)
     ]
 
-testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig closeMultipleAsks
+testTrace :: DappScripts -> IO ()
+testTrace = runEmulatorTraceIO' def emConfig . borrowerDidNotApprove
