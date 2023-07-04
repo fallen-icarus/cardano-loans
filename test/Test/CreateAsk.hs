@@ -1386,6 +1386,264 @@ askDatumNotInline ts@DappScripts{..} = do
       , createAskRefAddress = refAddr
       }
 
+benchCreateAsk :: DappScripts -> EmulatorTrace ()
+benchCreateAsk ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",68)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 300_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -1442,4 +1700,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . successfullyCreateSingleAsk
+testTrace = runEmulatorTraceIO' def benchConfig . benchCreateAsk

@@ -21,7 +21,7 @@ main :: IO ()
 main = do
   testScripts <- genScripts <$> readBlueprints "aiken/plutus.json"
   
-  -- MakePayment.testTrace testScripts
+  -- ClaimLost.testTrace testScripts
 
   -- print $ scriptSize $ unValidatorScript $ spendingValidator testScripts
   -- print $ scriptSize $ unMintingPolicyScript $ beaconPolicy testScripts

@@ -238,8 +238,8 @@ data UpdateAddressParams = UpdateAddressParams
   { updateAddressLoanAddress :: Address
   , updateAddressRedeemer :: LoanRedeemer
   , updateAddressInputs :: [TxOutRef]
-  , updateAddressKeyAddress :: Address
-  , updateAddressLoanId :: TokenName
+  , updateAddressKeyAddresses :: [Address]
+  , updateAddressLoanIds :: [TokenName]
   , updateAddressIncludeKeyNFT :: Bool
   , updateAddressOutputAddress :: Address
   , updateAddressOutputs :: [(Maybe LoanDatum,Value)]
@@ -438,8 +438,8 @@ benchConfig = emConfig & params .~ params'
 
     protoParams :: ProtocolParameters
     protoParams = def{ protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
-                                                                        ,executionMemory = 13000000})
-                    --  , protocolParamMaxTxSize = 12300
+                                                                        ,executionMemory = 13500000})
+                    --  , protocolParamMaxTxSize = 15300
                      }
 
 -------------------------------------------------
@@ -1092,9 +1092,15 @@ updateAddress UpdateAddressParams{updateAddressScripts=DappScripts{..},..} = do
       tx' =
         -- | Must include Key NFT among inputs.
         (if updateAddressIncludeKeyNFT then 
-          mustPayToAddress 
-            updateAddressKeyAddress 
-            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol updateAddressLoanId 1)
+          mconcat $ 
+            zipWith 
+              (\addr loanId -> 
+                  mustPayToAddress 
+                    addr 
+                    (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol loanId 1)
+              )
+            updateAddressKeyAddresses
+            updateAddressLoanIds
         else mempty)
 
         -- | Post collateral to loan address

@@ -595,6 +595,191 @@ borrowerDidNotApprove ts@DappScripts{..} = do
       , closeAskRefAddress = refAddr
       }
 
+benchCloseAsk :: DappScripts -> EmulatorTrace ()
+benchCloseAsk ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-ask" h1 $
+    CreateAskParams
+      { createAskBeaconsMinted = [("Ask",17)]
+      , createAskBeaconRedeemer = MintAskBeacon borrowerCred
+      , createAskLoanAddress = loanAddr
+      , createAskUTxOs = 
+          [ ( Just askDatum
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_000}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_001}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_002}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_003}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_004}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_005}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_006}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_007}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_008}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_009}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_010}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_011}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_012}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_013}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_014}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          , ( Just askDatum{loanPrinciple = 200_000_015}
+            , lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1
+            )
+          ]
+      , createAskAsInline = True
+      , createAskScripts = ts
+      , createAskWithRefScript = True
+      , createAskRefScript = mintRef
+      , createAskRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_000}
+  ask3 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_001}
+  ask4 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_002}
+  ask5 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_003}
+  ask6 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_004}
+  ask7 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_005}
+  ask8 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_006}
+  ask9 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_007}
+  ask10 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_008}
+  ask11 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_009}
+  ask12 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_010}
+  ask13 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_011}
+  ask14 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_012}
+  ask15 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_013}
+  ask16 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_014}
+  ask17 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 <> singleton beaconCurrencySymbol "Ask" 1)
+            askDatum{loanPrinciple = 200_000_015}
+  
+  callEndpoint @"close-ask" h1 $
+    CloseAskParams
+      { closeAskBeaconsBurned = [("Ask",-11)]
+      , closeAskBeaconRedeemer = BurnBeacons
+      , closeAskLoanAddress = loanAddr
+      , closeAskUTxOs = 
+          [ ask1
+          , ask2
+          , ask3
+          , ask4
+          , ask5
+          , ask6
+          , ask7
+          , ask8
+          , ask9
+          , ask10
+          , ask11
+          ]
+      , closeAskScripts = ts
+      , closeAskWithRefScripts = True
+      , closeAskSpendRefScript = spendRef
+      , closeAskMintRefScript = mintRef
+      , closeAskRefAddress = refAddr
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -619,4 +804,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . borrowerDidNotApprove
+testTrace = runEmulatorTraceIO' def emConfig . benchCloseAsk

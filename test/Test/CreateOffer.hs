@@ -2170,4 +2170,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . lenderDidNotApprove
+testTrace = runEmulatorTraceIO' def emConfig . successfullyCreateOffer

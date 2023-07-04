@@ -1022,6 +1022,324 @@ borrowerDidNotApproveClosingInvalidOffer ts@DappScripts{..} = do
       , closeOfferRefAddress = refAddr
       }
 
+benchCloseOffer :: DappScripts -> EmulatorTrace ()
+benchCloseOffer ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unValidatorScript spendingValidator
+      , createReferenceScriptAddress = refAddr
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"create-reference-script" h1 $
+    CreateReferenceScriptParams
+      { createReferenceScriptScript = unMintingPolicyScript beaconPolicy
+      , createReferenceScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+      , createReferenceScriptUTxO = lovelaceValueOf minUTxOMintRef
+      }
+
+  void $ waitUntilSlot 4
+
+  let borrowerCred = PubKeyCredential
+                   $ unPaymentPubKeyHash 
+                   $ mockWalletPaymentPubKeyHash 
+                   $ knownWallet 1
+      lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+      lenderToken = credentialAsToken lenderCred
+      offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = Address lenderCred Nothing
+        , loanAsset = (adaSymbol,adaToken)
+        , loanPrinciple = 100_000_000
+        , loanCheckpoints = [1,2,3]
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 0 1)]
+        , claimPeriod = 10000
+        }
+      loanAddr = Address (ScriptCredential spendingValidatorHash)
+                         (Just $ StakingHash borrowerCred)
+
+  mintRef <- txOutRefWithValue $ lovelaceValueOf minUTxOMintRef
+  spendRef <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 6
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 2 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 8
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 3 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 10
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 4 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 12
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 5 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 14
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 6 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 16
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 7 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 18
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 8 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 20
+
+  callEndpoint @"create-offer" h2 $
+    CreateOfferParams
+      { createOfferBeaconsMinted = [("Offer",1),(lenderToken,1)]
+      , createOfferBeaconRedeemer = MintOfferBeacon lenderCred
+      , createOfferLoanAddress = loanAddr
+      , createOfferUTxOs = 
+          [ ( Just offerDatum{loanInterest = unsafeRatio 9 10}
+            , lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+          ]
+      , createOfferAsInline = True
+      , createOfferScripts = ts
+      , createOfferWithRefScript = True
+      , createOfferRefScript = mintRef
+      , createOfferRefAddress = refAddr
+      }
+
+  void $ waitUntilSlot 22
+
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum
+  offer2 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 2 10}
+  offer3 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 3 10}
+  offer4 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 4 10}
+  offer5 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 5 10}
+  offer6 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 6 10}
+  offer7 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 7 10}
+  offer8 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 8 10}
+  offer9 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 105_000_000 
+           <> singleton beaconCurrencySymbol "Offer" 1
+           <> singleton beaconCurrencySymbol lenderToken 1
+            )
+            offerDatum{loanInterest = unsafeRatio 9 10}
+  
+  callEndpoint @"close-offer" h2 $
+    CloseOfferParams
+      { closeOfferBeaconsBurned = [("Offer",-9),(lenderToken,-9)]
+      , closeOfferBeaconRedeemer = BurnBeacons
+      , closeOfferLoanAddress = loanAddr
+      , closeOfferUTxOs = 
+          [ offer1
+          , offer2
+          , offer3
+          , offer4
+          , offer5
+          , offer6
+          , offer7
+          , offer8
+          , offer9
+          ]
+      , closeOfferScripts = ts
+      , closeOfferWithRefScripts = True
+      , closeOfferSpendRefScript = spendRef
+      , closeOfferMintRefScript = mintRef
+      , closeOfferRefAddress = refAddr
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -1052,4 +1370,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . borrowerDidNotApproveClosingInvalidOffer
+testTrace = runEmulatorTraceIO' def emConfig . benchCloseOffer
