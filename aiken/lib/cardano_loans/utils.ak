@@ -61,17 +61,6 @@ fn parse_datum(raw_datum: Datum) -> LoanDatum {
   }
 }
 
-fn parse_optional_datum(raw_datum: Datum) -> Option<LoanDatum> {
-  when raw_datum is {
-    InlineDatum(d) -> {
-      expect datum: LoanDatum = d // This will error if datum is not LoanDatum
-      Some(datum)
-    }
-
-    _ -> None
-  }
-}
-
 // This is used to parse the datums attached to loan payments. It must include the beacon policy
 // id and the LoanID for the loan being paid. This is to prevent double satisfaction by creating
 // unique UTxOs for every loan payment output.
@@ -1274,7 +1263,8 @@ pub fn collateral_taken_check(
   }
 }
 
-// Returns True or throws an error. Used for rollovers and updating lender address.
+// Returns True or False. Used for rollovers and updating lender address. It cannot throw an
+// error in the case of composability. Therefore, the False must be handled differently.
 pub fn update_datum_check(
   loan_addr: Address,
   req_val: Value,
@@ -1284,38 +1274,31 @@ pub fn update_datum_check(
   let foo = fn (out: Output, acc: Bool) {
     let Output(addr,oval,d,_) = out
 
-    when parse_optional_datum(d) is {
-      None -> acc
-      Some(datum) -> {
-        // Check whether the datum is the required datum. The output must have the required datum.
-        if datum == req_datum {
-          // The output must be to the loan address.
-          if addr != loan_addr {
-            error @"Collateral output sent to wrong address"
-          }
+    when addr == loan_addr is {
+      // If this output is not to the loan address, it can't possibly be the proper output.
+      False -> acc
 
-          // The value of the UTxO must be the same as the input value. This ensures
-          // the beacons and collateral are still present.
-          else if oval != req_val {
-            error @"UTxO value changed"
-          }
+      True -> {
+        // Since there can be multiple outputs to the loan address in the case of composability,
+        // this function must first check if the proper output has already been found.
 
-          // If the above checks passed, then the updated output is valid.
-          else {
-            True
-          }
+        // If acc is True, the proper output has already been found and all other outputs can be
+        // skipped.
+        if acc {
+          acc
         }
 
-        // This can't be the valid output since the datum is wrong.
+        // Since acc is still False, the proper output has yet to be found.
         else {
-          acc
+          // Both the datum and value must be correct.
+          parse_datum(d) == req_datum && req_val == oval
         }
       }
     }
   }
 
   if !list.foldl(outs,False,foo) { 
-    error @"Updated output not found" 
+    error @"Updated output not found - datum and value must be correct" 
   }
 
   else { 
