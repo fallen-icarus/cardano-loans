@@ -2,9 +2,8 @@
 
 module Main where
 
-import Ledger (scriptSize,unValidatorScript)
+-- import Ledger (scriptSize,unValidatorScript)
 import Test.Tasty
-import Test.Tasty.HUnit
 import CardanoLoans
 
 import Test.CreateAsk as CreateAsk

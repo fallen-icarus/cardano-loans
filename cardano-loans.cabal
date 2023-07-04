@@ -51,7 +51,16 @@ test-suite cardano-loans-tests
     -Wno-deprecations
   other-modules:
       Test.Common,
-      Test.CreateAsk
+      Test.CreateAsk,
+      Test.AcceptOffer,
+      Test.ClaimExpired,
+      Test.ClaimLost,
+      Test.CloseAsk,
+      Test.CloseOffer,
+      Test.CreateOffer,
+      Test.MakePayment,
+      Test.Rollover,
+      Test.UpdateAddress
   build-depends:
       cardano-loans
     , plutus-contract

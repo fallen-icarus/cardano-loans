@@ -44,7 +44,6 @@ import Cardano.Api hiding (TxOutDatum(..),TxOutDatumInline,TxOutDatumHash,Addres
 import Cardano.Node.Emulator.Params
 import Ledger.Tx.CardanoAPI.Internal
 import Ledger.Tx.Internal as I
-import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidator)
 import Plutus.Script.Utils.V2.Scripts
 import Ledger.Tx.Constraints.ValidityInterval
 
