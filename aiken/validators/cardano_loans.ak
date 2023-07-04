@@ -493,7 +493,7 @@ validator() {
             _,
             claim_expiration,
             _,
-            _,
+            outstanding,
             loan_id
           ) -> {
             let Transaction(ins,_,_,_,mint,_,wdrw,validity_range,sigs,..) = tx_info
@@ -501,13 +501,8 @@ validator() {
               tx.find_input(ins,out_ref)
             let claim_time = utils.get_start_time(validity_range)
             
-            // The claim period must have passed.
-            if claim_time <= claim_expiration { 
-              error @"Claim period has not passed" 
-            }
-            
             // The address' staking credential must signal approval.
-            else if !utils.staking_credential_approves(scred,sigs,wdrw) { 
+            if !utils.staking_credential_approves(scred,sigs,wdrw) { 
               error @"Address owner did not approve" 
             }
             
@@ -524,7 +519,25 @@ validator() {
               // All LoanIDs among tx inputs must be burned.
               utils.all_beacons_burned(sym,loan_id,total_ival,mint) &&
               // All BorrowerIDs among tx inputs must be burned.
-              utils.all_beacons_burned(sym,borrower_id,total_ival,mint)
+              utils.all_beacons_burned(sym,borrower_id,total_ival,mint) &&
+
+              // If the loan has not been fully repaid:
+              if ratio.gt(outstanding,ratio.zero()) {
+                // The claim period must have passed.
+                if claim_time <= claim_expiration { 
+                  error @"Claim period has not passed" 
+                }
+                
+                else {
+                  True
+                }
+              }
+
+              // If the loan is fully repaid, then this is valid.
+              else {
+                True
+              }
+              
             }
           }
 
