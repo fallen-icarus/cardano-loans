@@ -172,7 +172,7 @@ validator() {
                 let total_paid = ratio.from_integer(total_paid_)
 
                 // The loan must not be expired.
-                if payment_time >= expiration { 
+                if payment_time > expiration { 
                   error @"Loan is expired" 
                 } 
                 
@@ -321,7 +321,7 @@ validator() {
               }
               
               // The loan must not be expired.
-              else if payment_time >= expiration { 
+              else if payment_time > expiration { 
                 error @"Loan is expired" 
               }
 
