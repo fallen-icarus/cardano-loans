@@ -11,23 +11,12 @@ use cardano_loans/types.{
   UnlockLostCollateral, MintAskBeacon, MintOfferBeacon, MintActiveBeacon, BurnBeacons
 }
 use cardano_loans/utils
-// use aiken/cbor
 
-// test cbor_test() {
-//   let offer_datum = OfferDatum {
-//     loan_beacon_sym: "",
-//     lender_id: "",
-//     lender_address: Address(credential.VerificationKeyCredential("00"),None),
-//     loan_asset: ("",""),
-//     loan_principle: 10,
-//     loan_checkpoints: [1,2,3],
-//     loan_term: 20,
-//     loan_interest: ratio.unsafe_ratio(1,2),
-//     collateralization: [(("",""),ratio.unsafe_ratio(1,1))],
-//     claim_period: 10
-//   }
-//   cbor.serialise(offer_datum) == #""
-// }
+// The sanctity of the borrower's credit history depends on the following two characteristics:
+// 1) When a BorrowerID is burned in isolation, all outputs with an Active beacon but missing a 
+//    Borrower ID are full payments. The other outputs can be ignored.
+// 2) When a BorrowerID is burned along with other assets, all inputs with the borrower ID are
+//    defaults. The other inputs can be ignored.
 
 // This variable is used to create a unique set of beacons without having to change the logic.
 // Possibly useful for testing.
@@ -189,8 +178,14 @@ validator() {
                 
                 // The next checkpoint must not have passed.
                 else if option.map(next,fn(x) {payment_time >= x}) == Some(True) { 
-                  error @"The next checkpoint has passed" 
+                  error @"Next checkpoint has passed" 
                 } 
+
+                // The BorrowerID must still be present. If it isn't, this loan is already
+                // finished. Allowing this to be included would skew the credit history.
+                else if value.quantity_of(ival,sym,borrower_id) != 1 {
+                  error @"Loan has already been paid off."
+                }
                 
                 else {
                   when collat_info is {
@@ -282,6 +277,14 @@ validator() {
         }
       }
 
+      // This redeemer requires that the UTxO being evaluated has a BorrowerID. Since the 
+      // corresponding output must have the same value (including the BorrowerID), this redeemer 
+      // cannot interfere with the credit history. It can safely be composed with the 
+      // MakePayment redeemer. If the BorrowerID was not required, this redeemer could be
+      // used on finished loans in the same transaction where another loan is paid off. This would
+      // add another output with an Active beacon but missing the BorrowerID even though the loan
+      // was already finished. In other words, it could result in loans being counted multiple times
+      // in the credit history.
       Rollover -> {
         // The datum must be an ActiveDatum.
         when datum is {
@@ -311,9 +314,10 @@ validator() {
                 error @"Borrower did not approve" 
               }
               
-              // The UTxO must have an Active beacon.
-              else if value.quantity_of(ival,sym,"Active") != 1 { 
-                error @"UTxO missing Active beacon" 
+              // The UTxO must have a Borrower ID. This would symbolize the loan is active. The
+              // Active beacon would also be present.
+              else if value.quantity_of(ival,sym,borrower_id) != 1 { 
+                error @"UTxO missing BorrowerID" 
               }
               
               // The loan must not be expired.
@@ -356,6 +360,10 @@ validator() {
         }
       }
 
+      // This redeemer requires that the loan is either expired or finished. In either case,
+      // the Active beacons must be burned in addition to any BorrowerIDs that remain which means
+      // this redeemer cannot be composed with the MakePayment redeemer. Therefore it cannot
+      // interfere with the credit history.
       ClaimExpired -> {
         // The datum must be an ActiveDatum.
         when datum is {
@@ -409,6 +417,12 @@ validator() {
         }
       }
 
+      // This redeemer requires that the BorrowerID is still present. There is no point in updating
+      // an address of a finished loan since there will be no more payments. If the BorrowerID did
+      // not have to be present, then if the Lender and Borrower were actually the same person,
+      // he/she could make this loan count multiple times in the credit history in the same way that
+      // the Rollover redeemer would. The BorrowerID requirement prevents this from happening since the
+      // value must be conserved.
       UpdateLenderAddress(new_address) -> {
         // The datum must be an ActiveDatum.
         when datum is {
@@ -441,6 +455,12 @@ validator() {
             // There must be two LoanIDs among the tx inputs.
             else if value.quantity_of(utils.total_input_value(ins),sym,loan_id) != 2 { 
               error @"Must have two LoanIDs among inputs" 
+            }
+
+            // The BorrowerID must still be present. There is no point in updating the address
+            // of a finished loan.
+            else if value.quantity_of(ival,sym,borrower_id) != 1 {
+              error @"Loan is already finished"
             }
             
             // The new address must use a payment pubkey.
@@ -477,6 +497,8 @@ validator() {
         }
       }
 
+      // Since this redeemer requires that any Active beacons present are burned, this redeemer
+      // cannot be composed with the MakePayment redeemer.
       UnlockLostCollateral -> {
         // The datum must be an ActiveDatum.
         when datum is {
