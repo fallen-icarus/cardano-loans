@@ -725,13 +725,13 @@ pNetwork = pPreProdTestnet
       <> help "Query the preproduction testnet.")
 
 pApiEndpoint :: Parser ApiEndpoint
-pApiEndpoint = pKoios <|> pBlockfrost
+pApiEndpoint = {- pKoios <|> -} pBlockfrost
   where
-    pKoios :: Parser ApiEndpoint
-    pKoios = flag' Koios
-      (  long "koios"
-      <> help "Query using Koios."
-      )
+    -- pKoios :: Parser ApiEndpoint
+    -- pKoios = flag' Koios
+    --   (  long "koios"
+    --   <> help "Query using Koios."
+    --   )
 
     pBlockfrost :: Parser ApiEndpoint
     pBlockfrost = Blockfrost <$> strOption
