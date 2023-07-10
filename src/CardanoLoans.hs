@@ -13,6 +13,7 @@
 {-# LANGUAGE NumericUnderscores    #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module CardanoLoans
 (
@@ -24,15 +25,29 @@ module CardanoLoans
   CurrencySymbol(..),
   TokenName(..),
   DappScripts(..),
+  Address(..),
+  Slot(..),
+  Credential(..),
+  POSIXTime(..),
+  PlutusRational,
+  StakingCredential(..),
+  Api.TxId(..),
+  TxOutRef(..),
   unValidatorScript,
   unMintingPolicyScript,
+  unsafeRatio,
+  fromInteger,
+  (Plutus.-),
+  (Plutus.*),
+  (Plutus.+),
+  Plutus.divide,
 
   adaSymbol,
   adaToken,
-  Plutus.unsafeRatio,
   readBlueprints,
   unsafeFromRight,
   genScripts,
+  parseBlueprints,
 
   dataFromCBOR,
   toCBOR,
@@ -41,12 +56,31 @@ module CardanoLoans
   writeScript,
   decodeDatum,
 
-  credentialAsToken
+  credentialAsToken,
+  readCurrencySymbol,
+  readTokenName,
+  readValidatorHash,
+  readPubKeyHash,
+  readTxId,
+  posixTimeToSlot,
+  slotToPOSIXTime,
+  getValidatorHash,
+  CardanoLoans.getPubKeyHash,
+  toEncodedText,
+  toAsset,
+  idToString,
+  tokenAsPubKey,
+  toStakePubKeyHash,
+  toStakeValidatorHash,
+  toValidatorHash,
+  toPubKeyHash,
 ) where
 
+import Prelude hiding (fromInteger)
 import Data.Aeson as Aeson
 import Control.Monad
-import Plutus.V2.Ledger.Api
+import Data.Text (pack)
+import Plutus.V2.Ledger.Api as Api
 import qualified PlutusTx
 import qualified PlutusTx.Prelude as Plutus
 import GHC.Generics (Generic)
@@ -56,6 +90,7 @@ import Cardano.Api hiding (Script,Address)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Data.ByteString.Lazy (fromStrict,toStrict)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
 import Data.Text (Text)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
@@ -64,6 +99,12 @@ import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import qualified Data.Map as Map
 import Ledger.Tx.CardanoAPI.Internal
 import Plutus.Script.Utils.V2.Scripts
+import Ledger.Slot
+import PlutusTx.Ratio (unsafeRatio, fromInteger)
+import Cardano.Node.Emulator.TimeSlot
+import PlutusTx.Builtins.Internal (BuiltinByteString(..))
+import Data.Maybe (fromJust)
+import Ledger.Address
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -145,6 +186,98 @@ instance ToData LoanDatum where
              , toData loanOutstanding
              , toData loanId
              ]
+
+fromData' :: (FromData a) => Data -> a
+fromData' = fromJust . fromData
+
+instance FromData LoanDatum where
+  fromBuiltinData 
+    (BuiltinData 
+      (Constr 0 
+        [ sym
+        , bId
+        , List [lsym,lname]
+        , lPrinciple
+        , lterm
+        , Map collats
+        ]
+      )
+    ) = Just $ AskDatum
+      { beaconSym = fromData' sym
+      , borrowerId = fromData' bId
+      , loanAsset = (fromData' lsym, fromData' lname)
+      , loanPrinciple = fromData' lPrinciple
+      , loanTerm = fromData' lterm
+      , collateral = 
+          map (\(collatsym,collatname) -> (fromData' collatsym, fromData' collatname)) collats
+      }
+  fromBuiltinData 
+    (BuiltinData 
+      (Constr 1
+        [ sym
+        , lId
+        , lAddress
+        , List [lsym,lname]
+        , lPrinciple
+        , lCheckpoints
+        , lterm
+        , lInterest
+        , Map collats
+        , lClaimPeriod
+        ]
+      )
+    ) = Just $ OfferDatum
+      { beaconSym = fromData' sym
+      , lenderId = fromData' lId
+      , lenderAddress = fromData' lAddress
+      , loanAsset = (fromData' lsym, fromData' lname)
+      , loanPrinciple = fromData' lPrinciple
+      , loanCheckpoints = fromData' lCheckpoints
+      , loanTerm = fromData' lterm
+      , loanInterest = fromData' lInterest
+      , collateralization = 
+          map (\(List [collatsym,collatname],price) -> 
+                ((fromData' collatsym, fromData' collatname),fromData' price)) collats
+      , claimPeriod = fromData' lClaimPeriod
+      }
+  fromBuiltinData 
+    (BuiltinData 
+      (Constr 2
+        [ sym
+        , bId
+        , lAddress
+        , List [lsym,lname]
+        , lPrinciple
+        , lnextCheckpoints
+        , lpastCheckpoints
+        , lterm
+        , lInterest
+        , Map collats
+        , lClaimExpired
+        , lExpired
+        , lOutstanding
+        , lloanId
+        ]
+      )
+    ) = Just $ ActiveDatum
+      { beaconSym = fromData' sym
+      , borrowerId = fromData' bId
+      , lenderAddress = fromData' lAddress
+      , loanAsset = (fromData' lsym, fromData' lname)
+      , loanPrinciple = fromData' lPrinciple
+      , nextCheckpoints = fromData' lnextCheckpoints
+      , pastCheckpoints = fromData' lpastCheckpoints
+      , loanTerm = fromData' lterm
+      , loanInterest = fromData' lInterest
+      , collateralization = 
+          map (\(List [collatsym,collatname],price) -> 
+                ((fromData' collatsym, fromData' collatname),fromData' price)) collats
+      , claimExpiration = fromData' lClaimExpired
+      , loanExpiration = fromData' lExpired
+      , loanOutstanding = fromData' lOutstanding
+      , loanId = fromData' lloanId
+      }
+  fromBuiltinData _ = Nothing
 
 data LoanRedeemer
   = CloseAsk
@@ -284,8 +417,86 @@ decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScri
             . scriptDataFromJson ScriptDataJsonDetailedSchema
 
 -------------------------------------------------
--- Helper Functions
+-- Off-Chain Helper Functions and Types
 -------------------------------------------------
+type PlutusRational = Plutus.Rational
+
+slotToPOSIXTime :: Slot -> POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime preprodConfig
+
+posixTimeToSlot :: POSIXTime -> Slot
+posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
+
+-- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
+-- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
+-- normalized to "pretend" that the testnet has always used 1 second slot intervals.
+--
+-- The normalization is done by taking a slot time and subtracting the slot number from it.
+-- For example, slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number 
+-- from the time yields the normalized 0 time.
+preprodConfig :: SlotConfig
+preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
+
 credentialAsToken :: Credential -> TokenName
 credentialAsToken (PubKeyCredential (PubKeyHash pkh)) = TokenName pkh
 credentialAsToken (ScriptCredential (ValidatorHash vh)) = TokenName vh
+
+-- | Parse Currency from user supplied String
+readCurrencySymbol :: String -> Either String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse TokenName from user supplied String
+readTokenName :: String -> Either String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse PubKeyHash from user supplied String
+readPubKeyHash :: String -> Either String PubKeyHash
+readPubKeyHash s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ PubKeyHash bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse ValidatorHash from user supplied String
+readValidatorHash :: String -> Either String ValidatorHash
+readValidatorHash s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ ValidatorHash bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse TxId from user supplied String
+readTxId :: String -> Either String Api.TxId
+readTxId s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ Api.TxId bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+getValidatorHash :: ValidatorHash -> B.ByteString
+getValidatorHash (ValidatorHash (BuiltinByteString vh)) = vh
+
+getPubKeyHash :: PubKeyHash -> B.ByteString
+getPubKeyHash pkh = (\(BuiltinByteString z) -> z) $ Api.getPubKeyHash pkh
+
+toEncodedText :: TokenName -> Text
+toEncodedText (TokenName (BuiltinByteString tn)) = encodeByteString tn
+
+toAsset :: (CurrencySymbol,TokenName) -> Text
+toAsset (currSym,tokName)
+  | currSym == adaSymbol = "lovelace"
+  | otherwise = pack (show currSym) <> "." <> toEncodedText tokName
+
+idToString :: TokenName -> String
+idToString tn = show $ tokenAsPubKey tn
+
+-- | This is used to convert the LenderID and BorrowerID to strings for displaying in the JSON. It
+-- does not matter whether the ID is actually for a pubkey or a script.
+tokenAsPubKey :: TokenName -> PubKeyHash
+tokenAsPubKey (TokenName pkh) = PubKeyHash pkh
+
+toStakePubKeyHash :: Address -> Maybe PubKeyHash
+toStakePubKeyHash (Address _ (Just (StakingHash (PubKeyCredential pkh)))) = Just pkh
+toStakePubKeyHash _ = Nothing
+
+toStakeValidatorHash :: Address -> Maybe ValidatorHash
+toStakeValidatorHash (Address _ (Just (StakingHash (ScriptCredential vh)))) = Just vh
+toStakeValidatorHash _ = Nothing
