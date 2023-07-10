@@ -2,101 +2,183 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module CLI.Types where
 
 import Data.Aeson
+import Data.Text (Text)
+import GHC.Word (Word32)
 
-import CardanoLoans as CL
+import CardanoLoans hiding ((-),(+),(*))
+import qualified CardanoLoans as CL
 
 data Command
   = ExportScript Script FilePath
-  | CreateLoanDatum LoanDatum FilePath
+  | CreateLoanDatum LoanDatum' FilePath
   | CreateLoanRedeemer LoanRedeemer FilePath
   | CreateBeaconRedeemer BeaconRedeemer FilePath
-  | QueryBeacons Query
-  | Convert Convert
+  | Query Query
+  | ConvertTime ConvertTime
+  | ConvertAddress ConvertAddress Output
 
-data Convert
+data LoanDatum' = CollateralDatum LoanDatum | LenderDatum TokenName
+
+data ConvertTime
   = POSIXTimeToSlot POSIXTime
   | SlotToPOSIXTime Slot
 
+data ConvertAddress
+  = PlutusToBech32 Address
+  | Bech32ToPlutus Text
+
 data Query
-  = QueryAllAsks Network CurrencySymbol Output
-  | QueryOwnAsks Network CurrencySymbol LoanAddress Output
-  | QueryOwnOffers Network CurrencySymbol PaymentPubKeyHash Output
-  | QueryAllOffers Network CurrencySymbol LoanAddress Output
-  | QueryAllBorrowerLoans Network CurrencySymbol PaymentPubKeyHash LoanAddress Output
-  | QueryAllLenderLoans Network CurrencySymbol PaymentPubKeyHash Output
-  | QueryBorrowerHistory Network CurrencySymbol PaymentPubKeyHash Output
-  | QueryLenderHistory Network CurrencySymbol PaymentPubKeyHash Output
+  = QueryAllAsks Network ApiEndpoint Output
+  | QueryOwnAsks Network ApiEndpoint LoanAddress Output
+  | QueryAllOffers Network ApiEndpoint LoanAddress Output
+  | QueryOwnOffers Network ApiEndpoint LenderID Output
+  | QueryAllBorrowersActiveLoans Network ApiEndpoint BorrowerID LoanAddress Output
+  | QueryAllBorrowersFinishedLoans Network ApiEndpoint BorrowerID LoanAddress Output
+  | QuerySpecificLoan Network ApiEndpoint LoanID Output
+  | QueryOwnKeys Network ApiEndpoint LoanAddress Output
+  | QueryBorrowersHistory Network ApiEndpoint BorrowerID Output
 
 data Script = BeaconPolicy | LoanScript
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
 
-newtype LoanAddress = LoanAddress String
+type LoanAddress = String
+type LenderID = String
+type BorrowerID = String
+type LoanID = String
 
-instance Show LoanAddress where
-  show (LoanAddress s) = s
+data ApiEndpoint
+  = Blockfrost String -- ^ ApiKey
+  | Koios
 
 data Network 
-  = PreProdTestnet String  -- ^ Api key
+  = PreProdTestnet
 
--- | Used as an intermediate type while loanOutstanding is calculated.
+-- | Used as an intermediate type.
 data ActiveDatum' 
   = AcceptDatum'
-      { loanBeaconSym' :: CurrencySymbol
-      , lenderId' :: TokenName
+      { beaconSym' :: CurrencySymbol
       , borrowerId' :: TokenName
+      , lenderAddress' :: Address
       , loanAsset' :: (CurrencySymbol,TokenName)
       , loanPrinciple' :: Integer
+      , loanCheckpoints' :: [POSIXTime]
       , loanTerm' :: POSIXTime
       , loanInterest' :: PlutusRational
       , collateralization' :: [((CurrencySymbol,TokenName),PlutusRational)]
-      , loanExpiration' :: POSIXTime
+      , claimPeriod' :: POSIXTime
+      , loanId' :: TokenName
+      , loanStart' :: POSIXTime
       }
-  | RepaymentDatum'
-      { loanBeaconSym' :: CurrencySymbol
-      , lenderId' :: TokenName
+  | CollateralPaymentDatum'
+      { beaconSym' :: CurrencySymbol
       , borrowerId' :: TokenName
+      , lenderAddress' :: Address
       , loanAsset' :: (CurrencySymbol,TokenName)
       , loanPrinciple' :: Integer
+      , nextCheckpoints' :: [POSIXTime]
+      , pastCheckpoints' :: [POSIXTime]
       , loanTerm' :: POSIXTime
       , loanInterest' :: PlutusRational
       , collateralization' :: [((CurrencySymbol,TokenName),PlutusRational)]
+      , claimExpiration' :: POSIXTime
       , loanExpiration' :: POSIXTime
-      , currentOutstanding' :: PlutusRational
-      , repayAmount' :: Integer
+      , currentBalance' :: PlutusRational
+      , paymentAmount' :: Integer
+      , loanId' :: TokenName
+      }
+  | RolloverDatum'
+      { beaconSym' :: CurrencySymbol
+      , borrowerId' :: TokenName
+      , lenderAddress' :: Address
+      , loanAsset' :: (CurrencySymbol,TokenName)
+      , loanPrinciple' :: Integer
+      , nextCheckpoints' :: [POSIXTime]
+      , pastCheckpoints' :: [POSIXTime]
+      , loanTerm' :: POSIXTime
+      , loanInterest' :: PlutusRational
+      , collateralization' :: [((CurrencySymbol,TokenName),PlutusRational)]
+      , claimExpiration' :: POSIXTime
+      , loanExpiration' :: POSIXTime
+      , currentBalance' :: PlutusRational
+      , loanId' :: TokenName
       }
 
 convertToLoanDatum :: ActiveDatum' -> LoanDatum
 convertToLoanDatum AcceptDatum'{..} = 
   ActiveDatum 
-    { loanBeaconSym = loanBeaconSym'
-    , lenderId = lenderId'
+    { beaconSym = beaconSym'
     , borrowerId = borrowerId'
+    , lenderAddress = lenderAddress'
     , loanAsset = loanAsset'
     , loanPrinciple = loanPrinciple'
+    , nextCheckpoints = map (+loanStart') loanCheckpoints'
+    , pastCheckpoints = []
     , loanTerm = loanTerm'
     , loanInterest = loanInterest'
     , collateralization = collateralization'
-    , loanExpiration = loanExpiration'
-    , loanOutstanding = CL.fromInteger loanPrinciple' CL.* (unsafeRatio 1 1 CL.+ loanInterest')
+    , claimExpiration = loanStart' + loanTerm' + claimPeriod'
+    , loanExpiration = loanStart' + loanTerm'
+    , loanOutstanding = CL.fromInteger loanPrinciple'
+    , loanId = loanId'
     }
-convertToLoanDatum RepaymentDatum'{..} =
-  ActiveDatum 
-    { loanBeaconSym = loanBeaconSym'
-    , lenderId = lenderId'
+convertToLoanDatum CollateralPaymentDatum'{..} =
+  ActiveDatum
+    { beaconSym = beaconSym'
     , borrowerId = borrowerId'
+    , lenderAddress = lenderAddress'
     , loanAsset = loanAsset'
     , loanPrinciple = loanPrinciple'
+    , nextCheckpoints = nextCheckpoints'
+    , pastCheckpoints = pastCheckpoints'
     , loanTerm = loanTerm'
     , loanInterest = loanInterest'
     , collateralization = collateralization'
+    , claimExpiration = claimExpiration'
     , loanExpiration = loanExpiration'
-    , loanOutstanding = currentOutstanding' CL.- CL.fromInteger repayAmount'
+    , loanOutstanding = currentBalance' CL.- CL.fromInteger paymentAmount'
+    , loanId = loanId'
     }
+convertToLoanDatum RolloverDatum'{..} =
+  ActiveDatum
+    { beaconSym = beaconSym'
+    , borrowerId = borrowerId'
+    , lenderAddress = lenderAddress'
+    , loanAsset = loanAsset'
+    , loanPrinciple = loanPrinciple'
+    , nextCheckpoints = tail nextCheckpoints'
+    , pastCheckpoints = head nextCheckpoints' : pastCheckpoints'
+    , loanTerm = loanTerm'
+    , loanInterest = loanInterest'
+    , collateralization = collateralization'
+    , claimExpiration = claimExpiration'
+    , loanExpiration = loanExpiration'
+    , loanOutstanding = currentBalance' CL.* (CL.fromInteger 1 CL.+ loanInterest')
+    , loanId = loanId'
+    }
+
+data AddressInfo' = AddressInfo'
+  { addressSpendingKeyHash :: Maybe Text
+  , addressSpendingScriptHash :: Maybe Text
+  , addressStakeKeyHash :: Maybe Text
+  , addressStakeScriptHash :: Maybe Text
+  , addressNetworkTag :: Word32
+  }
+
+instance ToJSON AddressInfo' where
+  toJSON AddressInfo'{..} =
+    object [ "payment_pubkey_hash" .= addressSpendingKeyHash 
+           , "payment_script_hash" .= addressSpendingScriptHash
+           , "staking_pubkey_hash" .= addressStakeKeyHash
+           , "staking_script_hash" .= addressStakeScriptHash
+           , "network_tag" .= addressNetworkTag
+           ]
 
 data Asset = Asset
   { assetPolicyId :: String
@@ -112,10 +194,10 @@ instance ToJSON Asset where
            , "quantity" .= assetQuantity
            ]
 
-data LoanType = Ask | Offer | Loan deriving (Show)
+data LoanPhase = Ask | Offer | Loan deriving (Show)
 
-data LoanInfo = LoanInfo
-  { loanType :: LoanType
+data LoanUTxO = LoanUTxO
+  { loanPhase :: LoanPhase
   , address :: String
   , txHash :: String
   , outputIndex :: String
@@ -123,14 +205,71 @@ data LoanInfo = LoanInfo
   , loanInfo :: LoanDatum
   }
 
-instance ToJSON LoanInfo where
-  toJSON LoanInfo{..} =
-    object [ "type" .= show loanType
+instance ToJSON LoanUTxO where
+  toJSON LoanUTxO{..} =
+    object [ "phase" .= show loanPhase
            , "address" .= address
            , "tx_hash" .= txHash
            , "output_index" .= outputIndex
            , "utxo_assets" .= uTxOValue
            , "loan_info" .= loanInfo
+           ]
+
+instance ToJSON LoanDatum where
+  toJSON AskDatum{..} =
+    object [ "loan_beacon" .= show beaconSym
+           , "borrower_id" .= idToString borrowerId
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "collateral" .= map toAsset collateral
+           ]
+  toJSON OfferDatum{..} =
+    object [ "loan_beacon" .= show beaconSym
+           , "lender_id" .= idToString lenderId
+           , "lender_address_payment_pubkey_hash" .= (show <$> toPubKeyHash lenderAddress)
+           , "lender_address_payment_script_hash" .= (show <$> toValidatorHash lenderAddress)
+           , "lender_address_staking_pubkey_hash" .= (show <$> toStakePubKeyHash lenderAddress)
+           , "lender_address_staking_script_hash" .= (show <$> toStakeValidatorHash lenderAddress)
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "checkpoints" .= map getPOSIXTime loanCheckpoints
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "interest" .= loanInterest
+           , "collateralization" .= map (\(x,y) -> (toAsset x, y)) collateralization
+           , "claim_period" .= getPOSIXTime claimPeriod
+           ]
+  toJSON ActiveDatum{..} =
+    object [ "loan_beacon" .= show beaconSym
+           , "borrower_id" .= idToString borrowerId
+           , "lender_address_payment_pubkey_hash" .= (show <$> toPubKeyHash lenderAddress)
+           , "lender_address_payment_script_hash" .= (show <$> toValidatorHash lenderAddress)
+           , "lender_address_staking_pubkey_hash" .= (show <$> toStakePubKeyHash lenderAddress)
+           , "lender_address_staking_script_hash" .= (show <$> toStakeValidatorHash lenderAddress)
+           , "loan_asset" .= toAsset loanAsset
+           , "principle" .= loanPrinciple
+           , "next_checkpoints" .= map (getSlot . posixTimeToSlot) nextCheckpoints
+           , "past_checkpoints" .= map (getSlot . posixTimeToSlot) pastCheckpoints
+           , "term" .= getPOSIXTime loanTerm `divide` 1000
+           , "interest" .= loanInterest
+           , "collateralization" .= map (\(x,y) -> (toAsset x, y)) collateralization
+           , "expiration_slot" .= getSlot (posixTimeToSlot loanExpiration)
+           , "claim_period_expiration_slot" .= getSlot (posixTimeToSlot claimExpiration)
+           , "balance_owed" .= loanOutstanding
+           , "loan_id" .= idToString loanId
+           ]
+
+data KeyUTxO = KeyUTxO
+  { keyTxHash :: String
+  , keyOutputIndex :: String
+  , keyUTxOValue :: [Asset]
+  }
+
+instance ToJSON KeyUTxO where
+  toJSON KeyUTxO{..} =
+    object [ "tx_hash" .= keyTxHash
+           , "output_index" .= keyOutputIndex
+           , "utxo_assets" .= keyUTxOValue
            ]
 
 data LoanHistory = LoanHistory
@@ -144,15 +283,4 @@ instance ToJSON LoanHistory where
     object [ "default" .= defaultStatus
            , "utxo_assets" .= remainingUTxOValue
            , "loan_info" .= toJSON loan
-           ]
-
-data LenderHistory = LenderHistory
-  { uTxOClaimed :: [Asset]
-  , loanTerms :: LoanDatum
-  }
-
-instance ToJSON LenderHistory where
-  toJSON LenderHistory{..} =
-    object [ "utxo_assets" .= uTxOClaimed
-           , "loan_info" .= loanTerms
            ]
