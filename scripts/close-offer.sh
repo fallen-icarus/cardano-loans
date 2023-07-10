@@ -6,8 +6,7 @@
 dir="../assets/loan-files/"
 tmpDir="../assets/tmp/"
 
-loanScriptFile="${dir}loan.plutus"
-beaconPolicyFile="${dir}beacons.plutus"
+beaconPolicyFile="${dir}beacons.plutus" # This is used to get the beacon policy id.
 
 lenderPaymentPubKeyFile="../assets/wallets/02.vkey"
 
@@ -21,17 +20,10 @@ echo "Calculating the hash of the lender's payment pubkey..."
 lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
   --payment-verification-key-file $lenderPaymentPubKeyFile)
 
-# ## Export the loan validator script.
-# echo "Exporting the loan validator script..."
-# cardano-loans export-script \
-#   --loan-script \
-#   --out-file $loanScriptFile
-
-# ## Export the beacon policy.
-# echo "Exporting the beacon policy script..."
-# cardano-loans export-script \
-#   --beacon-policy \
-#   --out-file $beaconPolicyFile
+## Export the beacon policy.
+echo "Exporting the beacon policy script..."
+cardano-loans export-script beacon-policy \
+  --out-file $beaconPolicyFile
 
 ## Get the beacon policy id.
 echo "Calculating the beacon policy id..."
@@ -45,8 +37,7 @@ cardano-loans beacon-redeemer burn-beacons \
 
 ## Create the CloseOffer redeemer for the loan validator.
 echo "Creating the spending redeemer..."
-cardano-loans loan-redeemer \
-  --close-offer \
+cardano-loans loan-redeemer close-offer \
   --out-file $closeOfferRedeemerFile
 
 ## Helper beacon variables
@@ -59,13 +50,16 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in c5d98a661f09ff6998ff3a449909d4f20c13780e816d949f31f20d39a53f5005#0 \
-  --tx-in-script-file $loanScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $closeOfferRedeemerFile \
+  --tx-in ce5fa492b6a38aef9f01bcc44b2376dd3b59f4cf6ff1e199d45ee33fc0c47242#0 \
+  --spending-tx-in-reference 45551cf4568e6357b627f22df499a3ed59fa7b72a9b2fe0160cbad87ce11c902#0 \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file $closeOfferRedeemerFile \
   --mint "-1 ${offerBeacon} + -1 ${lenderBeacon}" \
-  --mint-script-file $beaconPolicyFile \
-  --mint-redeemer-file $beaconRedeemerFile \
+  --mint-tx-in-reference e8bff224cd50b66c39a98e3708f981fba1a27e9aa89ce5986ae36597b2646042#0 \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --policy-id $beaconPolicyId \
   --required-signer-hash $lenderPaymentPubKeyHash \
   --change-address "$(cat ../assets/wallets/02.addr)" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \

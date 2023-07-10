@@ -6,8 +6,8 @@
 dir="../assets/loan-files/"
 tmpDir="../assets/tmp/"
 
-loanScriptFile="${dir}loan.plutus"
-beaconPolicyFile="${dir}beacons.plutus"
+loanScriptFile="${dir}loan.plutus" # This is used to create the address.
+beaconPolicyFile="${dir}beacons.plutus" # This is used to get the beacon policy id.
 
 borrowerPubKeyFile="../assets/wallets/01Stake.vkey"
 
@@ -21,8 +21,7 @@ askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
 
 ## Export the loan validator script.
 echo "Exporting the loan validator script..."
-cardano-loans export-script \
-  --loan-script \
+cardano-loans export-script loan-script \
   --out-file $loanScriptFile
 
 ## Generate the hash for the staking verification key.
@@ -40,8 +39,7 @@ cardano-cli address build \
 
 ## Export the beacon policy.
 echo "Exporting the beacon policy script..."
-cardano-loans export-script \
-  --beacon-policy \
+cardano-loans export-script beacon-policy \
   --out-file $beaconPolicyFile
 
 ## Get the beacon policy id.
@@ -51,9 +49,9 @@ beaconPolicyId=$(cardano-cli transaction policyid \
 
 ## Create the Ask datum.
 echo "Creating the ask datum..."
-cardano-loans loan-datum ask-datum \
+cardano-loans datum ask-datum \
   --beacon-policy-id $beaconPolicyId \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
+  --borrower-staking-pubkey-hash $borrowerPubKeyHash \
   --loan-asset-is-lovelace \
   --principle 10000000 \
   --loan-term 3600 \
@@ -64,7 +62,7 @@ cardano-loans loan-datum ask-datum \
 ## Create the MintAsk beacon policy redeemer.
 echo "Creating the minting redeemer..."
 cardano-loans beacon-redeemer mint-ask \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
+  --borrower-staking-pubkey-hash $borrowerPubKeyHash \
   --out-file $beaconRedeemerFile
 
 ## Helper Ask beacon variable
@@ -76,12 +74,14 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 115b6dc999bd75f78b3a82edd03d5f137b9523ee918137156492858afe2471e0#1 \
+  --tx-in 6def0fb5c759ef91cf0120616a5012a33adfedaa82f67d6b83279ad1d0ebda56#3 \
   --tx-out "$(cat ${loanAddrFile}) + 2000000 lovelace + 1 ${askBeacon}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon}" \
-  --mint-script-file $beaconPolicyFile \
-  --mint-redeemer-file $beaconRedeemerFile \
+  --mint-tx-in-reference 0f94a13cf0207e9a322c15d52d372dc04bd292160277f94e4fc5fbad5598a209#0 \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --policy-id $beaconPolicyId \
   --required-signer-hash $borrowerPubKeyHash \
   --change-address "$(cat ../assets/wallets/01.addr)" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
