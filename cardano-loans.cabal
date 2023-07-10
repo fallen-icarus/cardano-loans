@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               cardano-loans
-version:            0.1.0.0
+version:            0.2.0.0
 
 synopsis: A distributed Cardano P2P Lending dApp PoC.
 license: Apache-2.0
@@ -97,6 +97,8 @@ executable cardano-loans
       vector,
       aeson-pretty,
       bytestring,
-      utf8-string
+      utf8-string,
+      cardano-addresses,
+      file-embed
     ghc-options: -O2
     hs-source-dirs:   app
