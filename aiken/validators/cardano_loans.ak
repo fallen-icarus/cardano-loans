@@ -617,11 +617,11 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // The beacons must be stored with the proper inline OfferDatum:
           // loan_beacon_sym == this policy id.
           // lender_id == credential hash as token name.
-          // lender_address must use a payment script.
+          // lender_address must use a payment pubkey.
           // loan_principle > 0.
-          // loan_checkpoints must all be >= 0 and in ascending order. It can be empty. No duplicates.
+          // loan_checkpoints must all be >= 0 and in ascending order. It can be empty.
           // loan_term > 0.
-          // 0 <= loan_interest <= 1.
+          // loan_interest > 0.
           // collateralization list must not be empty and all relative prices >= 0.
           // claim_period > 0.
         // The Offer UTxO must be stored with 5 ADA + the amount of the loan asset.
