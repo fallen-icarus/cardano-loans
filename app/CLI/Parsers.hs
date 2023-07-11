@@ -175,7 +175,7 @@ pUpdateDatum :: Parser LoanDatum'
 pUpdateDatum =
   fmap CollateralDatum $ ActiveDatum
     <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pBorrowerCredential)
+    <*> pBorrowerIdAsToken
     <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
@@ -752,6 +752,13 @@ pLenderId = strOption
 
 pBorrowerId :: Parser String
 pBorrowerId = strOption
+  (  long "borrower-id"
+  <> metavar "STRING"
+  <> help "BorrowerID for the borrower."
+  )
+
+pBorrowerIdAsToken :: Parser TokenName
+pBorrowerIdAsToken = option (eitherReader readTokenName)
   (  long "borrower-id"
   <> metavar "STRING"
   <> help "BorrowerID for the borrower."

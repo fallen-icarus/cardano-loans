@@ -42,7 +42,7 @@ cardano-loans loan-redeemer update-address \
 echo "Creating the new collateral datum..."
 cardano-loans datum update-address-datum \
   --beacon-policy-id $beaconPolicyId \
-  --borrower-staking-pubkey-hash $borrowerId \
+  --borrower-id $borrowerId \
   --payment-pubkey-hash ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2 \
   --staking-pubkey-hash 623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c \
   --loan-asset-is-lovelace \
