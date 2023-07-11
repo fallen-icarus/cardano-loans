@@ -106,7 +106,7 @@ pOfferDatum =
   fmap CollateralDatum $ OfferDatum
     <$> pBeaconPolicy
     <*> (credentialAsToken <$> pLenderCredential)
-    <*> pAddress
+    <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
     <*> pCheckpoints
@@ -120,7 +120,7 @@ pAcceptDatum = fmap (CollateralDatum . convertToLoanDatum) $
   AcceptDatum'
     <$> pBeaconPolicy
     <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pAddress
+    <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
     <*> pCheckpoints
@@ -136,7 +136,7 @@ pCollateralPaymentDatum = fmap (CollateralDatum . convertToLoanDatum) $
   CollateralPaymentDatum'
     <$> pBeaconPolicy
     <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pAddress
+    <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
     <*> pNextCheckpoints
@@ -157,7 +157,7 @@ pRolloverDatum = fmap (CollateralDatum . convertToLoanDatum) $
   RolloverDatum'
     <$> pBeaconPolicy
     <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pAddress
+    <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
     <*> pNextCheckpoints
@@ -176,7 +176,7 @@ pUpdateDatum =
   fmap CollateralDatum $ ActiveDatum
     <$> pBeaconPolicy
     <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pAddress
+    <*> pLenderAddress
     <*> pLoanAsset
     <*> pPrinciple
     <*> pNextCheckpoints
@@ -753,3 +753,36 @@ pBorrowerId = strOption
   <> metavar "STRING"
   <> help "BorrowerID for the borrower."
   )
+
+pLenderAddress :: Parser Address
+pLenderAddress = 
+    Address
+      <$> pPaymentCredential
+      <*> (pStakingCredential <|> pure Nothing)
+  where
+    pPaymentPubKeyCredential :: Parser Credential
+    pPaymentPubKeyCredential = PubKeyCredential <$> option (eitherReader readPubKeyHash)
+      ( long "payment-pubkey-hash"
+      <> metavar "STRING"
+      <> help "The hash of the payment pubkey used in the address."
+      )
+
+    pPaymentCredential :: Parser Credential
+    pPaymentCredential = pPaymentPubKeyCredential
+
+    pStakingScriptCredential :: Parser StakingCredential
+    pStakingScriptCredential = StakingHash . ScriptCredential <$> option (eitherReader readValidatorHash)
+      (  long "staking-script-hash"
+      <> metavar "STRING"
+      <> help "The hash of the staking script used in the address."
+      )
+
+    pStakingPubKeyCredential :: Parser StakingCredential
+    pStakingPubKeyCredential = StakingHash . PubKeyCredential <$> option (eitherReader readPubKeyHash)
+      (  long "staking-pubkey-hash"
+      <> metavar "STRING"
+      <> help "The hash of the staking pubkey used in the address."
+      )
+
+    pStakingCredential :: Parser (Maybe StakingCredential)
+    pStakingCredential = Just <$> (pStakingPubKeyCredential <|> pStakingScriptCredential)
