@@ -12,6 +12,7 @@
 * Added rollover steps to allow for compound interest. Interest is applied at each step.
 * Loan payments are made directly to the lender's address. This address can be changed by anyone who owns the corresponding loan Key NFT.
 * A claim period was added in case the Key NFT is lost to prevent permanently locked collateral UTxOs.
+* Added ability for Borrowers to use either a staking pubkey or a staking script.
 
 ## 1.0.0
 
