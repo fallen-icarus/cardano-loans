@@ -234,7 +234,10 @@ pCreateLoanRedeemer = hsubparser $ mconcat
     pRollover = CreateLoanRedeemer Rollover <$> pOutputFile
 
     pUpdateLenderAddress :: Parser Command
-    pUpdateLenderAddress = CreateLoanRedeemer <$> (UpdateLenderAddress <$> pAddress) <*> pOutputFile
+    pUpdateLenderAddress = 
+      CreateLoanRedeemer 
+        <$> (UpdateLenderAddress <$> pLenderAddress) 
+        <*> pOutputFile
 
 -------------------------------------------------
 -- CreateBeaconRedeemer Parser
