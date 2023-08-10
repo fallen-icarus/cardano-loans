@@ -13,26 +13,23 @@
 - [Conclusion](#conclusion)
 
 ## Abstract
-Cardano-Loans is a proof-of-concept implementation of a *fully p2p* lending/borrowing protocol for the Cardano Settlement Layer (CSL). It empowers users to create and operate a CSL-native credit/debt market via trustlessly negotiable & repayable p2p loans, and on-chain credit history. This circumvents the need for oracles and/or concentrated lending pools in favor of *endogenous* price & interest-rate discovery. Users deploy (and interact with each others') script addresses, so full spending *and* delegation control of assets is maintained, and contract upgrades occur democratically.
+Cardano-Loans is a p2p-DeFi protocol for lending/borrowing  assets on the Cardano Settlement Layer (CSL). It empowers users to create and operate a CSL-native credit/debt market via trustlessly negotiable & repayable p2p loans, and an on-chain credit history. This circumvents the need for oracles and/or concentrated lending pools in favor of *endogenous* price & interest-rate discovery. Users deploy (and interact with each others') script addresses, so full spending *and* delegation control of assets is maintained, and contract upgrades occur democratically.
 
 ## Motivation
 A healthy credit-debt market is a vital (and often the largest) component of a thriving economy. A healthy market is one in which prices reflect underlying reality as quickly and fluidly (with as little friction) as possible. For the sake of avoiding a whole treatise on economics, suffice to say that *the best way to achieve fast and frictionless price discovery is through the aggregation of maximally expressive individual sentiments.* This is especially true for credit-debt markets, where money itself is the asset, priced via interest rates. 
 
 Many lending/borrowing dApps on Cardano are implemented in controlled manners that limit users' flexibility in negotiating loan terms. This results in a sub-optimal expression of market sentiment. Furthermore, existing protocols rely on oracles for price feeds, which complicates the trust model, increases the dApp's attack surface, and subjects prices to a broader economy in which interest rates are not set by the market, but by central actors. 
 
-Protocols that offer an alternative to this status quo will likely be perceived as a threat by those in positions of high power, so censorship resistance is an essential feature. Fully p2p dApps, such as Cardano-Loans, offer the highest level of censorship-resistance of any dApp architecture, because users not only have full custody of their assets, but can also fractionalize and recompose their interactions across an already decentralized ledger, instead of pooling their assets into one or a few contracts.
-
 Finally, p2p lending dApps may be the fastest way for the most financially underserved peoples to begin building credit scores. Those who *need* atypical financing options are in the best position to begin bootstrapping the system, as they would be willing to pay higher interest rates than any other group. This in turn incentivizes yield-seeking lenders to develop new strategies for such unprecedented conditions. In time, borrowers and lenders can build p2p relationships, and begin dis-intermediating the banking system.
 
-
 ## Preliminary Discussion
-To appreciate the necessity for new lending/borrowing protocols on Cardano, it is first important to understand the deficiencies of the status quo:
+To appreciate the necessity for p2p lending/borrowing protocols on Cardano, it is first important to understand the deficiencies of the status quo:
 
 ### Current Lending/Borrowing dApp Deficiencies
 
-1. **Oracles** - dApps that rely on off-chain information feeds are subject to the integrity of the underlying oracle network. Oracles are a nuanced topic that is beyond the scope of this document, but in short, oracles increase the attack surface of dApps, and have a long way to go before they can be safely relied upon by ledger-wide distributed dApps.
+1. **Oracles** - dApps that rely on off-chain information feeds are subject to the integrity of the underlying oracle network. Oracles are a nuanced topic that is beyond the scope of this document, but in short, oracles increase the attack surface of dApps, and have a long way to go before they can be safely relied upon by ledger-wide distributed dApps. See [here]() for more.
 
-2. **Non-negotiable Loan Terms** - lending/borrowing dApps that are mediated by a central contract/entity lack negotiability of all loan terms, resulting in inefficient markets. This is especially troubling for a credit-debt market, whose efficiency is a vital component to a healthy economy.
+2. **Limited Loan Term Negotiability** - lending/borrowing dApps that are mediated by a central contract/entity lack negotiability of all loan terms, resulting in inefficient markets. This is especially troubling for a credit-debt market, whose efficiency is a vital component to a healthy economy.
    
 3. **Concentrated Lending Pools** - concentrated lending pools (or any concentrated dApp design) are a higher security risk compared to distributed dApps. Aside from catastrophic draining attacks, centralized dApps often have a complex security model that relies on additional entities like DAOs (and associated "dApp Tokens") for upgradeability. This not only increases the technical attack surface, but the social attack surface as well. Furthermore, concentrated dApps do not scale naturally compared to distributed dApp architectures, especially in the context of state channels, like Hydra. 
    
@@ -198,7 +195,7 @@ data LoanRedeemer
   | MakePayment
   | Rollover
   | ClaimExpired
-  | UpdateLenderAddress Address
+  | UpdateLenderAddress
   | UnlockLostCollateral
 ```
 
@@ -206,7 +203,7 @@ data LoanRedeemer
 Cardano-Loans is broken up into three distinct phases:
 
 #### 1. Ask Phase
-Prospective borrowers initiate the Ask Phase by minting an `Ask` Token and storing it inside their borrower address with the desired ask terms. 
+Prospective borrowers initiate the Ask Phase by minting an `Ask` Token and storing it inside their borrower address with the desired Ask terms. 
 
 ##### Ask Initiation
 Minting a valid `Ask` token requires all of the following to be true:
@@ -224,14 +221,14 @@ Minting a valid `Ask` token requires all of the following to be true:
 6. The `Ask` tokens must be stored individually.
 6. The receiving staking credential must signal approval.
 
-- The borrower is able to use multiple assets as collateral for a given loan. Whatever assets *can* (but not necessarily *need* to) be used must appear in the `collateral` list.
-- The approval signal requirement ensures no one but the borrower can open a loan under the same borrowerID.
+- The borrower can use multiple assets as collateral for a given loan. Whatever assets *can* (but not necessarily *need* to) be used must appear in the `collateral` list.
+- The (staking credential) approval signal ensures no one but the borrower can open a loan under the same borrowerID.
 
 ##### Closing an Ask
 If the borrower changes their mind about the loan they are asking for, they may close their Ask accordingly:
 
 1. The `CloseAsk` redeemer must be used for the loan validator and the `BurnBeacons` redeemer must be used for the minting policy.
-2. The datum attached to the UTxO must be an `AskDatum`. If it isn't, then this UTxO cannot possibly be an Ask since real Asks have both an `AskDatum` and an `Ask` token.
+2. The datum attached to the UTxO must be an `AskDatum`. If it isn't, then this UTxO cannot be an Ask since valid Asks have both an `AskDatum` and an `Ask` token.
 3. The staking credential must signal approval.
     - pubkey must sign
     - staking script must be executed
@@ -293,10 +290,10 @@ If the lender changes their mind about their offer *prior* to it being accepted 
 1. The `CloseOffer` redeemer must be used for the loan validator and the `BurnBeacons` redeemer must be used for the minting policy.
 2. The datum attached to the UTxO must be an `OfferDatum`. If it isn't, then this UTxO cannot possibly be an Offer.
 3. If the Offer beacon is present in the UTxO, this is a valid offer and the LenderID is guaranteed to be present. Custody belongs to the lender. Additional checks are required in this situation:
-    - The credential of the lender must sign the transaction. The credential hash can be gotten from the offer datum since the presence of the Offer Token means that the datum is properly configured. It is either a pubkey or a staking script.
-    - All offer beacons in the transaction inputs must be burned.
-    - All of the lender's IDs in the transaction inputs must be burned.
-4. If the offer beacon is not present, the address owner gets custody by default. This scenario can only happen if the offer is not a valid offer.
+    - The credential of the lender must sign the transaction. The credential hash  from the offer datum since the presence of the Offer Token means that the datum is properly configured. It is either a staking key or script.
+    - All Offer beacons in the transaction inputs must be burned.
+    - All of the lender IDs in the transaction inputs must be burned.
+4. If the offer beacon is not present, the address owner gets custody by default. This scenario can only happen if the Offer is not a valid offer.
     - The staking credential of the address must signal approval.
 
 Spending custody for the lender is enforced by requiring the lender's approval when appropriate.
@@ -504,6 +501,7 @@ Beacon Tokens can be used as "DID-like" identifiers that attest the (current and
 Using an off-chain API, it is easy to query whether a loan was repaid in full or defaulted on. Although the contract logic treats all "defaulted" loans identically, it may be the case that the loan was almost completely repaid. How much of a defaulted loan was repaid is easily queryable, so the mere fact of a default is **not** a binary indicator of a borrower's credit-worthiness. Lenders and/or third-party rating agencies can use this history (possibly in combination with other factors, such as an associated DID) to determine the credit-worthiness of a borrower. All current and past loan conditions are visible to the third-party.
 
 The table below shows which API endpoints are used for this with Blockfrost:
+
 | Action | API Endpoint |
 |--|--|
 | Burn Txs | [API](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1history/get) |
@@ -557,10 +555,10 @@ Staking scripts allow arbitrary logic for the BorrowerIDs such as a multisig.
 ## Future Directions and Considerations
 
 #### Term Extensions/Renegotiations
-A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the nature/creditworthiness of the borrower.
+A borrower may renegotiate an active loan with their lender, without closing or defaulting on the loan. This may be to "refinance" the loan, to negotiate a loan term extension, or for whatever other reasons the two parties may agree upon. All such actions would be queryable by prospective lenders in the future, giving them further insight into the borrower's nature/creditworthiness.
 
 #### Multi-Asset Loans
-In addition to using multiple collaterals for loans (which is already implemented), it is possible to create loans where multiple assets are being borrowed. This is especially useful in combination with multi-asset collateral, allowing users to create "packaged" loans that are hedged against the "global" price movements of any one of the underlying assets.
+In addition to using multiple collaterals for loans (which is already implemented), it is possible to create "bundled" loans with multiple borrowed assets. This is especially useful in combination with multi-asset collateral; bundled loans can provide a hedge against fluctuations of any one of the underlying assets.
 
 #### Linkable Credit-History
 By introducing additional Beacon Tokens (and associated standards), it may be possible to link together previously unrelated/pseudonymous borrower IDs into a set of *related* (but still pseudonymous) IDs, at the borrower's discretion.
@@ -569,16 +567,15 @@ By introducing additional Beacon Tokens (and associated standards), it may be po
 Upon the maturation of standards, decentralized identifiers (DIDs) can be incorporated with Cardano-Loans, further amplifying utility and interoperability.
 
 #### More Expressive Beacon Querying
-Currently, all loans are showed when querying the beacons no matter what the loan asset is. It would likely be better to allow querying based on the loan asset.
+Currently, all loans, no matter the asset(s), are fetched when querying the beacons. Honing in on specific loan(s) necessitates more filtering, which may become resource intensive if the number of available loans is large. It may be worthwhile to employ unique Beacons per loan-asset, though the trade-offs here are not yet clear.
 
 ### Other Considerations
 
 #### Version Compatibility
 Different versions of Cardano-Loans are not compatible with each other. That is, a borrower using v1 of the protocol cannot engage in loans with a lender using v2 of the protocol. However, they may use the same keys for both protocols, which (although resulting in different addresses/beacons) allows them to maintain their pseudonymous identities across versions. 
 
-Due to the (potentially) large feature set, it may be the case that not all features can fit into a single script. If high-level language and low level plutus-core optimizations are not enough to address this, it may be necessary to split features across multiple versions of Cardano-Loans. Besides a mild inconvenience, there is no cost to doing this; credit history transcends any one version, and users may choose what version to use depending on what features they need.
-
+Due to the (potentially) large feature set, it may be the case that not all features can fit into a single script. If high-level language and low level plutus-core optimizations are not enough to address this, it may be worthwhile to split features across multiple versions of Cardano-Loans. Besides a mild inconvenience, there is little downside to doing this; credit history transcends any one version, and users may choose which version to use depending on the features they need.
 
 ## Conclusion
-The Cardano-Loans protocol is a first-attempt at rethinking how the economy of Cardano could evolve. It forgoes reliance on global/external token prices in favor of incentivizing the creation of a CSL-native p2p credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. Wallets and other frontends can integrate the protocol into their UI, and even provide all necessary API query services. Endogenous price & rate discovery empowers users to create their own economy, one that is (at least initially) decoupled from the existing financial system, in pursuit of something more fair, equal, and accessible to all.
+The Cardano-Loans protocol is one part in a broad rethinking of how the economy of Cardano could evolve. Users are incentivized to create an *endogenous* CSL-native credit/debt market that is synergistic with other p2p-DeFi protocols. Thanks to its simple design, the protocol can be easily integrated into existing frontend providers, with modular support for various querying pipelines.
 
