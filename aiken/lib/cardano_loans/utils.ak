@@ -276,6 +276,9 @@ pub fn destination_check(
     // Extract out the output's information.
     let Output(Address(pay,stake),val,d,_) = out
 
+    // All of the previous inputs need to be valid and this input needs to be valid.
+    acc &&
+
     // The following checks depend on what redeemer is being used.
     when redeemer is {
       CreateAsk(req_borrower_id,_) -> {
