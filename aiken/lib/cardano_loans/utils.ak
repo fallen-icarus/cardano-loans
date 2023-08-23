@@ -531,7 +531,7 @@ pub fn destination_check(
           [] -> acc
 
           // Any other pattern is a sign of beacons being stored with the wrong value.
-          _ -> error @"Beacons not minted to a valid UTxO"
+          _ -> error @"Beacons not minted to a valid Offer UTxO"
         }
       }
 
