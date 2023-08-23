@@ -304,9 +304,10 @@ pub fn destination_check(
               else { error @"Ask beacon not found in beacon output" }
 
             // Get the required loan_asset based on the Asset beacon name.
-            let req_loan_asset = 
-              dict.get(name_map,loan) 
-              |> option.or_else(_, error @"Asset beacon does not match any asset in redeemer")
+            let req_loan_asset = when dict.get(name_map,loan) is {
+              None -> error @"Asset beacon does not match any asset in redeemer"
+              Some(x) -> x
+            }
 
             // There can only be 1 Ask beacon and 1 Asset beacon in the UTxO.
             trace_if_false(
@@ -417,8 +418,10 @@ pub fn destination_check(
 
             // Get the required loan_asset based on the Asset beacon name.
             let (asset_id,asset_name) as req_loan_asset = 
-              dict.get(name_map,loan) 
-              |> option.or_else(_, error @"Asset beacon does not match any asset in redeemer")
+              when dict.get(name_map,loan) is {
+                None -> error @"Asset beacon does not match any asset in redeemer"
+                Some(x) -> x
+              }
 
             // The beacons must be stored at a dApp address with staking. Uses app_name in
             // the error message.
@@ -1191,10 +1194,10 @@ pub fn collateral_taken_check(
   swappable: Bool
 ) -> Bool {
   // Calculate the proportion of the loan that was repaid.
-  let goal = 
-    ratio.reciprocal(outstanding) 
-    |> option.or_else(_,error @"Outstanding is already 0")
-    |> ratio.mul(paid,_)
+  let goal = when ratio.reciprocal(outstanding) is {
+    None -> error @"Outstanding is already 0"
+    Some(x) -> ratio.mul(paid,x)
+  }
 
   // Returns the total amount of collateral taken (in units of the loan asset) and
   // the total starting balance for collateral (in units of the loan asset).
