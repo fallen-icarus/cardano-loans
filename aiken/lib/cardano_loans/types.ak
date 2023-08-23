@@ -2,7 +2,7 @@ use aiken/time.{PosixTime}
 use aiken/transaction/credential.{Address,Credential}
 use aiken/transaction/value.{PolicyId,AssetName}
 use aiken/transaction.{OutputReference}
-use cardano_loans/ratio.{Rational}
+use aiken/math/rational.{Rational}
 
 pub type LoanDatum {
   AskDatum { 
@@ -19,11 +19,14 @@ pub type LoanDatum {
     lender_address: Address,
     loan_asset: (PolicyId,AssetName),
     loan_principle: Int,
-    loan_checkpoints: List<PosixTime>, // The relative times at which rollovers must occur.
+    rollover_frequency: Option<PosixTime>, // The frequency at which rollovers must occur.
     loan_term: PosixTime,
     loan_interest: Rational,
+    min_payment: Int, // The minimum loan payment that can be made.
     collateralization: List<((PolicyId,AssetName),Rational)>,
-    claim_period: PosixTime // How long the lender will have to claim the expired UTxO once defaulted.
+    collateral_is_swappable: Bool, // Whether collateral can be swapped out.
+    claim_period: PosixTime, // How long the lender will have to claim the expired UTxO once defaulted.
+    offer_deposit: Int // How much ADA was used for the UTxO's minUTxOValue.
   }
   ActiveDatum { 
     loan_beacon_sym: PolicyId,
@@ -31,11 +34,13 @@ pub type LoanDatum {
     lender_address: Address,
     loan_asset: (PolicyId,AssetName),
     loan_principle: Int,
-    next_checkpoints: List<PosixTime>,
-    past_checkpoitns: List<PosixTime>, // Included for credit history.
+    rollover_frequency: Option<PosixTime>,
+    last_checkpoint: PosixTime,
     loan_term: PosixTime, // Included for credit history
     loan_interest: Rational,
+    min_payment: Int,
     collateralization: List<((PolicyId,AssetName),Rational)>,
+    collateral_is_swappable: Bool,
     claim_expiration: PosixTime, // The time at which collateral is considered "Lost".
     loan_expiration: PosixTime,
     loan_outstanding: Rational,
@@ -50,18 +55,20 @@ pub type LoanRedeemer {
   MakePayment
   Rollover
   ClaimExpired
-  UpdateLenderAddress {new_address: Address}
-  UnlockLostCollateral
+  UpdateLenderAddress{new_address: Address}
+  Unlock
 }
 
 pub type BeaconRedeemer {
-  MintAskBeacon { 
-    staking_credential: Credential // Borrower's staking credential.
+  CreateAsk { 
+    staking_credential: Credential, // Borrower's staking credential. Pubkey or script.
+    loan_assets: List<(PolicyId,AssetName)> // Assets to be loaned.
   } 
-  MintOfferBeacon { 
-    staking_credential: Credential // Lender's staking credential.
+  CreateOffer { 
+    staking_credential: Credential, // Lender's staking credential. Pubkey or script.
+    loan_assets: List<(PolicyId,AssetName)>
   }
-  MintActiveBeacon { 
+  CreateActive { 
     staking_credential: Credential, // Borrower's staking credential.
     pairings: List<(OutputReference,OutputReference)> // The desired pairings of Ask and Offer UTxOs.
   }
