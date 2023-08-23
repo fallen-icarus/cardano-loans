@@ -899,8 +899,8 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         //    whose Asset beacon will be minted must be found in the redeemer.
         // 2) The Ask beacon must have the token name "Ask".
         // 3) The Asset beacon must have the token name: sha2_256( asset_policy_id ++ asset_name ).
-        // 4) The Ask UTxO must have exactly 1 Ask beacon, 1 Asset beacon, and ADA. No other assets
-        //    are allowed in the UTxO.
+        // 4) The Ask UTxO must have exactly 1 Ask beacon and 1 Asset beacon. No other beacons
+        //    can be found in the UTxO.
         // 5) The Ask UTxO must be locked at a dapp address that is using the credential in the redeemer
         //    as the staking credential.
         // 6) The Ask UTxO must have a valid inline AskDatum:

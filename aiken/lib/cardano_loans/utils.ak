@@ -280,8 +280,8 @@ pub fn destination_check(
     when redeemer is {
       CreateAsk(req_borrower_id,_) -> {
         // Checks:
-        // 1) The Ask UTxO must have exactly 1 Ask beacon, 1 Asset beacon, and ADA. No other assets
-        //    are allowed in the UTxO.
+        // 1) The Ask UTxO must have exactly 1 Ask beacon and 1 Asset beacon. No other beacons
+        //    can be in the UTxO.
         // 2) The Ask UTxO must be locked at a dapp address that is using the credential in the redeemer
         //    as the staking credential.
         // 3) The Ask UTxO must have a valid inline AskDatum:
@@ -322,51 +322,59 @@ pub fn destination_check(
               pay == ScriptCredential(dapp_hash) && stake == Some(Inline(req_borrower_id))
             ) &&
 
-            // No extraneous assets can be stored in the UTxO. The UTxO can only have ADA,
-            // Ask beacon, and Asset beacon. The actual amount of ADA in the UTxO does not
-            // matter.
-            trace_if_false(
-              @"No extraneous assets can be stored in the Ask UTxO",
-              list.foldl(
-                value.flatten(val), // Convert the value into a flattened list for pattern matching.
-                True,
-                fn (x: (PolicyId,AssetName,Int), acc: Bool) {
-                  let (cn,_,_) = x
-                  // There is no need to check the beacon names or the quantities since they were 
-                  // already checked.
-                  acc && ( cn == beacon_id || cn == value.ada_policy_id )
-                }
-              )
-            ) &&
-
             // The beacons must be stored with the proper datum.
             when parse_datum(d) is {
               AskDatum(beacon_sym, borrower_id, loan_asset, principle, term, collateral) -> {
-                // The loan_beacon_sym must be this policy id.
-                trace_if_false( @"Invalid loan_beacon_sym", beacon_sym == beacon_id ) &&
+                // The AskDatum must be correct.
+                trace_if_false(
+                  @"Invalid AskDatum",
 
-                // The borrower_id must be the same as the credential in the redeemer.
-                trace_if_false( 
-                  @"Invalid borrower_id", 
-                  borrower_id == credential_to_asset_name(req_borrower_id)
-                ) &&
+                  // The loan_beacon_sym must be this policy id.
+                  beacon_sym == beacon_id &&
 
-                // The loan asset must be the corresponding asset for the Asset beacon present.
-                // The loan asset associated with this beacon should be found in the map created
-                // from the redeemer.
-                trace_if_false( 
-                  @"Invalid loan_asset",
-                  loan_asset == req_loan_asset
-                ) &&
+                  // The borrower_id must be the same as the credential in the redeemer.
+                  borrower_id == credential_to_asset_name(req_borrower_id) &&
 
-                // The loan principle must be > 0.
-                trace_if_false( @"Invalid loan_principle", principle > 0 ) &&
+                  // The loan_asset must be the corresponding asset for the Asset beacon present.
+                  // The loan asset associated with this beacon should be found in the map created
+                  // from the redeemer.
+                  loan_asset == req_loan_asset &&
 
-                // The loan term must be > 0.
-                trace_if_false( @"Invalid loan_term", term > 0 ) &&
+                  // The loan principle must be > 0.
+                  principle > 0 &&
 
-                // The collateral list must not be empty.
-                trace_if_false( @"Invalid collateral", !list.is_empty(collateral) )
+                  // The loan term must be > 0.
+                  term > 0 &&
+
+                  // The collateral list must not be empty.
+                  !list.is_empty(collateral)
+                )
+
+                // // The loan_beacon_sym must be this policy id.
+                // trace_if_false( @"Invalid loan_beacon_sym", beacon_sym == beacon_id ) &&
+
+                // // The borrower_id must be the same as the credential in the redeemer.
+                // trace_if_false( 
+                //   @"Invalid borrower_id", 
+                //   borrower_id == credential_to_asset_name(req_borrower_id)
+                // ) &&
+
+                // // The loan asset must be the corresponding asset for the Asset beacon present.
+                // // The loan asset associated with this beacon should be found in the map created
+                // // from the redeemer.
+                // trace_if_false( 
+                //   @"Invalid loan_asset",
+                //   loan_asset == req_loan_asset
+                // ) &&
+
+                // // The loan principle must be > 0.
+                // trace_if_false( @"Invalid loan_principle", principle > 0 ) &&
+
+                // // The loan term must be > 0.
+                // trace_if_false( @"Invalid loan_term", term > 0 ) &&
+
+                // // The collateral list must not be empty.
+                // trace_if_false( @"Invalid collateral", !list.is_empty(collateral) )
               }
 
               _ -> error @"Beacons not stored with AskDatum"
@@ -463,87 +471,59 @@ pub fn destination_check(
                 claim_period,
                 offer_deposit
               ) -> {
-                // -----------
-                // Datum Check
-                // -----------
-
-                // The loan_beacon_sym must be this policy id.
-                trace_if_false( @"Invalid loan_beacon_sym", beacon_sym == beacon_id ) &&
-
-                // The lender_id must be the same as the credential in the redeemer.
-                trace_if_false( 
-                  @"Invalid lender_id", 
-                  lender_id == lender_name
-                ) &&
-
-                // The lender_address must use a pubkey or the proxy script for the payment
-                // credential. If the proxy script is used, the address must have a staking
-                // credential.
-                trace_if_false( 
-                  @"Invalid lender_address",
-                  valid_lender_address(proxy_hash,lender_address)
-                ) &&
-
-                // The loan asset must be the corresponding asset for the beacon present.
-                trace_if_false( @"Invalid loan_asset", loan_asset == req_loan_asset) &&
-
-                // The loan principle must be > 0.
-                trace_if_false( @"Invalid loan_principle", principle > 0 ) &&
-
-                // The loan term must be positive.
-                trace_if_false( @"Invalid loan_term", term > 0 ) &&
-
-                // If a rollover_frequency is set, it must be > 0.
+                // The datum must be correct.
                 trace_if_false(
-                  @"Invalid rollover_frequency",
+                  @"Invalid OfferDatum",
+
+                  // The loan_beacon_sym must be this policy id.
+                  beacon_sym == beacon_id &&
+
+                  // The lender_id must be the same as the credential in the redeemer.
+                  lender_id == lender_name &&
+
+                  // The lender_address must use a pubkey or the proxy script for the payment
+                  // credential. If the proxy script is used, the address must have a staking
+                  // credential.
+                  valid_lender_address(proxy_hash,lender_address) &&
+
+                  // The loan_asset must be the corresponding asset for the beacon present.
+                  loan_asset == req_loan_asset &&
+
+                  // The loan principle must be > 0.
+                  principle > 0 &&
+
+                  // The loan term must be > 0.
+                  term > 0 &&
+
+                  // If the rollover_frequency is set, it must be > 0.
                   when rollover_frequency is {
                     None -> True
                     Some(f) -> f > 0
-                  }
-                ) &&
+                  } &&
 
-                // The loan interest must have a denominator > 0 and the interest must be >= 0.
-                trace_if_false( 
-                  @"Invalid loan_interest",
-                  ratio.denominator(interest) > 0 && 
-                    ratio.compare(interest,ratio.zero()) != Less
-                ) &&
+                  // The loan interest must have a denominator > 0 and the interest must be > 0.
+                  ratio.denominator(interest) > 0 && ratio.compare(interest,ratio.zero()) != Less &&
 
-                // The min_payment must be >= 0.
-                trace_if_false(
-                  @"Invalid min_payment",
-                  min_payment >= 0
-                ) &&
+                  // The min_payment must be >=0.
+                  min_payment >= 0 &&
 
-                // The collateralization list must not be empty, all prices must 
-                // have a denominator > 0, and the prices must be >= 0.
-                trace_if_false(
-                  @"Invalid collateralization",
+                  // The collateralization list must not be empty, all prices must have a denominator
+                  // > 0, and all prices must be >= 0.
                   !list.is_empty(collateralization) &&
-                    list.all(
-                      collateralization,
-                      fn(x) {
-                        let (_,n) = x
-                        ratio.compare(n,ratio.zero()) != Less && ratio.denominator(n) > 0
-                      }
-                    )
-                ) &&
+                  list.all(
+                    collateralization,
+                    fn(x) {
+                      let (_,n) = x
+                      ratio.compare(n,ratio.zero()) != Less && ratio.denominator(n) > 0
+                    }
+                  ) &&
 
-                // The claim period must be > 0.
-                trace_if_false(
-                  @"Invalid claim_period",
-                  claim_period > 0
-                ) &&
+                  // The claim_period must be > 0.
+                  claim_period > 0 &&
 
-                // The offer_deposit must be > 0.
-                trace_if_false(
-                  @"Invalid offer_deposit",
+                  // The offer_deposit must be > 0.
                   offer_deposit > 0
                 ) &&
-
-                // -----------
-                // Value Check
-                // -----------
 
                 // The UTxO value must be exact:
                 //      1 Offer beacon 
@@ -598,7 +578,7 @@ fn compare_out_ref(ref1: OutputReference, ref2: OutputReference) -> Ordering {
 fn compare_value(loan_id: AssetName, sym: PolicyId, val1: Value, val2: Value) -> Ordering {
   // Check if the values have the same LoanID.
   if value.quantity_of(val1,sym,loan_id) == value.quantity_of(val2,sym,loan_id) { 
-    error @"LoanID used twice in lender payments" 
+    error
   } 
 
   // Otherwise, return Less.
@@ -615,7 +595,7 @@ fn compare_active_datums(datum1: LoanDatum, datum2: LoanDatum) -> Ordering {
   when byte.compare(loan_id1,loan_id2) is {
     Less -> Less
     Greater -> Greater
-    Equal -> error @"Duplicate LoanID found"
+    Equal -> error
   }
 }
 
@@ -673,29 +653,29 @@ fn expected_active_datum(
     _
   ) = offer_datum
 
-  // The datums must agree on the loan asset.
-  expect True = error_if_false( @"Datums do not agree on loan asset", ask_asset == offer_asset)
-  
-  // The datums must agree on the loan amount.
-  expect True = 
-    error_if_false( @"Datums do not agree on loan principle", ask_principle == offer_principle )
+  // The datums must agree.
+  expect True = error_if_false(
+    @"Datums do not agree",
 
-  // The datums must agree on the loan expiration.
-  expect True = error_if_false( @"Datums do not agree on loan term", ask_term == offer_term )
+    // Must agree on loan asset.
+    ask_asset == offer_asset &&
 
-  // The datums must agree on the allowed collateral. They must be in the same order.
-  expect True = 
-    error_if_false( 
-      @"Datums do not agree on colalteral",
-      ask_collateral == 
-        list.map(
-          offer_collateralization,
-          fn(x) {
-            let (a,_) = x 
-            a
-          }
-        )
-    )
+    // Must agree on principle.
+    ask_principle == offer_principle &&
+
+    // Must agree on loan expiration.
+    ask_term == offer_term &&
+
+    // Must agree on collateral.
+    ask_collateral ==
+      list.map(
+        offer_collateralization,
+        fn(x) {
+          let (a,_) = x
+          a
+        }
+      )
+  )
 
   // If the previous checks passed, then the datums agree on the terms.
   // Produce the expected datum. Convert the times to absolute times based on the start time.
@@ -1048,36 +1028,24 @@ pub fn acceptance_output_checks(
               @"Not enough collateral posted",
               is_enough_collateral(borrowed,collats,val)
             )
-          
-          // Check if the output has one LoanID.
-          expect True = 
-            error_if_false(
-              @"Collateral output must have exactly one LoanID",
-              value.quantity_of(val,sym,loan_id) == 1
-            )
 
-          // Check if the output has one loan asset beacon.
           expect True =
             error_if_false(
-              @"Collateral output must have exactly one of the proper loan asset beacon",
-              value.quantity_of(val,sym,asset_beacon) == 1
-            )
-          
-          // Check if the output has one BorrowerID. BorrowerIDs must be stored individually.
-          expect True =
-            error_if_false(
-              @"Collateral output must have exactly one BorrowerID",
-              value.quantity_of(val,sym,borrower_token) == 1
-            )
+              @"Collateral output has wrong beacons",
+              
+              // Must have 1 LoanID.
+              value.quantity_of(val,sym,loan_id) == 1 &&
 
-          // Check if the output has one Active beacon. Active beacons must be stored
-          // individually.
-          expect True =
-            error_if_false(
-              @"Collateral output must have exactly one Active beacon",
+              // Must have 1 of the proper Asset beacon.
+              value.quantity_of(val,sym,asset_beacon) == 1 &&
+
+              // Must have 1 BorrowerID.
+              value.quantity_of(val,sym,borrower_token) == 1 &&
+
+              // Must have 1 Active beacon.
               value.quantity_of(val,sym,"Active") == 1
             )
-
+          
           // Check that the output has one of the proper datum. The value of the Map is a
           // dummy Int. The fact that the key is present means the datum is valid. The datum
           // was used to check the value of the output so the fact the previous checks passed
@@ -1184,13 +1152,13 @@ pub fn payment_info(
 
       // The output must have the Active beacon.
       expect True = error_if_false(
-        @"Collateral output missing Active beacon",
+        @"Collateral output must have 1 Active beacon",
         value.quantity_of(val,sym,"Active") == 1
       )
 
       // The output must have the Asset beacon.
       expect True = error_if_false(
-        @"Collateral output missing Asset beacon",
+        @"Collateral output must have 1 Asset beacon",
         value.quantity_of(val,sym,asset_beacon) == 1
       )
 
@@ -1213,7 +1181,7 @@ pub fn payment_info(
       // from being moved to another active loan.
       expect True =
         error_if_false(
-          @"One BorrowerID per loan",
+          @"1 BorrowerID per loan",
           value.quantity_of(val,sym,borrower_id) == 1
         )
       
