@@ -349,32 +349,6 @@ pub fn destination_check(
                   // The collateral list must not be empty.
                   !list.is_empty(collateral)
                 )
-
-                // // The loan_beacon_sym must be this policy id.
-                // trace_if_false( @"Invalid loan_beacon_sym", beacon_sym == beacon_id ) &&
-
-                // // The borrower_id must be the same as the credential in the redeemer.
-                // trace_if_false( 
-                //   @"Invalid borrower_id", 
-                //   borrower_id == credential_to_asset_name(req_borrower_id)
-                // ) &&
-
-                // // The loan asset must be the corresponding asset for the Asset beacon present.
-                // // The loan asset associated with this beacon should be found in the map created
-                // // from the redeemer.
-                // trace_if_false( 
-                //   @"Invalid loan_asset",
-                //   loan_asset == req_loan_asset
-                // ) &&
-
-                // // The loan principle must be > 0.
-                // trace_if_false( @"Invalid loan_principle", principle > 0 ) &&
-
-                // // The loan term must be > 0.
-                // trace_if_false( @"Invalid loan_term", term > 0 ) &&
-
-                // // The collateral list must not be empty.
-                // trace_if_false( @"Invalid collateral", !list.is_empty(collateral) )
               }
 
               _ -> error @"Beacons not stored with AskDatum"
