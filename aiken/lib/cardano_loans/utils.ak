@@ -290,7 +290,8 @@ pub fn destination_check(
         // 3) The Ask UTxO must have a valid inline AskDatum:
         //  - loan_beacon_sym == this policy id.
         //  - borrower_id == credential in redeemer as a token name.
-        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO.
+        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO and
+        //    the loan asset cannot be one of the protocol's beacons.
         //  - loan_principle > 0.
         //  - loan_term > 0.
         //  - collateral list must not be empty.
@@ -328,7 +329,7 @@ pub fn destination_check(
 
             // The beacons must be stored with the proper datum.
             when parse_datum(d) is {
-              AskDatum(beacon_sym, borrower_id, loan_asset, principle, term, collateral) -> {
+              AskDatum(beacon_sym, borrower_id, (cn,_) as loan_asset, principle, term, collateral) -> {
                 // The AskDatum must be correct.
                 trace_if_false(
                   @"Invalid AskDatum",
@@ -341,8 +342,8 @@ pub fn destination_check(
 
                   // The loan_asset must be the corresponding asset for the Asset beacon present.
                   // The loan asset associated with this beacon should be found in the map created
-                  // from the redeemer.
-                  loan_asset == req_loan_asset &&
+                  // from the redeemer. The loan asset cannot be one of the protocol's beacons.
+                  loan_asset == req_loan_asset && cn != beacon_id &&
 
                   // The loan principle must be > 0.
                   principle > 0 &&
@@ -378,7 +379,8 @@ pub fn destination_check(
         //  - lender_id == credential in redeemer as token name.
         //  - lender_address must either use the proxy script or a pubkey as the payment credential,
         //    and if the proxy script is used, the address must have a staking credential.
-        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO.
+        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO and
+        //    the loan asset cannot be one of the protocol's beacons.
         //  - loan_principle > 0.
         //  - rollover_frequency > 0 if used.
         //  - loan_term > 0.
@@ -440,7 +442,7 @@ pub fn destination_check(
                 beacon_sym,
                 lender_id,
                 lender_address,
-                loan_asset,
+                (cn,_) as loan_asset,
                 principle,
                 rollover_frequency,
                 term,
@@ -467,7 +469,8 @@ pub fn destination_check(
                   valid_lender_address(proxy_hash,lender_address) &&
 
                   // The loan_asset must be the corresponding asset for the beacon present.
-                  loan_asset == req_loan_asset &&
+                  // The loan_asset cannot be one of the protocol's beacons.
+                  loan_asset == req_loan_asset && cn != beacon_id &&
 
                   // The loan principle must be > 0.
                   principle > 0 &&

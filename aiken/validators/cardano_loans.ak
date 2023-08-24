@@ -906,19 +906,12 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // 6) The Ask UTxO must have a valid inline AskDatum:
         //  - loan_beacon_sym == this policy id.
         //  - borrower_id == credential in redeemer as a token name.
-        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO.
+        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO and
+        //    the loan asset cannot be one of the protocol's beacons.
         //  - loan_principle > 0.
         //  - loan_term > 0.
         //  - collateral list must not be empty.
         // 7) The receiving staking credential must signal approval.
-        //
-        // :warning: It is technically possible to create an Asset beacon for something that is not an
-        // asset. For example, if the supplied policy id was a tx hash and the supplied asset name was 
-        // an output index, it would be possible to mint a beacon that is a counterfeit LoanID.
-        // However, due to the way this protocol works, any LoanIDs minted this way will always
-        // be locked at the dapp address in a UTxO with an Ask beacon. Meanwhile, valid LoanIDs will
-        // either be at the dapp address with an Active beacon or not located at the dapp address.
-        // These properties can be used to securely differentiate between counterfeit and real LoanIDs.
         
         expect ScriptContext( 
           Transaction(_,_,outputs,_,mint,_,wdrw,_,sigs,..), 
@@ -986,7 +979,8 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         //  - lender_id == credential in redeemer as token name.
         //  - lender_address must either use the proxy script or a pubkey as the payment credential, 
         //    and if the proxy script is used, the address must have a staking credential.
-        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO.
+        //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO and
+        //    the loan asset cannot be one of the protocol's beacons.
         //  - loan_principle > 0.
         //  - rollover_frequency > 0 if used.
         //  - loan_term > 0.
@@ -1231,4 +1225,16 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
       }
     }
   }
+
+  // There are a few scenarios that need to be mentioned:
+  // 1) It is technically possible to create an Asset beacon for something that is not an
+  // asset. For example, if the supplied policy id was a tx hash and the supplied asset name was 
+  // an output index, it would be possible to mint a beacon that is a counterfeit LoanID.
+  // However, due to the way this protocol works, any LoanIDs minted this way will always
+  // be locked at the dapp address in a UTxO with an Ask beacon. Meanwhile, valid LoanIDs will
+  // either be at the dapp address with an Active beacon or not located at the dapp address.
+  // These properties can be used to securely differentiate between counterfeit and real LoanIDs.
+  // 
+  // 2) The LenderID and the BorrowerID use the same credential and therefore the minting/burning
+  //    history (and current UTxOs) will be combined.
 }
