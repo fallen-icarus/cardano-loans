@@ -677,7 +677,13 @@ fn expected_active_datum(
     collateral_is_swappable: offer_collateral_is_swappable,
     claim_expiration: start + offer_term + offer_claim_period,
     loan_expiration: start + offer_term,
-    loan_outstanding: ratio.from_int(offer_principle),
+    loan_outstanding: // Must apply the first interest calculation.
+      ratio.from_int(offer_principle)
+      |> ratio.mul(
+          _,
+          ratio.add( ratio.from_int(1), offer_interest)
+        )
+      |> ratio.reduce(_),
     loan_id: loan_id
   }
 }
