@@ -1001,15 +1001,17 @@ pub fn acceptance_output_checks(
       // Check that the datum is the proper datum.
 
       when datum is {
-        ActiveDatum(_,_,_,loan_asset,_,_,_,_,_,_,collats,_,_,_,borrowed,loan_id) -> {
+        ActiveDatum(_,_,_,loan_asset,borrowed,_,_,_,_,_,collats,_,_,_,_,loan_id) -> {
           // Generate the loan asset beacon name from the asset being loaned.
           let asset_beacon = generate_beacon_name(loan_asset)
 
-          // Check if the output has enough collateral.
+          // Check if the output has enough collateral. The calculation is
+          // based on the principle.
           expect True = 
             error_if_false(
               @"Not enough collateral posted",
-              is_enough_collateral(borrowed,collats,val)
+              ratio.from_int(borrowed)
+              |> is_enough_collateral(_,collats,val)
             )
 
           expect True =
