@@ -1042,7 +1042,7 @@ pub fn acceptance_output_checks(
           // was used to check the value of the output so the fact the previous checks passed
           // means the datum was stored with the proper value.
           when dict.get(loan_map,datum) is{
-            None -> error @"Collateral ouptut has wrong datum"
+            None -> error @"Collateral output has wrong datum"
             Some(_) -> 
               // Count the collateral as satisfied
               (lenders_paid, collaterals_satisfied + 1)
