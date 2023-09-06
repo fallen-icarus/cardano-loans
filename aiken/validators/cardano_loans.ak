@@ -1169,6 +1169,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // the datum will just be (PolicyId,AssetName) where the policy id is the beacon minting policy
         // id and the asset name will be "Accepted".
         //
+        // Since this redeemer requires an exact match for the minting, it cannot be composed
+        // with the other policy redeemers.
+        //
         // Requirement 11 ensures that only the borrower can open a loan under that BorrowerID.
         
         expect ScriptContext( 
