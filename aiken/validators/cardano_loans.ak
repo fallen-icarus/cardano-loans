@@ -201,7 +201,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         //
         // Since an Active beacon can only be minted when the proper redeemer is used with the
         // minting policy, this spending script can use the minting of the Active beacon as a proxy
-        // for whether the minting policy was executed correctly.
+        // for whether the minting policy was executed correctly. This invariant of only being able
+        // to mint the Active beacon with the proper redeemer is critical to this approach being
+        // secure.
         //
         // To spend a UTxO with this redeemer, all of the following must be true:
         // 1) The input must have either an AskDatum or an OfferDatum.
