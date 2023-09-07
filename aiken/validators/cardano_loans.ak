@@ -468,7 +468,8 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // 3) The loan must not be expired.
         // 4) The address' staking credential must signal approval.
         // 5) There must be an corresponding Active UTxO output to this address with the exact 
-        //    same value and proper datum, same as input except:
+        //    same value (or the exact same value + 1 ADA) and proper datum. The datum must be
+        //    same as input except:
         //      - loan_outstanding == outstanding * (1 + loan_interest)
         //      - last_checkpoint == last_checkpoint + rollover_frequency
         //
@@ -492,6 +493,13 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // in the credit history. It is possible to ignore the double counting but this requires more
         // involved data analyses of the credit history. To keep the data analyses simple, the protocol
         // just prevents this scenario in the first place.
+        //
+        // Since the datum can grow with this redeemer, the minUTxOValue requirement can also
+        // increase. Therefore, requiring the value of the new UTxO to be exactly the same
+        // as the input could be too strict in some situations. To relax this restriction
+        // slightly, the output UTxO can have the input value + 1 ADA. IT MUST BE EXACTLY 1
+        // ADA. This hardcoding makes it cheap to check that this relaxation is not abused.
+        // 1 ADA should be more than enough for most situations.
         
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
@@ -701,7 +709,15 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         //    credential. If the proxy script is used, the address must have a staking credential.
         // 7) There must be an Active UTxO output to this address with the exact same value and
         //    proper datum, same as input datum except for the new lender_address. The address
-        //    in the datum must be the same address in the redeemer.
+        //    in the datum must be the same address in the redeemer. The value can be increased
+        //    by exactly 1 ADA if necessary.
+        //
+        // Since the datum can grow with this redeemer, the minUTxOValue requirement can also
+        // increase. Therefore, requiring the value of the new UTxO to be exactly the same
+        // as the input could be too strict in some situations. To relax this restriction
+        // slightly, the output UTxO can have the input value + 1 ADA. IT MUST BE EXACTLY 1
+        // ADA. This hardcoding makes it cheap to check that this relaxation is not abused.
+        // 1 ADA should be more than enough for most situations.
         
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
