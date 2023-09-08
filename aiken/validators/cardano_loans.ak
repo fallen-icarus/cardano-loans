@@ -456,7 +456,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
       Rollover -> {
         // This redeemer is used to have the loan accrue interest at set intervals.
         //
-        // The Active UTxO must be re-output to this address with the exact same value and the properly
+        // The Active UTxO must be re-output to this address with the proper value and the properly
         // updated datum.
         //
         // The invalid-hereafter flag is used as a proxy for the time. For convenience, borrowers
