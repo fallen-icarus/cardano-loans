@@ -484,7 +484,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // not being applied appropriately.
         //
         // Since this redeemer requires that the UTxO being evaluated has a BorrowerID and since the 
-        // corresponding output must have the same value (including the BorrowerID), this redeemer 
+        // corresponding output must have the same number of BorrowerIDs as the input, this redeemer 
         // cannot interfere with the credit history. It can safely be composed with the 
         // MakePayment redeemer. If the BorrowerID was not required, this redeemer could be
         // used on finished loans in the same transaction where another loan is paid off. This would
@@ -546,7 +546,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
               swappable,
               claim,
               expiration,
-              ratio.mul(outstanding,ratio.add(ratio.from_int(1),interest)), // outstanding * (1 + interest)
+              ratio.reduce(
+                ratio.mul(outstanding,ratio.add(ratio.from_int(1),interest)) // outstanding * (1 + interest)
+              ),
               loan_id
             )
 
