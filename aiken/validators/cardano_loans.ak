@@ -253,7 +253,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // This redeemer does not allow "spending" a UTxO from the address; it only allows updating
         // the state of UTxOs. In other words, every input spent with this redeemer must have a
         // corresponding output to this address with the updated state. The LoanIDs are used to
-        // link inputs and outputs.
+        // link inputs with outputs and prevent double satisfaction.
         //
         // To successfully make a payment, all of the following must be true:
         // 1) The input must have an ActiveDatum.
