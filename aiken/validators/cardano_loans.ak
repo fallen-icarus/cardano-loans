@@ -44,7 +44,10 @@ validator {
     expect ScriptContext(Transaction(inputs,_,_,_,_,_,wdrw,_,sigs,..),tx.Spend(out_ref)) = ctx
     expect Some(Input(_,Output(Address(_,stake),..))) = tx.find_input(inputs,out_ref)
 
-    utils.staking_credential_approves(stake,wdrw,sigs)
+    trace_if_false(
+      @"Staking credential did not approve", 
+      utils.staking_credential_approves(stake,wdrw,sigs)
+    )
   }
 }
 
