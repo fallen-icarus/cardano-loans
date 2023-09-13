@@ -5,7 +5,7 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Rollover
+module Test.UpdateLenderAddress
   (
     -- * Scenarios Tested
     -- ** Scenarios that should succeed
@@ -13,7 +13,7 @@ module Test.Rollover
   , regressionTest2
   , regressionTest3
   , regressionTest4
-  
+
     -- ** Scenarios that should fail
   , failureTest1
   , failureTest2
@@ -46,6 +46,9 @@ module Test.Rollover
   , failureTest29
   , failureTest30
 
+    -- ** Edge Case Scenarios
+  , edgeCase1
+
     -- * Full test function
   , tests
   ) where
@@ -55,7 +58,8 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
-import Data.Maybe (fromMaybe)
+import Plutus.V2.Ledger.Api (TxId(..))
+import Data.String (fromString)
 
 import Test.Internal
 import Test.Config
@@ -98,7 +102,10 @@ initializeScripts = do
 -------------------------------------------------
 -- Regression Tests
 -------------------------------------------------
--- | Rollover a single loan.
+-- | Update the address for a single loan. Mints an unrelated token to an unrelated output
+-- in the same transaction to also check if the validator script can correctly ignore
+-- unrelated tokens and outputs. The minUTxOValue is increased by 1 ADA. The address is
+-- changed to a proxy script address with staking.
 regressionTest1 :: EmulatorTrace ()
 regressionTest1 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -294,40 +301,39 @@ regressionTest1 = do
             )
             activeDatum
 
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
 
-  callEndpoint @"create-transaction" h1 $
+  callEndpoint @"create-transaction" h2 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
               { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
+                  ( alwaysSucceedPolicy
+                  , Nothing
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
                     <> singleton beaconCurrencySymbol loanIdToken 1
@@ -337,7 +343,7 @@ regressionTest1 = do
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
 
   where
@@ -384,8 +390,13 @@ regressionTest1 = do
         }
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
 
--- | Rollover multiple loans in a single transaction.
+-- | Update the address for a single loan. Mints an unrelated token to an unrelated output
+-- in the same transaction to also check if the validator script can correctly ignore
+-- unrelated tokens and outputs. The minUTxOValue is not increased. The address is changed
+-- to another pubkey address without staking.
 regressionTest2 :: EmulatorTrace ()
 regressionTest2 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -404,7 +415,7 @@ regressionTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",2),(assetBeacon,2)]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
               }
           ]
       , inputs = []
@@ -413,11 +424,6 @@ regressionTest2 = do
               { toAddress = loanAddr
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum askDatum{loanTerm = 22000}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol "Ask" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
@@ -441,7 +447,7 @@ regressionTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",2),(assetBeacon,2),(lenderToken,2)]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
               }
           ]
       , inputs = []
@@ -450,12 +456,6 @@ regressionTest2 = do
               { toAddress = loanAddr
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum offerDatum{loanTerm = 22000}
                     , lovelaceValueOf 103_000_000 
                     <> singleton beaconCurrencySymbol "Offer" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
@@ -482,23 +482,9 @@ regressionTest2 = do
             <> singleton beaconCurrencySymbol assetBeacon 1
             )
             offerDatum
-  ask2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum{loanTerm = 22000}
-  offer2 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum{loanTerm = 22000}
 
-  let loanIdToken1 = genLoanId offer1
-  let loanIdToken2 = genLoanId offer2
-  let activeDatum1 = ActiveDatum
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
         { beaconSym = beaconCurrencySymbol 
         , borrowerId = borrowerToken
         , lenderAddress = lenderAddr
@@ -514,26 +500,9 @@ regressionTest2 = do
         , claimExpiration = startTime + 12000 + 10000
         , loanExpiration = startTime + 12000
         , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken1
+        , loanId = loanIdToken
         }
-  let activeDatum2 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 22000 + 10000
-        , loanExpiration = startTime + 22000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken2
-        }
+  
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
       { tokens = 
@@ -543,19 +512,15 @@ regressionTest2 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
-                  [ (ask1,offer1)
-                  , (ask2,offer2)
-                  ]
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
               , mintTokens = 
-                  [ ("Active",2)
-                  , (assetBeacon,-2)
-                  , (lenderToken,-2)
-                  , (borrowerToken,2)
-                  , ("Ask",-2)
-                  , ("Offer",-2)
-                  , (loanIdToken1,2)
-                  , (loanIdToken2,2)
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
                   ]
               }
           , TokenMint 
@@ -575,8 +540,6 @@ regressionTest2 = do
               , spendUtxos = 
                   [ ask1
                   , offer1
-                  , ask2
-                  , offer2
                   ]
               }
           ]
@@ -584,19 +547,11 @@ regressionTest2 = do
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
                     <> singleton beaconCurrencySymbol borrowerToken 1
                     <> uncurry singleton testToken1 10
                     )
@@ -609,13 +564,7 @@ regressionTest2 = do
                            $ toDatum 
                            $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
                     , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    )
-                  , ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
                     )
                   ]
               }
@@ -637,81 +586,55 @@ regressionTest2 = do
             (lovelaceValueOf 3_000_000 
             <> singleton beaconCurrencySymbol "Active" 1
             <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken1 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
             <> singleton beaconCurrencySymbol borrowerToken 1
             <> uncurry singleton testToken1 10
             )
-            activeDatum1
+            activeDatum
 
-  active2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken2 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum2
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
 
-  let newActiveDatum1 = activeDatum1
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum1 + fromMaybe 0 (rolloverFrequency activeDatum1)
-        , loanOutstanding = 
-            loanOutstanding activeDatum1 .*. (fromInt 1 .+. loanInterest activeDatum1)
-        }
-
-  let newActiveDatum2 = activeDatum2
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum2 + fromMaybe 0 (rolloverFrequency activeDatum2)
-        , loanOutstanding = 
-            loanOutstanding activeDatum2 .*. (fromInt 1 .+. loanInterest activeDatum2)
-        }
-
-  callEndpoint @"create-transaction" h1 $
+  callEndpoint @"create-transaction" h2 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
               { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
+                  ( alwaysSucceedPolicy
+                  , Nothing
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
               , spendFromAddress = loanAddr
-              , spendUtxos = [ active1, active2 ]
+              , spendUtxos = [ active1 ]
               }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum1
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum newActiveDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
                     <> singleton beaconCurrencySymbol borrowerToken 1
                     <> uncurry singleton testToken1 10
                     )
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum1)
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
 
   where
@@ -723,7 +646,11 @@ regressionTest2 = do
                  $ unPaymentPubKeyHash 
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
-
+    newCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 3
+    
     borrowerToken = credentialAsToken borrowerCred
     lenderToken = credentialAsToken lenderCred
     
@@ -758,8 +685,13 @@ regressionTest2 = do
         }
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address newCred Nothing
 
--- | Rollover a single loan and increase the minUTxO value by 1 ADA.
+-- | Update the address for a single loan. Mints an unrelated token to an unrelated output
+-- in the same transaction to also check if the validator script can correctly ignore
+-- unrelated tokens and outputs. The minUTxOValue is increased by 1 ADA. The address is changed
+-- to another pubkey address with staking.
 regressionTest3 :: EmulatorTrace ()
 regressionTest3 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -955,39 +887,38 @@ regressionTest3 = do
             )
             activeDatum
 
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
 
-  callEndpoint @"create-transaction" h1 $
+  callEndpoint @"create-transaction" h2 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
               { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
+                  ( alwaysSucceedPolicy
+                  , Nothing
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
                     , lovelaceValueOf 4_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
@@ -998,7 +929,723 @@ regressionTest3 = do
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+    newCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 3
+    
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address newCred (Just $ StakingHash lenderCred)
+
+-- | Update the address for multiple loans in the same transaction. The minUTxOValues are not
+-- increased. The lender addresses are changed to a proxy address with staking.
+regressionTest4 :: EmulatorTrace ()
+regressionTest4 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset1,asset2]
+              , mintTokens = [("Ask",2),(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum askDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset1]
+              , mintTokens = [("Offer",1),(assetBeacon1,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum1
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset2]
+              , mintTokens = [("Offer",1),(assetBeacon2,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    <> uncurry singleton testToken2 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            askDatum1
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            offerDatum1
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            )
+            askDatum2
+  offer2 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> uncurry singleton testToken2 10
+            )
+            offerDatum2
+
+  let loanIdToken1 = genLoanId offer1
+  let loanIdToken2 = genLoanId offer2
+  let activeDatum1 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken1
+        }
+  let activeDatum2 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = [(testToken1, unsafeRatio 1 1)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 22000 + 10000
+        , loanExpiration = startTime + 22000
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken2
+        }
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
+                  [ (ask1,offer1)
+                  , (ask2,offer2)
+                  ]
+              , mintTokens = 
+                  [ ("Active",2)
+                  , (assetBeacon1,-1)
+                  , (assetBeacon2,-1)
+                  , (lenderToken1,-2)
+                  , (borrowerToken,2)
+                  , ("Ask",-2)
+                  , ("Offer",-2)
+                  , (loanIdToken1,2)
+                  , (loanIdToken2,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  , ask2
+                  , offer2
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    )
+                  , ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            <> singleton beaconCurrencySymbol loanIdToken1 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum1
+  active2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> singleton beaconCurrencySymbol loanIdToken2 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum2
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken1 lenderAddr1
+  key2 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken2 lenderAddr1
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1,active2 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr1
+             , pubKeyUtxos = [key1,key2]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken1 = credentialAsToken lenderCred1
+    
+    asset1 = (adaSymbol,adaToken)
+    assetBeacon1 = genAssetBeaconName asset1
+    asset2 = testToken2
+    assetBeacon2 = genAssetBeaconName asset2
+    
+    askDatum1 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset1
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+    askDatum2 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset2
+      , loanPrinciple = 10
+      , loanTerm = 22000
+      , collateral = [testToken1]
+      }
+    
+    lenderAddr1 = Address lenderCred1 Nothing
+
+    offerDatum1 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    offerDatum2 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , minPayment = 2
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 1)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred1)
+
+-------------------------------------------------
+-- Failure Tests
+-------------------------------------------------
+-- | Update the address to a non-proxy script address.
+failureTest1 :: EmulatorTrace ()
+failureTest1 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
 
   where
@@ -1045,453 +1692,12 @@ regressionTest3 = do
         }
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | Make a full payment on one loan and rollover another loan in the same transaction.
-regressionTest4 :: EmulatorTrace ()
-regressionTest4 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  h3 <- activateContractWallet (knownWallet 3) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",2),(assetBeacon,2)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum askDatum{loanTerm = 22000}
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken1,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum1
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken1 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h3 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred2 [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken2,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum2
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken2 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken1 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum1
-  ask2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum{loanTerm = 22000}
-  offer2 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken2 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum2
-
-  let loanIdToken1 = genLoanId offer1
-  let loanIdToken2 = genLoanId offer2
-  let activeDatum1 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr1
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Nothing
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken1
-        }
-  let activeDatum2 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr2
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Nothing
-        , lastCheckpoint = startTime
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 22000 + 10000
-        , loanExpiration = startTime + 22000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken2
-        }
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
-                  [ (ask1,offer1)
-                  , (ask2,offer2)
-                  ]
-              , mintTokens = 
-                  [ ("Active",2)
-                  , (assetBeacon,-2)
-                  , (lenderToken1,-1)
-                  , (lenderToken2,-1)
-                  , (borrowerToken,2)
-                  , ("Ask",-2)
-                  , ("Offer",-2)
-                  , (loanIdToken1,2)
-                  , (loanIdToken2,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  , ask2
-                  , offer2
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr1
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr2
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken1 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum1
-
-  active2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken2 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum2
-
-  let newActiveDatum1 = activeDatum1
-        { loanOutstanding = loanOutstanding activeDatum1 .-. fromInt 110_000_000
-        }
-        
-  let newActiveDatum2= activeDatum2
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum2 + fromMaybe 0 (rolloverFrequency activeDatum2)
-        , loanOutstanding = 
-            loanOutstanding activeDatum2 .*. (fromInt 1 .+. loanInterest activeDatum2)
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(borrowerToken,-1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer MakePayment
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          , ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active2 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum newActiveDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr1
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline 
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,loanIdToken1)
-                    , lovelaceValueOf 110_000_000 
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum1)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred1 = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-    lenderCred2 = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 3
-
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
+    newAddr = Address (ScriptCredential alwaysSucceedValidatorHash) (Just $ StakingHash lenderCred)
 
-    lenderAddr1 = Address lenderCred1 Nothing
-    lenderAddr2 = Address lenderCred2 Nothing
-
-    offerDatum1 = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken1
-        , lenderAddress = lenderAddr1
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Nothing
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    offerDatum2 = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken2
-        , lenderAddress = lenderAddr2
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Nothing
-        , minPayment = 500_000
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--------------------------------------------------
--- Failure Tests
--------------------------------------------------
--- | Datum is not an ActiveDatum.
-failureTest1 :: EmulatorTrace ()
-failureTest1 = do
+-- | Update the address to a proxy script address without staking.
+failureTest2 :: EmulatorTrace ()
+failureTest2 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
   
@@ -1529,48 +1735,205 @@ failureTest1 = do
 
   void $ waitNSlots 2
   
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
   ask1 <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
             <> singleton beaconCurrencySymbol "Ask" 1
             <> singleton beaconCurrencySymbol assetBeacon 1
             )
             askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
 
-  let newActiveDatum = askDatum
-
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
-              { mintWitness =
+              { mintWitness = 
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer AcceptOffer
               , spendFromAddress = loanAddr
-              , spendUtxos = [ ask1 ]
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
               }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
                     , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
                     <> uncurry singleton testToken1 10
                     )
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing (Just $ slotToBeginPOSIXTime def 100000)
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
 
   where
@@ -1600,11 +1963,7444 @@ failureTest1 = do
 
     lenderAddr = Address lenderCred Nothing
 
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) Nothing
+
+-- | Change the beacon symbol when updating a single address.
+failureTest3 :: EmulatorTrace ()
+failureTest3 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{beaconSym=adaSymbol, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the borrowerId when updating a single address.
+failureTest4 :: EmulatorTrace ()
+failureTest4 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{borrowerId="", lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanAsset when updating a single address.
+failureTest5 :: EmulatorTrace ()
+failureTest5 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{loanAsset=testToken3, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanPrinciple when updating a single address.
+failureTest6 :: EmulatorTrace ()
+failureTest6 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{loanPrinciple=0, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the rolloverFrequency when updating a single address.
+failureTest7 :: EmulatorTrace ()
+failureTest7 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{rolloverFrequency=Just 5, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the lastCheckpoint when updating a single address.
+failureTest8 :: EmulatorTrace ()
+failureTest8 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{lastCheckpoint=12, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanTerm when updating a single address.
+failureTest9 :: EmulatorTrace ()
+failureTest9 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{loanTerm=0, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanInterest when updating a single address.
+failureTest10 :: EmulatorTrace ()
+failureTest10 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{ loanInterest=unsafeRatio 0 1
+                                                , lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the minPayment when updating a single address.
+failureTest11 :: EmulatorTrace ()
+failureTest11 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{minPayment=0, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the collateralization when updating a single address.
+failureTest12 :: EmulatorTrace ()
+failureTest12 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{collateralization=[], lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the collateralIsSwappable when updating a single address.
+failureTest13 :: EmulatorTrace ()
+failureTest13 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{collateralIsSwappable=False, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the claimExpiration when updating a single address.
+failureTest14 :: EmulatorTrace ()
+failureTest14 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{claimExpiration=0, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanExpiration when updating a single address.
+failureTest15 :: EmulatorTrace ()
+failureTest15 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{loanExpiration=0, lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanOutstanding when updating a single address.
+failureTest16 :: EmulatorTrace ()
+failureTest16 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{ loanOutstanding=unsafeRatio 0 1
+                                                , lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Change the loanId when updating a single address.
+failureTest17 :: EmulatorTrace ()
+failureTest17 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum activeDatum{loanId="", lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Remove the Active beacon when updating a single address. 
+failureTest18 :: EmulatorTrace ()
+failureTest18 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Remove the Asset beacon when updating a single address.
+failureTest19 :: EmulatorTrace ()
+failureTest19 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Remove the LoanID when updating a single address.
+failureTest20 :: EmulatorTrace ()
+failureTest20 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Remove the BorrowerID when updating a single address.
+failureTest21 :: EmulatorTrace ()
+failureTest21 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Remove some collateral when updating a single address.
+failureTest22 :: EmulatorTrace ()
+failureTest22 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Add ADA but less than 1 ADA when updating a single address.
+failureTest23 :: EmulatorTrace ()
+failureTest23 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 3_500_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | When updating multiple loans, the first loan output has the wrong value. This test and
+-- `failureTest25` are to explicitly check that the order of the outputs does not impact the
+-- transaction's validity.
+failureTest24 :: EmulatorTrace ()
+failureTest24 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset1,asset2]
+              , mintTokens = [("Ask",2),(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum askDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset1]
+              , mintTokens = [("Offer",1),(assetBeacon1,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum1
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset2]
+              , mintTokens = [("Offer",1),(assetBeacon2,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    <> uncurry singleton testToken2 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            askDatum1
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            offerDatum1
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            )
+            askDatum2
+  offer2 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> uncurry singleton testToken2 10
+            )
+            offerDatum2
+
+  let loanIdToken1 = genLoanId offer1
+  let loanIdToken2 = genLoanId offer2
+  let activeDatum1 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken1
+        }
+  let activeDatum2 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = [(testToken1, unsafeRatio 1 1)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 22000 + 10000
+        , loanExpiration = startTime + 22000
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken2
+        }
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
+                  [ (ask1,offer1)
+                  , (ask2,offer2)
+                  ]
+              , mintTokens = 
+                  [ ("Active",2)
+                  , (assetBeacon1,-1)
+                  , (assetBeacon2,-1)
+                  , (lenderToken1,-2)
+                  , (borrowerToken,2)
+                  , ("Ask",-2)
+                  , ("Offer",-2)
+                  , (loanIdToken1,2)
+                  , (loanIdToken2,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  , ask2
+                  , offer2
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    )
+                  , ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            <> singleton beaconCurrencySymbol loanIdToken1 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum1
+  active2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> singleton beaconCurrencySymbol loanIdToken2 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum2
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken1 lenderAddr1
+  key2 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken2 lenderAddr1
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1,active2 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr1
+             , pubKeyUtxos = [key1,key2]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken1 = credentialAsToken lenderCred1
+    
+    asset1 = (adaSymbol,adaToken)
+    assetBeacon1 = genAssetBeaconName asset1
+    asset2 = testToken2
+    assetBeacon2 = genAssetBeaconName asset2
+    
+    askDatum1 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset1
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+    askDatum2 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset2
+      , loanPrinciple = 10
+      , loanTerm = 22000
+      , collateral = [testToken1]
+      }
+    
+    lenderAddr1 = Address lenderCred1 Nothing
+
+    offerDatum1 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    offerDatum2 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , minPayment = 2
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 1)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred1)
+
+-- | When updating multiple loans, the second loan output has the wrong value. This test and
+-- `failureTest24` are to explicitly check that the order of the outputs does not impact the
+-- transaction's validity.
+failureTest25 :: EmulatorTrace ()
+failureTest25 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset1,asset2]
+              , mintTokens = [("Ask",2),(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum askDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset1]
+              , mintTokens = [("Offer",1),(assetBeacon1,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum1
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset2]
+              , mintTokens = [("Offer",1),(assetBeacon2,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    <> uncurry singleton testToken2 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            askDatum1
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            offerDatum1
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            )
+            askDatum2
+  offer2 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> uncurry singleton testToken2 10
+            )
+            offerDatum2
+
+  let loanIdToken1 = genLoanId offer1
+  let loanIdToken2 = genLoanId offer2
+  let activeDatum1 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken1
+        }
+  let activeDatum2 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = [(testToken1, unsafeRatio 1 1)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 22000 + 10000
+        , loanExpiration = startTime + 22000
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken2
+        }
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
+                  [ (ask1,offer1)
+                  , (ask2,offer2)
+                  ]
+              , mintTokens = 
+                  [ ("Active",2)
+                  , (assetBeacon1,-1)
+                  , (assetBeacon2,-1)
+                  , (lenderToken1,-2)
+                  , (borrowerToken,2)
+                  , ("Ask",-2)
+                  , ("Offer",-2)
+                  , (loanIdToken1,2)
+                  , (loanIdToken2,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  , ask2
+                  , offer2
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    )
+                  , ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            <> singleton beaconCurrencySymbol loanIdToken1 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum1
+  active2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> singleton beaconCurrencySymbol loanIdToken2 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum2
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken1 lenderAddr1
+  key2 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken2 lenderAddr1
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1,active2 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr1
+             , pubKeyUtxos = [key1,key2]
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken1 = credentialAsToken lenderCred1
+    
+    asset1 = (adaSymbol,adaToken)
+    assetBeacon1 = genAssetBeaconName asset1
+    asset2 = testToken2
+    assetBeacon2 = genAssetBeaconName asset2
+    
+    askDatum1 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset1
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+    askDatum2 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset2
+      , loanPrinciple = 10
+      , loanTerm = 22000
+      , collateral = [testToken1]
+      }
+    
+    lenderAddr1 = Address lenderCred1 Nothing
+
+    offerDatum1 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    offerDatum2 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , minPayment = 2
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 1)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred1)
+
+-- | Required Key NFT not present among transaction inputs.
+failureTest26 :: EmulatorTrace ()
+failureTest26 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | The input does not have an ActiveDatum.
+failureTest27 :: EmulatorTrace ()
+failureTest27 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress loanAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ ask1 ]
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
--- | The input does not have a BorrowerID.
-failureTest2 :: EmulatorTrace ()
-failureTest2 = do
+-- | The input has an ActiveDatum but is missing the beacons.
+failureTest28 :: EmulatorTrace ()
+failureTest28 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = []
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            )
+            askDatum
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ ask1 ]
+              }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = []
+             }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken = credentialAsToken lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = 0
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = 12000 + 10000
+        , loanExpiration = 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = "loanIdToken"
+        }
+  
+    lenderAddr = Address lenderCred Nothing
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-- | Update the address for a finished loan.
+failureTest29 :: EmulatorTrace ()
+failureTest29 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
   
@@ -1851,7 +9647,7 @@ failureTest2 = do
 
   void $ waitNSlots 2
 
-  post1 <- txOutRefWithValueAndDatum 
+  postActive <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
             <> singleton beaconCurrencySymbol "Active" 1
             <> singleton beaconCurrencySymbol assetBeacon 1
@@ -1859,33 +9655,39 @@ failureTest2 = do
             )
             newActiveDatum
 
-  callEndpoint @"create-transaction" h1 $
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
+
+  callEndpoint @"create-transaction" h2 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
               { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
+                  ( alwaysSucceedPolicy
+                  , Nothing
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
               , spendFromAddress = loanAddr
-              , spendUtxos = [ post1 ]
+              , spendUtxos = [ postActive ]
               }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
+                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
                     <> singleton beaconCurrencySymbol loanIdToken 1
@@ -1893,9 +9695,9 @@ failureTest2 = do
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
-
+      
   where
     borrowerCred = PubKeyCredential
                  $ unPaymentPubKeyHash 
@@ -1941,8003 +9743,9 @@ failureTest2 = do
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
--- | Loan is expired.
-failureTest3 :: EmulatorTrace ()
-failureTest3 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
 
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 100
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ slotToBeginPOSIXTime def 110)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The borrower did not approve.
-failureTest4 :: EmulatorTrace ()
-failureTest4 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong beacon symbol.
-failureTest5 :: EmulatorTrace ()
-failureTest5 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , beaconSym = adaSymbol
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong BorrowerID.
-failureTest6 :: EmulatorTrace ()
-failureTest6 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , borrowerId = ""
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong lender address.
-failureTest7 :: EmulatorTrace ()
-failureTest7 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , lenderAddress = loanAddr
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loan asset.
-failureTest8 :: EmulatorTrace ()
-failureTest8 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanAsset = testToken3
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loan principle.
-failureTest9 :: EmulatorTrace ()
-failureTest9 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanPrinciple = 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong rolloverFrequency.
-failureTest10 :: EmulatorTrace ()
-failureTest10 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , rolloverFrequency = Nothing
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong lastCheckpoint.
-failureTest11 :: EmulatorTrace ()
-failureTest11 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 0
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loan term.
-failureTest12 :: EmulatorTrace ()
-failureTest12 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanTerm = 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong minPayment.
-failureTest13 :: EmulatorTrace ()
-failureTest13 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , minPayment = 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loan interest.
-failureTest14 :: EmulatorTrace ()
-failureTest14 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanInterest = fromInt 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong collateralization.
-failureTest15 :: EmulatorTrace ()
-failureTest15 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , collateralization = []
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong collateralIsSwappable.
-failureTest16 :: EmulatorTrace ()
-failureTest16 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , collateralIsSwappable = False
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong claimExpiration.
-failureTest17 :: EmulatorTrace ()
-failureTest17 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , claimExpiration = 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loanExpiration.
-failureTest18 :: EmulatorTrace ()
-failureTest18 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanExpiration = 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loanOutstanding.
-failureTest19 :: EmulatorTrace ()
-failureTest19 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = fromInt 0
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The new datum has the wrong loanId.
-failureTest20 :: EmulatorTrace ()
-failureTest20 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        , loanId = ""
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The Active beacon is not stored with the new output.
-failureTest21 :: EmulatorTrace ()
-failureTest21 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The Asset beacon is not stored with the new output.
-failureTest22 :: EmulatorTrace ()
-failureTest22 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The LoanID is not stored with the new output.
-failureTest23 :: EmulatorTrace ()
-failureTest23 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The BorrowerID is not stored with the new output.
-failureTest24 :: EmulatorTrace ()
-failureTest24 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The collateral value is changed in the new output.
-failureTest25 :: EmulatorTrace ()
-failureTest25 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The value of ADA is increased by less than 1 ADA.
-failureTest26 :: EmulatorTrace ()
-failureTest26 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_100_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The first rollover output is incorrect. This test and `failureTest28` are to explicitly
--- check that the order of the outputs does not matter.
-failureTest27 :: EmulatorTrace ()
-failureTest27 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",2),(assetBeacon,2)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum askDatum{loanTerm = 22000}
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",2),(assetBeacon,2),(lenderToken,2)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum offerDatum{loanTerm = 22000}
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-  ask2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum{loanTerm = 22000}
-  offer2 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum{loanTerm = 22000}
-
-  let loanIdToken1 = genLoanId offer1
-  let loanIdToken2 = genLoanId offer2
-  let activeDatum1 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken1
-        }
-  let activeDatum2 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 22000 + 10000
-        , loanExpiration = startTime + 22000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken2
-        }
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
-                  [ (ask1,offer1)
-                  , (ask2,offer2)
-                  ]
-              , mintTokens = 
-                  [ ("Active",2)
-                  , (assetBeacon,-2)
-                  , (lenderToken,-2)
-                  , (borrowerToken,2)
-                  , ("Ask",-2)
-                  , ("Offer",-2)
-                  , (loanIdToken1,2)
-                  , (loanIdToken2,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  , ask2
-                  , offer2
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    )
-                  , ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken1 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum1
-
-  active2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken2 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum2
-
-  let newActiveDatum1 = activeDatum1
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum1 + fromMaybe 0 (rolloverFrequency activeDatum1)
-        , loanOutstanding = 
-            loanOutstanding activeDatum1 .*. (fromInt 1 .+. loanInterest activeDatum1)
-        }
-
-  let newActiveDatum2 = activeDatum2
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum2 + fromMaybe 0 (rolloverFrequency activeDatum2)
-        , loanOutstanding = 
-            loanOutstanding activeDatum2 .*. (fromInt 1 .+. loanInterest activeDatum2)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1, active2 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum newActiveDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum1)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The second rollover output is incorrect. This test and `failureTest27` are to explicitly
--- check that the order of the outputs does not matter.
-failureTest28 :: EmulatorTrace ()
-failureTest28 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",2),(assetBeacon,2)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum askDatum{loanTerm = 22000}
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",2),(assetBeacon,2),(lenderToken,2)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum offerDatum{loanTerm = 22000}
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-  ask2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum{loanTerm = 22000}
-  offer2 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum{loanTerm = 22000}
-
-  let loanIdToken1 = genLoanId offer1
-  let loanIdToken2 = genLoanId offer2
-  let activeDatum1 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 12000 + 10000
-        , loanExpiration = startTime + 12000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken1
-        }
-  let activeDatum2 = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , lastCheckpoint = startTime
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 22000 + 10000
-        , loanExpiration = startTime + 22000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken2
-        }
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
-                  [ (ask1,offer1)
-                  , (ask2,offer2)
-                  ]
-              , mintTokens = 
-                  [ ("Active",2)
-                  , (assetBeacon,-2)
-                  , (lenderToken,-2)
-                  , (borrowerToken,2)
-                  , ("Ask",-2)
-                  , ("Offer",-2)
-                  , (loanIdToken1,2)
-                  , (loanIdToken2,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  , ask2
-                  , offer2
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    )
-                  , ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 2
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken1 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum1
-
-  active2 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken2 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum2
-
-  let newActiveDatum1 = activeDatum1
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum1 + fromMaybe 0 (rolloverFrequency activeDatum1)
-        , loanOutstanding = 
-            loanOutstanding activeDatum1 .*. (fromInt 1 .+. loanInterest activeDatum1)
-        }
-
-  let newActiveDatum2 = activeDatum2
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum2 + fromMaybe 0 (rolloverFrequency activeDatum2)
-        , loanOutstanding = 
-            loanOutstanding activeDatum2 .*. (fromInt 1 .+. loanInterest activeDatum2)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1, active2 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken1 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  , ( Just $ TxOutDatumInline $ toDatum newActiveDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken2 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum1)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 12000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 1
-        , minPayment = 500_000
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | Two rollover periods have passed but only one rollover was made prior to the next payment
--- being made.
-failureTest29 :: EmulatorTrace ()
-failureTest29 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  
-  (mintRef,spendRef) <- initializeScripts
-
-  -- Create the Ask UTxO.
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
-              , mintTokens = [("Ask",1),(assetBeacon,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Ask" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-  
-  -- Create the Offer UTxO.
-  callEndpoint @"create-transaction" h2 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
-              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
-                    , lovelaceValueOf 103_000_000 
-                    <> singleton beaconCurrencySymbol "Offer" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol lenderToken 1
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  ask1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Ask" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            askDatum
-  offer1 <- txOutRefWithValueAndDatum 
-            ( lovelaceValueOf 103_000_000 
-            <> singleton beaconCurrencySymbol "Offer" 1
-            <> singleton beaconCurrencySymbol lenderToken 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            )
-            offerDatum
-
-  let loanIdToken = genLoanId offer1
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 5000
-        , lastCheckpoint = startTime
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 500_000
-        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + 22000 + 10000
-        , loanExpiration = startTime + 22000
-        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = loanIdToken
-        }
-  
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
-              , mintTokens = 
-                  [ ("Active",1)
-                  , (assetBeacon,-1)
-                  , (lenderToken,-1)
-                  , (borrowerToken,1)
-                  , ("Ask",-1)
-                  , ("Offer",-1)
-                  , (loanIdToken,2)
-                  ]
-              }
-          , TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = 
-                  [ ask1
-                  , offer1
-                  ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
-                    , lovelaceValueOf 3_000_000
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = refScriptAddress
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumHash $ toDatum ()
-                    , lovelaceValueOf 20_000_000
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  void $ waitNSlots 10
-
-  active1 <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            activeDatum
-
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1 ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 10
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  void $ waitNSlots 2
-
-  active1' <- txOutRefWithValueAndDatum 
-            (lovelaceValueOf 3_000_000 
-            <> singleton beaconCurrencySymbol "Active" 1
-            <> singleton beaconCurrencySymbol assetBeacon 1
-            <> singleton beaconCurrencySymbol loanIdToken 1
-            <> singleton beaconCurrencySymbol borrowerToken 1
-            <> uncurry singleton testToken1 10
-            )
-            newActiveDatum
-
-  let newActiveDatum' = newActiveDatum
-        { loanOutstanding = loanOutstanding newActiveDatum .-. fromInt 110_000_000
-        }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(borrowerToken,0)]
-              }
-          ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer MakePayment
-              , spendFromAddress = loanAddr
-              , spendUtxos = [ active1' ]
-              }
-          ]
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum'
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol "Active" 1
-                    <> singleton beaconCurrencySymbol assetBeacon 1
-                    <> singleton beaconCurrencySymbol loanIdToken 1
-                    <> singleton beaconCurrencySymbol borrowerToken 1
-                    <> uncurry singleton testToken1 1
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = lenderAddr
-              , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline 
-                           $ toDatum 
-                           $ PaymentDatum (beaconCurrencySymbol,loanIdToken)
-                    , lovelaceValueOf 110_000_000 
-                    )
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-    lenderCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 2
-
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
-    
-    asset = (adaSymbol,adaToken)
-    assetBeacon = genAssetBeaconName asset
-    
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = asset
-      , loanPrinciple = 100_000_000
-      , loanTerm = 22000
-      , collateral = [testToken1]
-      }
-
-    lenderAddr = Address lenderCred Nothing
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken
-        , lenderAddress = lenderAddr
-        , loanAsset = asset
-        , loanPrinciple = 100_000_000
-        , rolloverFrequency = Just 5000
-        , minPayment = 500_000
-        , loanTerm = 22000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
-        , claimPeriod = 10000
-        , offerDeposit = 3_000_000
-        , collateralIsSwappable = True
-        }
-    
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | The invalid-hereafter flag is not specified.
+-- | New datum is not an inline datum.
 failureTest30 :: EmulatorTrace ()
 failureTest30 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -10133,40 +9941,39 @@ failureTest30 = do
             )
             activeDatum
 
-  let newActiveDatum = activeDatum
-        { lastCheckpoint = 
-            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
-        , loanOutstanding = 
-            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
-        }
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken lenderAddr
 
-  callEndpoint @"create-transaction" h1 $
+  callEndpoint @"create-transaction" h2 $
     CreateTransactionParams
       { tokens = 
           [ 
             TokenMint 
               { mintWitness =
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
+                  ( alwaysSucceedPolicy
+                  , Nothing
                   )
-              , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = []
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
               }
           ]
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
+          , PubKeyUtxoInput
+             { pubKeyAddress = lenderAddr
+             , pubKeyUtxos = [key1]
+             }
           ]
       , outputs =
           [ UtxoOutput
               { toAddress = loanAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
-                    , lovelaceValueOf 3_000_000 
+                  [ ( Just $ TxOutDatumHash $ toDatum activeDatum{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
                     <> singleton beaconCurrencySymbol "Active" 1
                     <> singleton beaconCurrencySymbol assetBeacon 1
                     <> singleton beaconCurrencySymbol loanIdToken 1
@@ -10176,7 +9983,7 @@ failureTest30 = do
                   ]
               }
           ]
-      , validityRange = ValidityInterval Nothing Nothing
+      , validityRange = ValidityInterval (Just startTime) Nothing
       }
 
   where
@@ -10223,16 +10030,494 @@ failureTest30 = do
         }
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred)
+
+-------------------------------------------------
+-- Edge Cases
+-------------------------------------------------
+-- | Try to update the lender's address using a counterfeit LoanID. Since the counterfeit
+-- LoanID must be stored in an Ask UTxO, the only way to possibly do this is to compose
+-- the `CloseAsk` redeemer with the `UpdateLenderAddress` redeemer. This will fail for
+-- two reasons:
+-- 1) The `CloseAsk` redeemer requires that all Asset beacons are burned. Since the 
+--    counterfeit LoanID is the Asset beacon to the `CloseAsk` redeemer, the script will
+--    see that the real LoanID is not burned. The real LoanID cannot be burned during the
+--    address update step. This will violate the above requirement and will cause the 
+--    transaction to fail.
+-- 2) The `UpdateLenderAddress` will ignore any LoanIDs found at a dapp address when
+--    looking for the Key NFT. Since the counterfeit LoanID is located at the dapp address,
+--    it will not count towards the Key NFT being present among the inputs.
+edgeCase1 :: EmulatorTrace ()
+edgeCase1 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset1,asset2]
+              , mintTokens = [("Ask",2),(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum askDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset1]
+              , mintTokens = [("Offer",1),(assetBeacon1,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum1
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred1 [asset2]
+              , mintTokens = [("Offer",1),(assetBeacon2,1),(lenderToken1,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol lenderToken1 1
+                    <> uncurry singleton testToken2 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            askDatum1
+  offer1@(TxOutRef (TxId txHash) idx) <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            )
+            offerDatum1
+  ask2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            )
+            askDatum2
+  offer2 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken1 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> uncurry singleton testToken2 10
+            )
+            offerDatum2
+
+  let asset = (CurrencySymbol txHash, fromString $ show idx)
+  let assetBeacon = genAssetBeaconName asset
+  let askDatum = AskDatum
+        { beaconSym = beaconCurrencySymbol
+        , borrowerId = credentialAsToken borrowerCred
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , loanTerm = 12000
+        , collateral = [testToken1]
+        }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  let loanIdToken1 = genLoanId offer1
+  let loanIdToken2 = genLoanId offer2
+  let activeDatum1 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken1
+        }
+  let activeDatum2 = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = [(testToken1, unsafeRatio 1 1)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 22000 + 10000
+        , loanExpiration = startTime + 22000
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken2
+        }
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred 
+                  [ (ask1,offer1)
+                  , (ask2,offer2)
+                  ]
+              , mintTokens = 
+                  [ ("Active",2)
+                  , (assetBeacon1,-1)
+                  , (assetBeacon2,-1)
+                  , (lenderToken1,-2)
+                  , (borrowerToken,2)
+                  , ("Ask",-2)
+                  , ("Offer",-2)
+                  , (loanIdToken1,2)
+                  , (loanIdToken2,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  , ask2
+                  , offer2
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum activeDatum2
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon2 1
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    )
+                  , ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken2 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon1 1
+            <> singleton beaconCurrencySymbol loanIdToken1 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum1
+  active2 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 4_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon2 1
+            <> singleton beaconCurrencySymbol loanIdToken2 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum2
+
+  key1 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken1 lenderAddr1
+  key2 <- txOutRefWithAssetAtAddress beaconCurrencySymbol loanIdToken2 lenderAddr1
+  counterfeitKey <- txOutRefWithValueAndDatum
+    ( lovelaceValueOf 3_000_000 
+    <> singleton beaconCurrencySymbol "Ask" 1
+    <> singleton beaconCurrencySymbol assetBeacon 1
+    ) askDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer BurnBeacons
+              , mintTokens = [("Ask",-1),(assetBeacon,-1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ UpdateLenderAddress newAddr
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          , ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseAsk 
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ counterfeitKey ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum1{lenderAddress=newAddr}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon1 1
+                    <> singleton beaconCurrencySymbol loanIdToken1 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+    borrowerToken = credentialAsToken borrowerCred
+    lenderToken1 = credentialAsToken lenderCred1
+    
+    asset1 = (adaSymbol,adaToken)
+    assetBeacon1 = genAssetBeaconName asset1
+    asset2 = testToken2
+    assetBeacon2 = genAssetBeaconName asset2
+
+    askDatum1 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset1
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+    askDatum2 = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset2
+      , loanPrinciple = 10
+      , loanTerm = 22000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr1 = Address lenderCred1 Nothing
+
+    offerDatum1 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset1
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    offerDatum2 = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken1
+        , lenderAddress = lenderAddr1
+        , loanAsset = asset2
+        , loanPrinciple = 10
+        , rolloverFrequency = Just 1
+        , minPayment = 2
+        , loanTerm = 22000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 1)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+    newAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash lenderCred1)
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
--- | A `TestTree` containing all `Rollover` scenarios.
+-- | A `TestTree` containing all `UpdateLenderAddress` scenarios.
 tests :: TestTree
 tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  testGroup "Rollover(s)"
-    [ -- Success tests (Regression tests)
+  testGroup "Update Address(s)"
+    [ -- Success Tests (Regression Tests)
       checkPredicateOptions opts "regressionTest1"
         assertNoFailedTransactions regressionTest1
     , checkPredicateOptions opts "regressionTest2"
@@ -10244,13 +10529,13 @@ tests = do
 
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
-        (assertEvaluationError "Datum is not an ActiveDatum") failureTest1
+        (assertEvaluationError "Invalid new address") failureTest1
     , checkPredicateOptions opts "failureTest2"
-        (assertEvaluationError "UTxO missing BorrowerID") failureTest2
+        (assertEvaluationError "Invalid new address") failureTest2
     , checkPredicateOptions opts "failureTest3"
-        (assertEvaluationError "Loan is expired") failureTest3
+        (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest3
     , checkPredicateOptions opts "failureTest4"
-        (assertEvaluationError "Borrower did not approve") failureTest4
+        (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest4
     , checkPredicateOptions opts "failureTest5"
         (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest5
     , checkPredicateOptions opts "failureTest6"
@@ -10294,15 +10579,19 @@ tests = do
     , checkPredicateOptions opts "failureTest25"
         (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest25
     , checkPredicateOptions opts "failureTest26"
-        (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest26
+        (assertEvaluationError "Key NFT not found") failureTest26
     , checkPredicateOptions opts "failureTest27"
-        (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest27
+        (assertEvaluationError "Datum is not an ActiveDatum") failureTest27
     , checkPredicateOptions opts "failureTest28"
-        (assertEvaluationError "Updated output not found - datum and value must be correct") failureTest28
+        (assertEvaluationError "Input missing Active beacon") failureTest28
     , checkPredicateOptions opts "failureTest29"
-        (assertEvaluationError "Next rollover is required") failureTest29
+        (assertEvaluationError "Input missing BorrowerID") failureTest29
     , checkPredicateOptions opts "failureTest30"
-        (assertEvaluationError "invalid-hereafter not specified") failureTest30
+        (assertEvaluationError "All datums must be inline datums") failureTest30
+
+      -- Edge Cases
+    , checkPredicateOptions opts "edgeCase1"
+        (Test.not assertNoFailedTransactions) edgeCase1
     ]
 
 testTrace :: IO ()

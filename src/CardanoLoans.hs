@@ -17,63 +17,97 @@
 
 module CardanoLoans
 (
+  proxyScript,
+  proxyValidator,
+  proxyValidatorHash,
+
+  loanScript,
+  loanValidator,
+  loanValidatorHash,
+
+  beaconScript,
+  beaconMintingPolicy,
+  beaconMintingPolicyHash,
+  beaconCurrencySymbol,
+
   LoanDatum(..),
   LoanRedeemer(..),
   BeaconRedeemer(..),
   PaymentDatum(..),
-  Blueprints,
-  CurrencySymbol(..),
-  TokenName(..),
-  DappScripts(..),
-  Address(..),
-  Slot(..),
-  Credential(..),
-  POSIXTime(..),
-  PlutusRational,
-  StakingCredential(..),
-  Api.TxId(..),
-  TxOutRef(..),
-  unValidatorScript,
-  unMintingPolicyScript,
-  unsafeRatio,
-  fromInteger,
-  (Plutus.-),
-  (Plutus.*),
-  (Plutus.+),
-  Plutus.divide,
-
-  adaSymbol,
-  adaToken,
-  readBlueprints,
-  unsafeFromRight,
-  genScripts,
-  parseBlueprints,
-
-  dataFromCBOR,
-  toCBOR,
 
   writeData,
   writeScript,
   decodeDatum,
 
+  genAssetBeaconName,
+  genLoanId,
   credentialAsToken,
-  readCurrencySymbol,
-  readTokenName,
-  readValidatorHash,
-  readPubKeyHash,
-  readTxId,
-  posixTimeToSlot,
-  slotToPOSIXTime,
-  getValidatorHash,
-  CardanoLoans.getPubKeyHash,
-  toEncodedText,
-  toAsset,
-  idToString,
-  tokenAsPubKey,
-  toStakePubKeyHash,
-  toStakeValidatorHash,
-  toValidatorHash,
-  toPubKeyHash,
+  (.*.),
+  (.+.),
+  (.-.),
+  fromInt,
+
+  unsafeFromRight,
+  dataFromCBOR,
+  toCBOR,
+
+  Ledger.scriptSize,
+  slotToBeginPOSIXTime
+
+
+  -- LoanDatum(..),
+  -- LoanRedeemer(..),
+  -- BeaconRedeemer(..),
+  -- PaymentDatum(..),
+  -- Blueprints,
+  -- CurrencySymbol(..),
+  -- TokenName(..),
+  -- Address(..),
+  -- Slot(..),
+  -- Credential(..),
+  -- POSIXTime(..),
+  -- PlutusRational,
+  -- StakingCredential(..),
+  -- Api.TxId(..),
+  -- TxOutRef(..),
+  -- unValidatorScript,
+  -- unMintingPolicyScript,
+  -- unsafeRatio,
+  -- fromInteger,
+  -- (Plutus.-),
+  -- (Plutus.*),
+  -- (Plutus.+),
+  -- Plutus.divide,
+
+  -- adaSymbol,
+  -- adaToken,
+  -- unsafeFromRight,
+
+  -- dataFromCBOR,
+  -- toCBOR,
+
+  -- writeData,
+  -- writeScript,
+  -- decodeDatum,
+
+  -- credentialAsToken,
+  -- readCurrencySymbol,
+  -- readTokenName,
+  -- readValidatorHash,
+  -- readPubKeyHash,
+  -- readTxId,
+  -- posixTimeToSlot,
+  -- slotToPOSIXTime,
+  -- getValidatorHash,
+  -- CardanoLoans.getPubKeyHash,
+  -- toEncodedText,
+  -- toAsset,
+  -- idToString,
+  -- tokenAsPubKey,
+  -- toStakePubKeyHash,
+  -- toStakeValidatorHash,
+  -- toValidatorHash,
+  -- toPubKeyHash,
 ) where
 
 import Prelude hiding (fromInteger)
@@ -85,7 +119,7 @@ import qualified PlutusTx
 import qualified PlutusTx.Prelude as Plutus
 import GHC.Generics (Generic)
 import Codec.Serialise hiding (decode,encode)
-import Ledger (Script(..),applyArguments)
+import Ledger (Script(..),applyArguments,scriptSize)
 import Cardano.Api hiding (Script,Address)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Data.ByteString.Lazy (fromStrict,toStrict)
@@ -105,6 +139,67 @@ import Cardano.Node.Emulator.TimeSlot
 import PlutusTx.Builtins.Internal (BuiltinByteString(..))
 import Data.Maybe (fromJust)
 import Ledger.Address
+import Data.FileEmbed
+
+-------------------------------------------------
+-- Blueprints
+-------------------------------------------------
+newtype Blueprints = Blueprints (Map.Map String String)
+  deriving (Show)
+
+instance FromJSON Blueprints where
+  parseJSON (Object o) = 
+    Blueprints . Map.fromList <$> 
+      (o .: "validators" >>= mapM (\(Object o') -> (,) <$> o' .: "title" <*> o' .: "compiledCode"))
+  parseJSON _ = mzero
+
+blueprints :: Map.Map String String
+blueprints = 
+  case decode $ LBS.fromStrict $(embedFile "aiken/plutus.json") of
+    Nothing -> error "Failed to decode cardano-loan's blueprint file"
+    Just (Blueprints bs) -> bs
+
+parseScriptFromCBOR :: String -> Ledger.Script
+parseScriptFromCBOR cbor = 
+  case fmap (deserialise . fromStrict . bytes) . fromHex $ fromString cbor of
+    Left err -> error err
+    Right script -> script
+
+proxyScript :: Ledger.Script
+proxyScript = parseScriptFromCBOR $ blueprints Map.! "cardano_loans.proxy"
+
+proxyValidator :: Validator
+proxyValidator = Validator proxyScript
+
+proxyValidatorHash :: ValidatorHash
+proxyValidatorHash = validatorHash proxyValidator
+
+loanScript :: Ledger.Script
+loanScript = 
+  applyArguments 
+    (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.spend")
+    [toData proxyValidatorHash]
+
+loanValidator :: Validator
+loanValidator = Validator loanScript
+
+loanValidatorHash :: ValidatorHash
+loanValidatorHash = validatorHash loanValidator
+
+beaconScript :: Ledger.Script
+beaconScript =
+  applyArguments
+    (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.mint")
+    [toData proxyValidatorHash, toData loanValidatorHash]
+
+beaconMintingPolicy :: MintingPolicy
+beaconMintingPolicy = MintingPolicy beaconScript
+
+beaconMintingPolicyHash :: MintingPolicyHash
+beaconMintingPolicyHash = mintingPolicyHash beaconMintingPolicy
+
+beaconCurrencySymbol :: CurrencySymbol
+beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -124,11 +219,14 @@ data LoanDatum
       , lenderAddress :: Address
       , loanAsset :: (CurrencySymbol,TokenName)
       , loanPrinciple :: Integer
-      , loanCheckpoints :: [POSIXTime]
+      , rolloverFrequency :: Maybe POSIXTime
       , loanTerm :: POSIXTime
       , loanInterest :: Plutus.Rational
+      , minPayment :: Integer
       , collateralization :: [((CurrencySymbol,TokenName),Plutus.Rational)]
+      , collateralIsSwappable :: Bool
       , claimPeriod :: POSIXTime
+      , offerDeposit :: Integer
       }
   | ActiveDatum
       { beaconSym :: CurrencySymbol
@@ -136,11 +234,13 @@ data LoanDatum
       , lenderAddress :: Address
       , loanAsset :: (CurrencySymbol,TokenName)
       , loanPrinciple :: Integer
-      , nextCheckpoints :: [POSIXTime]
-      , pastCheckpoints :: [POSIXTime]
+      , rolloverFrequency :: Maybe POSIXTime
+      , lastCheckpoint :: POSIXTime
       , loanTerm :: POSIXTime
       , loanInterest :: Plutus.Rational
+      , minPayment :: Integer
       , collateralization :: [((CurrencySymbol,TokenName),Plutus.Rational)]
+      , collateralIsSwappable :: Bool
       , claimExpiration :: POSIXTime
       , loanExpiration :: POSIXTime
       , loanOutstanding :: Plutus.Rational
@@ -164,11 +264,14 @@ instance ToData LoanDatum where
              , toData lenderAddress
              , List [toData $ fst loanAsset, toData $ snd loanAsset]
              , toData loanPrinciple
-             , toData loanCheckpoints
+             , toData rolloverFrequency
              , toData loanTerm
              , toData loanInterest
+             , toData minPayment
              , Map $ map (\((x,y),r) -> (List [toData x, toData y],toData r)) collateralization
+             , toData collateralIsSwappable
              , toData claimPeriod
+             , toData offerDeposit
              ]
   toBuiltinData ActiveDatum{..} = dataToBuiltinData $ 
     Constr 2 [ toData beaconSym
@@ -176,11 +279,13 @@ instance ToData LoanDatum where
              , toData lenderAddress
              , List [toData $ fst loanAsset, toData $ snd loanAsset]
              , toData loanPrinciple
-             , toData nextCheckpoints
-             , toData pastCheckpoints
+             , toData rolloverFrequency
+             , toData lastCheckpoint
              , toData loanTerm
              , toData loanInterest
+             , toData minPayment
              , Map $ map (\((x,y),r) -> (List [toData x, toData y],toData r)) collateralization
+             , toData collateralIsSwappable
              , toData claimExpiration
              , toData loanExpiration
              , toData loanOutstanding
@@ -219,11 +324,14 @@ instance FromData LoanDatum where
         , lAddress
         , List [lsym,lname]
         , lPrinciple
-        , lCheckpoints
+        , lRolloverFrequency
         , lterm
         , lInterest
+        , lMinPayment
         , Map collats
+        , lSwappable
         , lClaimPeriod
+        , lOfferDeposit
         ]
       )
     ) = Just $ OfferDatum
@@ -232,13 +340,16 @@ instance FromData LoanDatum where
       , lenderAddress = fromData' lAddress
       , loanAsset = (fromData' lsym, fromData' lname)
       , loanPrinciple = fromData' lPrinciple
-      , loanCheckpoints = fromData' lCheckpoints
+      , rolloverFrequency = fromData' lRolloverFrequency
       , loanTerm = fromData' lterm
       , loanInterest = fromData' lInterest
+      , minPayment = fromData' lMinPayment
       , collateralization = 
           map (\(List [collatsym,collatname],price) -> 
                 ((fromData' collatsym, fromData' collatname),fromData' price)) collats
+      , collateralIsSwappable = fromData' lSwappable
       , claimPeriod = fromData' lClaimPeriod
+      , offerDeposit = fromData' lOfferDeposit
       }
   fromBuiltinData 
     (BuiltinData 
@@ -248,11 +359,13 @@ instance FromData LoanDatum where
         , lAddress
         , List [lsym,lname]
         , lPrinciple
-        , lnextCheckpoints
-        , lpastCheckpoints
+        , lRolloverFrequency
+        , lLastCheckpoint
         , lterm
         , lInterest
+        , lMinPayment
         , Map collats
+        , lSwappable
         , lClaimExpired
         , lExpired
         , lOutstanding
@@ -265,13 +378,15 @@ instance FromData LoanDatum where
       , lenderAddress = fromData' lAddress
       , loanAsset = (fromData' lsym, fromData' lname)
       , loanPrinciple = fromData' lPrinciple
-      , nextCheckpoints = fromData' lnextCheckpoints
-      , pastCheckpoints = fromData' lpastCheckpoints
+      , rolloverFrequency = fromData' lRolloverFrequency
+      , lastCheckpoint = fromData' lLastCheckpoint
       , loanTerm = fromData' lterm
       , loanInterest = fromData' lInterest
+      , minPayment = fromData' lMinPayment
       , collateralization = 
           map (\(List [collatsym,collatname],price) -> 
                 ((fromData' collatsym, fromData' collatname),fromData' price)) collats
+      , collateralIsSwappable = fromData' lSwappable
       , claimExpiration = fromData' lClaimExpired
       , loanExpiration = fromData' lExpired
       , loanOutstanding = fromData' lOutstanding
@@ -287,20 +402,34 @@ data LoanRedeemer
   | Rollover
   | ClaimExpired
   | UpdateLenderAddress Address
-  | UnlockLostCollateral
+  | Unlock
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = MintAskBeacon Credential
-  | MintOfferBeacon Credential
-  | MintActiveBeacon Credential [(TxOutRef,TxOutRef)]
+  = CreateAsk 
+      Credential -- ^ Borrower's staking credential.
+      [(CurrencySymbol,TokenName)] -- ^ Loan assets asked for.
+  | CreateOffer
+      Credential -- ^ Lender's staking credential.
+      [(CurrencySymbol,TokenName)] -- ^ Loan assets offered.
+  | CreateActive 
+      Credential -- ^ Borrower's staking credential.
+      [(TxOutRef,TxOutRef)] -- ^ Ask UTxO and Offer UTxO pairing. (Ask,Offer)
   | BurnBeacons
   deriving (Generic,Show)
 
 instance ToData BeaconRedeemer where
-  toBuiltinData (MintAskBeacon cred) = dataToBuiltinData $ Constr 0 [ toData cred ]
-  toBuiltinData (MintOfferBeacon cred) = dataToBuiltinData $ Constr 1 [ toData cred ]
-  toBuiltinData (MintActiveBeacon cred pairing) = dataToBuiltinData $
+  toBuiltinData (CreateAsk cred assets) = 
+    dataToBuiltinData $ 
+      Constr 0 [ toData cred
+               , Map $ map (\(x,y) -> (toData x, toData y)) assets
+               ]
+  toBuiltinData (CreateOffer cred assets) = 
+    dataToBuiltinData $ 
+      Constr 1 [ toData cred
+               , Map $ map (\(x,y) -> (toData x, toData y)) assets
+               ]
+  toBuiltinData (CreateActive cred pairing) = dataToBuiltinData $
     Constr 2 [ toData cred
              , Map $ map (\(x,y) -> (toData x, toData y)) pairing
              ]
@@ -313,76 +442,6 @@ instance ToData PaymentDatum where
   toBuiltinData (PaymentDatum (sym,name)) = dataToBuiltinData $ List [toData sym, toData name]
 
 PlutusTx.unstableMakeIsData ''LoanRedeemer
-
--------------------------------------------------
--- Functions and Types for working with blueprints
--------------------------------------------------
-type Title = String
-type CBOR = String
-type Blueprints = Map.Map Title CBOR
-
-newtype Blueprints' = Blueprints' [(Title,CBOR)]
-  deriving (Show)
-
-instance FromJSON Blueprints' where
-  parseJSON (Object o) = 
-    Blueprints' 
-      <$> (o .: "validators" >>= 
-            mapM (\(Object o') -> (,) <$> o' .: "title" <*> o' .: "compiledCode"))
-  parseJSON _ = mzero
-
-readBlueprints :: FilePath -> IO Blueprints
-readBlueprints = fmap parseBlueprints . LBS.readFile
-
-parseBlueprints :: LBS.ByteString -> Blueprints
-parseBlueprints = toBlueprints . decode
-
-toBlueprints :: Maybe Blueprints' -> Blueprints
-toBlueprints (Just (Blueprints' bs)) = Map.fromList bs
-toBlueprints Nothing = error "Failed to decode blueprint file"
-
-data DappScripts = DappScripts
-  { spendingValidator :: Validator
-  , spendingValidatorHash :: ValidatorHash
-  , beaconPolicy :: MintingPolicy
-  , beaconPolicyHash :: MintingPolicyHash
-  , beaconCurrencySymbol :: CurrencySymbol
-  } deriving (Generic)
-
-genScripts :: Blueprints -> DappScripts
-genScripts bs = DappScripts
-    { spendingValidator = spendVal
-    , spendingValidatorHash = spendValHash
-    , beaconPolicy = beacon
-    , beaconPolicyHash = beaconHash
-    , beaconCurrencySymbol = scriptCurrencySymbol beacon
-    }
-  where spendVal = Validator $ parseScriptFromCBOR $ bs Map.! "cardano_loans.spend"
-        spendValHash = validatorHash spendVal
-        beacon = MintingPolicy $ applyBeaconParams spendValHash $ bs Map.! "cardano_loans.mint"
-        beaconHash = mintingPolicyHash beacon
-
-applyBeaconParams :: ValidatorHash -> String -> Ledger.Script
-applyBeaconParams valHash cbor = applyArguments paramScript [toData valHash]
-  where paramScript = parseScriptFromCBOR cbor
-
-fromHex' :: String -> ByteString
-fromHex' s = case fmap bytes $ fromHex $ fromString s of
-  Right b -> b
-  Left err -> error err
-
-dataFromCBOR :: String -> Data
-dataFromCBOR = deserialise . fromStrict . fromHex'
-
-toCBOR :: Serialise a => a -> Text
-toCBOR = encodeByteString . toStrict . serialise
-
-parseScriptFromCBOR :: String -> Ledger.Script
-parseScriptFromCBOR = deserialise . fromStrict . fromHex'
-
-unsafeFromRight :: Either a b -> b
-unsafeFromRight (Right x) = x
-unsafeFromRight _ = error "unsafeFromRight used on Left"
 
 -------------------------------------------------
 -- Serialization
@@ -419,6 +478,19 @@ decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScri
 -------------------------------------------------
 -- Off-Chain Helper Functions and Types
 -------------------------------------------------
+genAssetBeaconName :: (CurrencySymbol,TokenName) -> TokenName
+genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
+  TokenName $ Plutus.sha2_256 $ sym <> name
+
+genLoanId :: TxOutRef -> TokenName
+genLoanId (TxOutRef (Api.TxId txHash) index) = 
+  TokenName $ Plutus.sha2_256 $ txHash <> index'
+  where TokenName index' = fromString $ show index
+
+credentialAsToken :: Credential -> TokenName
+credentialAsToken (PubKeyCredential (PubKeyHash pkh)) = TokenName pkh
+credentialAsToken (ScriptCredential (ValidatorHash vh)) = TokenName vh
+
 type PlutusRational = Plutus.Rational
 
 slotToPOSIXTime :: Slot -> POSIXTime
@@ -436,10 +508,6 @@ posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
 -- from the time yields the normalized 0 time.
 preprodConfig :: SlotConfig
 preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
-
-credentialAsToken :: Credential -> TokenName
-credentialAsToken (PubKeyCredential (PubKeyHash pkh)) = TokenName pkh
-credentialAsToken (ScriptCredential (ValidatorHash vh)) = TokenName vh
 
 -- | Parse Currency from user supplied String
 readCurrencySymbol :: String -> Either String CurrencySymbol
@@ -500,3 +568,28 @@ toStakePubKeyHash _ = Nothing
 toStakeValidatorHash :: Address -> Maybe ValidatorHash
 toStakeValidatorHash (Address _ (Just (StakingHash (ScriptCredential vh)))) = Just vh
 toStakeValidatorHash _ = Nothing
+
+(.*.) :: PlutusRational -> PlutusRational -> PlutusRational
+num1 .*. num2 = num1 Plutus.* num2
+
+(.+.) :: PlutusRational -> PlutusRational -> PlutusRational
+num1 .+. num2 = num1 Plutus.+ num2
+
+(.-.) :: PlutusRational -> PlutusRational -> PlutusRational
+num1 .-. num2 = num1 Plutus.- num2
+
+fromInt :: Integer -> PlutusRational
+fromInt = Plutus.fromInteger
+
+-------------------------------------------------
+-- Misc
+-------------------------------------------------
+unsafeFromRight :: Either a b -> b
+unsafeFromRight (Right x) = x
+unsafeFromRight _ = error "unsafeFromRight used on Left"
+
+dataFromCBOR :: String -> Either String Data
+dataFromCBOR = fmap (deserialise . fromStrict . bytes) . fromHex . fromString
+
+toCBOR :: Serialise a => a -> Text
+toCBOR = encodeByteString . toStrict . serialise
