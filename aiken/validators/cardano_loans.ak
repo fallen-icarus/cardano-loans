@@ -57,13 +57,6 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
       Transaction(inputs,_,outputs,_,mint,_,wdrw,validity_range,sigs,..), 
       tx.Spend(out_ref)
     ) = ctx
-    expect Some(
-      Input(
-        _,
-        Output(
-          Address(ScriptCredential(dapp_hash),stake) as addr,
-          utxo_value,
-          ..))) = tx.find_input(inputs,out_ref)
 
     when redeemer is {
       CloseAsk -> {
@@ -86,6 +79,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // Since Active UTxOs require an Asset beacon to be kept, requirement 4 prevents the
         // CloseAsk redeemer from being used in the same transaction where a loan is accepted.
         
+        expect Some(
+          Input(
+            _,
+            Output(
+              Address(ScriptCredential(_),stake),
+              _,
+              ..))) = tx.find_input(inputs,out_ref)
+
         // The datum must be an AskDatum. Requirement 1.
         when datum is {
           AskDatum(sym,_,loan_asset,..) -> {
@@ -145,6 +146,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // Since the lender_id in the datum has stripped away whether the lender's credential is a
         // pubkey or a staking script, both must be tried.
         
+        expect Some(
+          Input(
+            _,
+            Output(
+              Address(ScriptCredential(_),stake),
+              utxo_value,
+              ..))) = tx.find_input(inputs,out_ref)
+
         // The datum must be an OfferDatum. Requirement 1.
         when datum is {
           OfferDatum(sym,lender_id,_,loan_asset,..) -> {
@@ -295,6 +304,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // Any remaining collateral is unlocked during a full payment of a loan. If it is not taken in
         // this transaction, it can still be claimed with the Unlock spending redeemer.
         
+        expect Some(
+          Input(
+            _,
+            Output(
+              Address(ScriptCredential(_),stake) as addr,
+              utxo_value,
+              ..))) = tx.find_input(inputs,out_ref)
+
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
           ActiveDatum(
@@ -504,6 +521,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // ADA. This hardcoding makes it cheap to check that this relaxation is not abused.
         // 1 ADA should be more than enough for most situations.
         
+        expect Some(
+          Input(
+            _,
+            Output(
+              Address(ScriptCredential(_),stake) as addr,
+              utxo_value,
+              ..))) = tx.find_input(inputs,out_ref)
+
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
           ActiveDatum(
@@ -636,11 +661,15 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
             _,
             loan_id
           ) -> {
+            expect (
+              Some(Input(_,Output(_,utxo_value,..))),
+              total_value,
+              key_present
+            ) = utils.find_input_and_info(inputs,out_ref,sym,loan_id)
+
             let claim_time = utils.get_invalid_before(validity_range)
             let asset_name = utils.generate_beacon_name(loan_asset)
             let mint_as_val = value.from_minted_value(mint)
-            let (total_value,key_present) = 
-              utils.extended_total_input_value(dapp_hash,sym,loan_id,inputs)
 
             // The input must have an Active beacon. Requirement 2.
             trace_if_false(
@@ -744,7 +773,12 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
             outstanding,
             loan_id
           ) -> {
-            let (_,key_present) = utils.extended_total_input_value(dapp_hash,sym,loan_id,inputs)
+            expect (
+              Some(Input(_,Output(addr,utxo_value,..))),
+              _,
+              key_present
+            ) = utils.find_input_and_info(inputs,out_ref,sym,loan_id)
+
             let expected_datum = ActiveDatum(
               sym,
               borrower_id,
@@ -827,6 +861,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         //      a) The claim period must have passed.
         //    Otherwise, conditions have already been satisfied: borrower's approval and beacons burned
         
+        expect Some(
+          Input(
+            _,
+            Output(
+              Address(ScriptCredential(_),stake),
+              utxo_value,
+              ..))) = tx.find_input(inputs,out_ref)
+
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
           ActiveDatum(

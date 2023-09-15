@@ -1308,21 +1308,53 @@ pub fn update_loan_check(
   )
 }
 
-// This function sums the total input value from the transaction while also looking for
-// a target Key NFT.
-pub fn extended_total_input_value(
-  dapp_hash: Hash<Blake2b_224,Script>,
+// This functions finds the input currently being evaluated in addition to getting the total
+// input value for the transaction and whether the Key NFT is present. This allows the inputs 
+// to only be traversed once in certain contexts.
+pub fn find_input_and_info(
+  inputs: List<Input>,
+  output_reference: OutputReference,
   sym: PolicyId,
-  loan_id: AssetName,
-  inputs: List<Input>
-) -> (Value,Bool) {
-  let foo = fn(input: Input, acc: (Value,Bool)) {
-    let Input(_,Output(Address(pay,_),val,_,_)) = input
-    let (acc_val,acc_bool) = acc
-    ( value.merge(acc_val,val),
-      acc_bool || (value.quantity_of(val,sym,loan_id) == 1 && pay != ScriptCredential(dapp_hash))
-    )
+  loan_id: AssetName
+) -> (Option<Input>,Value,Bool) {
+  let foo = fn(input: Input, acc: (Option<Input>,Value,Bool)) {
+    let Input(ref,Output(_,val,_,_)) = input
+    when acc is {
+      (Some(_) as acc_input,acc_val,True) -> 
+        (acc_input,value.merge(val,acc_val),True)
+      (Some(_) as acc_input,acc_val,False) -> 
+        ( acc_input
+        , value.merge(val,acc_val)
+        , value.quantity_of(val,sym,loan_id) == 1 &&
+          value.quantity_of(val,sym,"Ask") == 0 &&
+          value.quantity_of(val,sym,"Active") == 0
+        )
+      (None,acc_val,True) -> {
+        if ref == output_reference {
+          (Some(input),value.merge(val,acc_val),True)
+        } else {
+          (None,value.merge(val,acc_val),True)
+        }
+      }
+      (None,acc_val,False) -> {
+        if ref == output_reference {
+          ( Some(input)
+          , value.merge(val,acc_val)
+          , value.quantity_of(val,sym,loan_id) == 1 &&
+            value.quantity_of(val,sym,"Ask") == 0 &&
+            value.quantity_of(val,sym,"Active") == 0
+            )
+        } else {
+          ( None
+          , value.merge(val,acc_val)
+          , value.quantity_of(val,sym,loan_id) == 1 &&
+            value.quantity_of(val,sym,"Ask") == 0 &&
+            value.quantity_of(val,sym,"Active") == 0
+          )
+        }
+      }
+    }
   }
 
-  list.foldl(inputs,(value.zero(),False),foo)
+  list.foldl(inputs,(None,value.zero(),False),foo)
 }
