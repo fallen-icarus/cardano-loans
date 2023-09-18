@@ -23,6 +23,7 @@ module Test.Internal
     TokenMint(..)
   , UtxoInput(..)
   , UtxoOutput(..)
+  , UnsafeDatum(..)
   
     -- * Model Parameters
   , CreateReferenceScriptParams(..)
@@ -136,6 +137,46 @@ data UtxoOutput = UtxoOutput
   { toAddress :: Address
   , outputUtxos :: [(Maybe (TxOutDatum Datum), Value)]
   } deriving (Generic,ToJSON,FromJSON)
+
+-- | An unsafe OfferDatum for testing whether invalid `Rational`s are prevented.
+data UnsafeDatum = UnsafeDatum
+  { unsafeBeaconSym :: CurrencySymbol
+  , unsafeLenderId :: TokenName
+  , unsafeLenderAddress :: Address
+  , unsafeLoanAsset :: (CurrencySymbol,TokenName)
+  , unsafeLoanPrinciple :: Integer
+  , unsafeRolloverFrequency :: Maybe POSIXTime
+  , unsafeLoanTerm :: POSIXTime
+  , unsafeLoanInterest :: (Integer,Integer)
+  , unsafeMinPayment :: Integer
+  , unsafeCollateralization :: [((CurrencySymbol,TokenName),(Integer,Integer))]
+  , unsafeCollateralIsSwappable :: Bool
+  , unsafeClaimPeriod :: POSIXTime
+  , unsafeOfferDeposit :: Integer
+  }
+
+instance PlutusTx.ToData UnsafeDatum where
+  toBuiltinData UnsafeDatum{..} = PlutusTx.dataToBuiltinData $
+    PlutusTx.Constr 1 
+      [ PlutusTx.toData unsafeBeaconSym
+      , PlutusTx.toData unsafeLenderId
+      , PlutusTx.toData unsafeLenderAddress
+      , PlutusTx.List [PlutusTx.toData $ fst unsafeLoanAsset, PlutusTx.toData $ snd unsafeLoanAsset]
+      , PlutusTx.toData unsafeLoanPrinciple
+      , PlutusTx.toData unsafeRolloverFrequency
+      , PlutusTx.toData unsafeLoanTerm
+      , PlutusTx.toData unsafeLoanInterest
+      , PlutusTx.toData unsafeMinPayment
+      , PlutusTx.Map $ map (\((x,y),r) -> 
+                             ( PlutusTx.List [PlutusTx.toData x, PlutusTx.toData y]
+                             , PlutusTx.toData r
+                             )
+                           ) 
+                           unsafeCollateralization
+      , PlutusTx.toData unsafeCollateralIsSwappable
+      , PlutusTx.toData unsafeClaimPeriod
+      , PlutusTx.toData unsafeOfferDeposit
+      ]
 
 -------------------------------------------------
 -- Params

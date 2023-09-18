@@ -71,6 +71,12 @@ module Test.CreateOffer
   , failureTest48
   , failureTest49
   , failureTest50
+  , failureTest51
+  , failureTest52
+  , failureTest53
+  , failureTest54
+  , failureTest55
+  , failureTest56
 
     -- ** Edge Cases
   , edgeCase1
@@ -4813,6 +4819,540 @@ failureTest50 = do
       
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
+-- | The created Offer UTxO has a negative denominator for the loan interest field.
+failureTest51 :: EmulatorTrace ()
+failureTest51 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,-1)
+        , unsafeCollateralization = [(testToken1,(1,10))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The created Offer UTxO has a zero denominator for the loan interest field.
+failureTest52 :: EmulatorTrace ()
+failureTest52 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,0)
+        , unsafeCollateralization = [(testToken1,(1,10))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The created Offer UTxO has a zero denominator for the first collateralization.
+failureTest53 :: EmulatorTrace ()
+failureTest53 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,10)
+        , unsafeCollateralization = [(testToken1,(1,0)),(testToken2,(1,1))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The created Offer UTxO has a zero denominator for the second collateralization.
+failureTest54 :: EmulatorTrace ()
+failureTest54 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,10)
+        , unsafeCollateralization = [(testToken1,(1,1)),(testToken2,(1,0))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The created Offer UTxO has a negative denominator for the first collateralization.
+failureTest55 :: EmulatorTrace ()
+failureTest55 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,10)
+        , unsafeCollateralization = [(testToken1,(1,-1)),(testToken2,(1,1))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The created Offer UTxO has a negative denominator for the second collateralization.
+failureTest56 :: EmulatorTrace ()
+failureTest56 = do
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  mintRef <- initializeBeaconPolicy
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    lenderToken = credentialAsToken lenderCred
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+    
+    offerDatum = UnsafeDatum
+        { unsafeBeaconSym = beaconCurrencySymbol
+        , unsafeLenderId = lenderToken
+        , unsafeLenderAddress = Address lenderCred Nothing
+        , unsafeLoanAsset = asset
+        , unsafeLoanPrinciple = 100_000_000
+        , unsafeRolloverFrequency = Just 1
+        , unsafeMinPayment = 500_000
+        , unsafeLoanTerm = 12000
+        , unsafeLoanInterest = (1,10)
+        , unsafeCollateralization = [(testToken1,(1,1)),(testToken2,(1,-1))]
+        , unsafeClaimPeriod = 10000
+        , unsafeOfferDeposit = 3_000_000
+        , unsafeCollateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
 -------------------------------------------------
 -- Edge Cases
 -------------------------------------------------
@@ -5379,6 +5919,18 @@ tests = do
         (assertEvaluationError "Offer UTxO has wrong value") failureTest49
     , checkPredicateOptions opts "failureTest50"
         (assertEvaluationError "Invalid OfferDatum") failureTest50
+    , checkPredicateOptions opts "failureTest51"
+        (assertEvaluationError "Invalid OfferDatum") failureTest51
+    , checkPredicateOptions opts "failureTest52"
+        (assertEvaluationError "Invalid OfferDatum") failureTest52
+    , checkPredicateOptions opts "failureTest53"
+        (assertEvaluationError "Invalid OfferDatum") failureTest53
+    , checkPredicateOptions opts "failureTest54"
+        (assertEvaluationError "Invalid OfferDatum") failureTest54
+    , checkPredicateOptions opts "failureTest55"
+        (assertEvaluationError "Invalid OfferDatum") failureTest55
+    , checkPredicateOptions opts "failureTest56"
+        (assertEvaluationError "Invalid OfferDatum") failureTest56
       
       -- Edge Cases
     , checkPredicateOptions opts "edgeCase1"
@@ -5396,5 +5948,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest2
-
+testTrace = runEmulatorTraceIO' def emConfig failureTest54
