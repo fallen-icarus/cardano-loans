@@ -14,6 +14,9 @@ module Test.Proxy
     -- ** Scenarios that should fail
   , failureTest1
 
+    -- ** Benchmark Tests
+  , benchTest1
+
     -- * Full test function
   , tests
   ) where
@@ -166,6 +169,77 @@ failureTest1 = do
     proxyAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash borrowerCred)
 
 -------------------------------------------------
+-- Bench Tests
+-------------------------------------------------
+-- | Spend multiple UTxOs from a proxy address. The address uses a staking pubkey. Each
+-- UTxO has a `PaymentDatum`. The redeemer used to spend was the Unit redeemer.
+benchTest1 :: Int -> EmulatorTrace ()
+benchTest1 numberSpent = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = proxyAddr
+              , outputUtxos = replicate 60
+                  ( Just $ TxOutDatumInline 
+                         $ toDatum 
+                         $ PaymentDatum (beaconCurrencySymbol,genAssetBeaconName testToken1)
+                  , lovelaceValueOf 3_000_000 
+                  )
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  utxos <- txOutRefsAndDatumsAtAddress proxyAddr
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (proxyValidator, Nothing)
+              , spendRedeemer = toRedeemer ()
+              , spendFromAddress = proxyAddr
+              , spendUtxos = take numberSpent $ map fst utxos
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    proxyAddr = Address (ScriptCredential proxyValidatorHash) (Just $ StakingHash borrowerCred)
+
+
+benchTrace :: Int -> IO ()
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
+
+-------------------------------------------------
 -- Test Function
 -------------------------------------------------
 -- | A `TestTree` containing all `CreateAsk` scenarios.
@@ -180,6 +254,10 @@ tests = do
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
         (assertEvaluationError "Staking credential did not approve") failureTest1
+
+      -- Benchmark tests
+    , checkPredicateOptions opts "benchTest1"
+        assertNoFailedTransactions $ benchTest1 58
     ]
 
 testTrace :: IO ()

@@ -19,7 +19,7 @@ import CardanoLoans
 -------------------------------------------------
 -- | 52 ADA is the default. This is what the cardano-loans spending validator requires.
 minUTxOSpendRef :: Integer
-minUTxOSpendRef = 54_000_000
+minUTxOSpendRef = 61_000_000
 
 -- | 62 ADA is the default. This is what the cardano-loans minting policy requires.
 minUTxOMintRef :: Integer
@@ -80,6 +80,15 @@ testToken16 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestT
 testToken17 :: (CurrencySymbol,TokenName)
 testToken17 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken17")
 
+testToken18 :: (CurrencySymbol,TokenName)
+testToken18 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken18")
+
+testToken19 :: (CurrencySymbol,TokenName)
+testToken19 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken19")
+
+testToken20 :: (CurrencySymbol,TokenName)
+testToken20 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken20")
+
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
   where
@@ -122,6 +131,9 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
          <> (uncurry singleton testToken15) 1000
          <> (uncurry singleton testToken16) 1000
          <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
     
     user3 :: C.Value
     user3 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
@@ -146,30 +158,163 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
     user4 :: C.Value
     user4 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
     
     user5 :: C.Value
     user5 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
 
     user6 :: C.Value
     user6 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
 
     user7 :: C.Value
     user7 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
     
     user8 :: C.Value
     user8 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
     
     user9 :: C.Value
     user9 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
 
     user10 :: C.Value
     user10 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
+         <> (uncurry singleton testToken2) 1000
+         <> (uncurry singleton testToken3) 1000
+         <> (uncurry singleton testToken4) 1000
+         <> (uncurry singleton testToken5) 1000
+         <> (uncurry singleton testToken6) 1000
+         <> (uncurry singleton testToken7) 1000
+         <> (uncurry singleton testToken8) 1000
+         <> (uncurry singleton testToken9) 1000
+         <> (uncurry singleton testToken10) 1000
+         <> (uncurry singleton testToken11) 1000
+         <> (uncurry singleton testToken12) 1000
+         <> (uncurry singleton testToken13) 1000
+         <> (uncurry singleton testToken14) 1000
+         <> (uncurry singleton testToken15) 1000
+         <> (uncurry singleton testToken16) 1000
+         <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
 
     wallets :: [(Wallet,C.Value)]
     wallets = 

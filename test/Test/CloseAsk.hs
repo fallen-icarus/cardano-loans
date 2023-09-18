@@ -29,6 +29,12 @@ module Test.CloseAsk
   , edgeCase1
   , edgeCase2
 
+    -- * Benchmark tests
+  , benchTest1
+  , benchTest2
+  , benchTest3
+  , benchTest4
+
     -- * Full test function
   , tests
   ) where
@@ -38,6 +44,7 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
+import Data.String (fromString)
 
 import Test.Internal
 import Test.Config
@@ -2173,6 +2180,388 @@ edgeCase2 = do
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
 -------------------------------------------------
+-- Benchmark Tests
+-------------------------------------------------
+-- | Close multiple Ask UTxOs in the same transaction. All Ask UTxOs are for the same
+-- loan asset. Each Ask only used one asset for collateral.
+benchTest1 :: Int -> EmulatorTrace ()
+benchTest1 numberClosed = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let sampleOutputs =
+        map (\i ->
+               ( Just $ TxOutDatumInline 
+                      $ toDatum askDatum
+               , lovelaceValueOf (3_000_000 + i)
+               <> singleton beaconCurrencySymbol "Ask" 1
+               <> singleton beaconCurrencySymbol assetBeacon 1
+               )  
+            )
+            [1..]
+  let sampleMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset] 
+          , mintTokens = [("Ask",fromIntegral i),(assetBeacon,fromIntegral i)]
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleMints ( 40 :: Int ) ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 40 sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+  
+  void $ waitNSlots 2
+
+  targets <- mapM txOutRefWithValue $ take numberClosed $ map snd sampleOutputs
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer BurnBeacons 
+          , mintTokens = 
+              [ ("Ask",fromIntegral (-numberClosed))
+              , (assetBeacon,fromIntegral (-numberClosed))
+              ]
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberClosed ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseAsk
+              , spendFromAddress = loanAddr
+              , spendUtxos = targets
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | Close multiple Ask UTxOs in the same transaction. All Ask UTxOs are for the same
+-- loan asset. Each Ask used three assets for collateral.
+benchTest2 :: Int -> EmulatorTrace ()
+benchTest2 numberClosed = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let sampleOutputs =
+        map (\i ->
+               ( Just $ TxOutDatumInline 
+                      $ toDatum askDatum
+               , lovelaceValueOf (3_000_000 + i)
+               <> singleton beaconCurrencySymbol "Ask" 1
+               <> singleton beaconCurrencySymbol assetBeacon 1
+               )  
+            )
+            [1..]
+  let sampleMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset] 
+          , mintTokens = [("Ask",fromIntegral i),(assetBeacon,fromIntegral i)]
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleMints ( 40 :: Int ) ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 40 sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+  
+  void $ waitNSlots 2
+
+  targets <- mapM txOutRefWithValue $ take numberClosed $ map snd sampleOutputs
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer BurnBeacons 
+          , mintTokens = 
+              [ ("Ask",fromIntegral (-numberClosed))
+              , (assetBeacon,fromIntegral (-numberClosed))
+              ]
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberClosed ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseAsk
+              , spendFromAddress = loanAddr
+              , spendUtxos = targets
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1,testToken2,testToken3]
+      }
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | Close multiple Ask UTxOs in the same transaction. All Ask UTxOs are for different
+-- loan assets. Each Ask only used one asset for collateral.
+benchTest3 :: Int -> EmulatorTrace ()
+benchTest3 numberClosed = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let assets = map (\i -> (fst $ loanAsset askDatum, fromString $ show @Int i)) [1..100]
+  let beacons = map genAssetBeaconName assets
+  let sampleOutputs =
+        zipWith (\a b ->
+                  ( Just $ TxOutDatumInline 
+                         $ toDatum askDatum{loanAsset = a}
+                  , lovelaceValueOf 3_000_000 
+                  <> singleton beaconCurrencySymbol "Ask" 1
+                  <> singleton beaconCurrencySymbol b 1
+                  )  
+                )
+                assets
+                beacons
+  let sampleMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets
+          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1 )
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleMints 20 ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 20 sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  targets <- mapM txOutRefWithValue $ take numberClosed $ map snd sampleOutputs
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer BurnBeacons
+          , mintTokens = ("Ask",fromIntegral (-i)) : take i (zip beacons $ repeat (-1) )
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberClosed ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseAsk
+              , spendFromAddress = loanAddr
+              , spendUtxos = targets
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+      
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | Close multiple Ask UTxOs in the same transaction. All Ask UTxOs are for different
+-- loan assets. Each Ask used three assets for collateral.
+benchTest4 :: Int -> EmulatorTrace ()
+benchTest4 numberClosed = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let assets = map (\i -> (fst $ loanAsset askDatum, fromString $ show @Int i)) [1..100]
+  let beacons = map genAssetBeaconName assets
+  let sampleOutputs =
+        zipWith (\a b ->
+                  ( Just $ TxOutDatumInline 
+                         $ toDatum askDatum{loanAsset = a}
+                  , lovelaceValueOf 3_000_000 
+                  <> singleton beaconCurrencySymbol "Ask" 1
+                  <> singleton beaconCurrencySymbol b 1
+                  )  
+                )
+                assets
+                beacons
+  let sampleMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets
+          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1 )
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleMints 20 ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 20 sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  targets <- mapM txOutRefWithValue $ take numberClosed $ map snd sampleOutputs
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer BurnBeacons
+          , mintTokens = ("Ask",fromIntegral (-i)) : take i (zip beacons $ repeat (-1) )
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberClosed ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseAsk
+              , spendFromAddress = loanAddr
+              , spendUtxos = targets
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+      
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    asset = (adaSymbol,adaToken)
+
+    assetBeacon = genAssetBeaconName asset
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = credentialAsToken borrowerCred
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1,testToken2,testToken3]
+      }
+
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+benchTrace :: Int -> IO ()
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
+
+-------------------------------------------------
 -- Test Function
 -------------------------------------------------
 -- | A `TestTree` containing all `CloseAsk` scenarios.
@@ -2215,7 +2604,18 @@ tests = do
         (assertEvaluationError "Not all Asset beacons burned") edgeCase1
     , checkPredicateOptions opts "edgeCase2"
         (assertEvaluationError "Wrong number of ask and offer inputs") edgeCase2
+
+      -- Benchmarks
+    , checkPredicateOptions opts "benchTest1"
+        assertNoFailedTransactions $ benchTest1 8
+    , checkPredicateOptions opts "benchTest2"
+        assertNoFailedTransactions $ benchTest2 8
+    , checkPredicateOptions opts "benchTest3"
+        assertNoFailedTransactions $ benchTest3 6
+    , checkPredicateOptions opts "benchTest4"
+        assertNoFailedTransactions $ benchTest4 6
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig failureTest8
+testTrace = runEmulatorTraceIO' def emConfig regressionTest2
+

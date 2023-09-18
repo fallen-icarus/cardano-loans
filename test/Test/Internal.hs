@@ -35,10 +35,13 @@ module Test.Internal
   , txOutRefWithValue
   , txOutRefWithValueAndDatum
   , txOutRefWithAssetAtAddress
+  , txOutRefAndDatumWithAssetAtAddress
+  , txOutRefsAndDatumsAtAddress
   , toRedeemer
   , toDatum
   , unValidatorHash
   , unMintingPolicyHash
+  , grouped
 
     -- * Re-exports
   , module Data.Default
@@ -69,7 +72,8 @@ import Data.Void (Void)
 import Control.Monad (void,liftM2)
 import GHC.Generics (Generic)
 import Data.Text (Text)
-import Ledger hiding (value,singleton,mintingPolicyHash,Value,lovelaceValueOf,from,validatorHash)
+import Ledger hiding 
+  (txOutDatum,value,singleton,mintingPolicyHash,Value,lovelaceValueOf,from,validatorHash)
 import Ledger.Tx.Constraints as Constraints
 import qualified Ledger.Tx.Constraints.TxConstraints as Constraints
 import Ledger.Tx.Constraints.TxConstraints (TxOutDatum(..),mustMintCurrencyWithRedeemerAndReference)
@@ -81,7 +85,8 @@ import Plutus.Script.Utils.Ada (lovelaceValueOf)
 import Plutus.Trace
 import qualified Prelude as Haskell
 import Prelude (Semigroup (..))
-import Cardano.Api.Shelley (ProtocolParameters (..))
+import qualified Cardano.Api.Shelley as Api
+import Cardano.Api.Shelley (ProtocolParameters (..)) 
 import Cardano.Api hiding (TxOutDatum(..),TxOutDatumInline,TxOutDatumHash,Address,TxId,Value)
 import Cardano.Node.Emulator.Params
 import Ledger.Tx.CardanoAPI.Internal
@@ -90,7 +95,7 @@ import Plutus.Script.Utils.V2.Scripts
 import Ledger.Tx.Constraints.ValidityInterval
 import Data.Foldable (foldMap',foldl')
 import Plutus.Script.Utils.V2.Generators
-import Plutus.V2.Ledger.Api (Credential(..), StakingCredential(..))
+import Plutus.V2.Ledger.Api (Credential(..), StakingCredential(..), FromData(..))
 import Plutus.V1.Ledger.Value
 
 import CardanoLoans
@@ -274,8 +279,36 @@ txOutRefWithAssetAtAddress policyId' name addr = do
         | valueOf (fromCardanoValue $ I.txOutValue o) pId n > 0 && 
           addr' == (toPlutusAddress $ I.txOutAddress o) = ref
         | otherwise = findTxId pId n addr' ys
-      findTxId _ _ _ _ = Haskell.error "Test.Common.txOutRefWithValue error"
+      findTxId _ _ _ _ = Haskell.error "Test.Common.txOutRefWithAssetAtAddress error"
   return $ findTxId policyId' name addr xs
+
+-- | Find the TxOutRef and datum for the first UTxO that has the asset and is located at the 
+-- address.
+txOutRefAndDatumWithAssetAtAddress 
+  :: CurrencySymbol 
+  -> TokenName 
+  -> Address 
+  -> EmulatorTrace (TxOutRef, Maybe LoanDatum)
+txOutRefAndDatumWithAssetAtAddress policyId' name addr = do
+  state <- chainState
+  let xs = Map.toList $ getIndex (state ^. index)
+      findTxId pId n addr' ((ref,o):ys)
+        | valueOf (fromCardanoValue $ I.txOutValue o) pId n > 0 && 
+          addr' == (toPlutusAddress $ I.txOutAddress o) = (ref, txOutDatum o)
+        | otherwise = findTxId pId n addr' ys
+      findTxId _ _ _ _ = Haskell.error "Test.Common.txOutRefAndDatumWithAssetAtAddress error"
+  return $ findTxId policyId' name addr xs
+
+-- | Find all TxOutRefs and their datums located at the address.
+txOutRefsAndDatumsAtAddress :: Address -> EmulatorTrace [(TxOutRef,Maybe LoanDatum)]
+txOutRefsAndDatumsAtAddress addr = do
+  state <- chainState
+  let xs = Map.toList $ getIndex (state ^. index)
+      findTxId _ [] = []
+      findTxId addr' ((ref,o):ys)
+        | addr' == (toPlutusAddress $ I.txOutAddress o) = (ref,txOutDatum o) : findTxId addr' ys
+        | otherwise = findTxId addr' ys
+  return $ findTxId addr xs
 
 toRedeemer :: PlutusTx.ToData a => a -> Redeemer
 toRedeemer = Redeemer . PlutusTx.dataToBuiltinData . PlutusTx.toData
@@ -339,3 +372,21 @@ consumeInput (PubKeyUtxoInput _ refs) =
 createUTxO :: UtxoOutput -> TxConstraints i o
 createUTxO (UtxoOutput addr utxos) = 
   foldMap' (\(d,v) -> mustPayToAddressWith addr d Nothing v) utxos
+
+grouped :: Haskell.Int -> [a] -> [[a]]
+grouped _ [] = []
+grouped n xs = 
+  let (m,ms) = Haskell.splitAt n xs 
+  in m : grouped n ms
+
+txOutDatum :: forall d . FromData d => I.TxOut -> Maybe d
+txOutDatum (I.TxOut (Api.TxOut _aie _tov tod _rs)) =
+  case tod of
+    Api.TxOutDatumNone ->
+      Nothing
+    Api.TxOutDatumHash _era _scriptDataHash ->
+      Nothing
+    Api.TxOutDatumInline _era scriptData ->
+      fromBuiltinData @d  $ PlutusTx.dataToBuiltinData $ Api.toPlutusData scriptData
+    Api.TxOutDatumInTx _era scriptData ->
+      fromBuiltinData @d  $ PlutusTx.dataToBuiltinData $ Api.toPlutusData scriptData
