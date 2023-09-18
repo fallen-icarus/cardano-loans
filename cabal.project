@@ -27,8 +27,8 @@ with-compiler: ghc-8.10.7
 write-ghc-environment-files: never
 
 -- Always build tests and benchmarks.
-tests: true
-benchmarks: true
+tests: false
+benchmarks: false
 
 -- The only sensible test display option.
 test-show-details: direct
