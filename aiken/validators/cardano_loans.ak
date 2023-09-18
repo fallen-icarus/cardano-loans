@@ -404,7 +404,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
                   swappable,
                   claim,
                   expiration,
-                  ratio.sub(outstanding,total_paid),
+                  ratio.sub(outstanding,total_paid) |> ratio.reduce(_),
                   loan_id
                 )
                 
