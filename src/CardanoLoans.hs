@@ -480,7 +480,7 @@ decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScri
 -------------------------------------------------
 genAssetBeaconName :: (CurrencySymbol,TokenName) -> TokenName
 genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
-  TokenName $ Plutus.sha2_256 $ sym <> name
+  TokenName $ Plutus.sha2_256 $ "Asset" <> sym <> name
 
 genLoanId :: TxOutRef -> TokenName
 genLoanId (TxOutRef (Api.TxId txHash) index) = 

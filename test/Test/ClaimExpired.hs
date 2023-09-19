@@ -3372,10 +3372,11 @@ failureTest9 = do
 -------------------------------------------------
 -- Edge Cases
 -------------------------------------------------
--- | The Key NFT used is a counterfeit LoanID that is attached to an Ask UTxO. The Ask UTxO
--- is closed while the Active UTxO is claimed as expired. Since the Ask UTxO is located at
--- a dapp address, the counterfeit LoanID will not be recognized as the Key NFT. This transaction
--- will fail.
+-- | The Key NFT used was created using the `CreateAsk` redeemer and the output reference for
+-- the corresponding Offer UTxO. The Ask UTxO is closed while the Active UTxO is claimed as 
+-- expired. Since the `CreateAsk` redeemer names Asset beacons differently than the way LoanIDs
+-- are named, the counterfeit LoanID will not be recognized as the Key NFT. This transaction will 
+-- fail.
 edgeCase1 :: EmulatorTrace ()
 edgeCase1 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -3608,7 +3609,8 @@ edgeCase1 = do
                   [ (borrowerToken,-1)
                   , ("Active",-1)
                   , (assetBeacon,-1)
-                  , (loanIdToken,-2)
+                  , (loanIdToken,-1)
+                  , (fakeAssetBeacon,-1)
                   , ("Ask",-1)
                   ]
               }
@@ -5500,7 +5502,7 @@ tests = do
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 4
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 3
+        assertNoFailedTransactions $ benchTest4 4
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 4
     , checkPredicateOptions opts "benchTest6"

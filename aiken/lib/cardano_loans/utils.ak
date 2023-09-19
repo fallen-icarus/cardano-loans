@@ -89,16 +89,23 @@ fn credential_to_asset_name(cred: Credential) -> AssetName {
 }
 
 // Create the asset name for the beacon by hashing the combination of the policy id and asset name.
-// It uses the sha2_256 hash algorithm.
+// It uses the sha2_256 hash algorithm. It prefixes the pre-hash string to make it unique from
+// LoanID generation since it would otherwise be possible to create counterfeit LoanIDs. Since
+// the length of this pre-hash string would be longer than if `generate_loan_id` was used,
+// this function should be cryptographically unable to generate a counterfeit LoanID.
 pub fn generate_beacon_name(asset: (PolicyId,AssetName)) -> AssetName {
   let (policy_id,asset_name) = asset
   hash.sha2_256(
     byte.concat( policy_id, asset_name )
+    |> byte.concat( byte.from_string(@"Asset"), _ )
   )
 }
 
-// Create the LoanID from the Offer OuptutReference by hashing the combination of the tx hash
-// and the output index. It uses the sha2_256 hash algorithm.
+// Create the LoanID from the Offer `OuptutReference` by hashing the combination of the tx hash
+// and the output index. It uses the sha2_256 hash algorithm. Since the output reference input
+// comes directly from the blockchain (as opposed to the user), outputs of this function
+// should always be distinct from outputs of `generate_beacon_name` - no output references
+// are prefixed with "Asset".
 pub fn generate_loan_id(offer_ref: OutputReference) -> AssetName {
   let OutputReference(TransactionId(tx_hash),out_index) = offer_ref
   hash.sha2_256(
@@ -138,7 +145,8 @@ fn parse_datum(raw_datum: Datum) -> LoanDatum {
 
 // This is used to parse the datums attached to loan payments. It must include the beacon policy
 // id and the LoanID for the loan being paid. This is to prevent double satisfaction by creating
-// unique UTxOs for every loan payment output.
+// unique UTxOs for every loan payment output. The beacon policy is included to future proof
+// the double satisfaction prevention.
 fn parse_payment_datum(raw_datum: Datum) -> (PolicyId,AssetName) {
   when raw_datum is {
     InlineDatum(d) -> {
@@ -160,10 +168,10 @@ pub fn total_input_value(ins: List<Input>) -> Value {
   list.foldr(ins,value.zero(),foo)
 }
 
-// Check whether the proper beacons are properly minted/burned based on the redeemer.
+// Check whether the beacons are properly minted/burned based on the redeemer.
 pub fn mint_check(
   beacon_id: PolicyId,
-  beacon_names: List<AssetName>, // sha2_256 hash of each loan asset in redeemer.
+  beacon_names: List<AssetName>, // sha2_256 hash of each prefixed loan asset in redeemer.
   redeemer: BeaconRedeemer,
   mint: MintedValue
 ) -> Bool {
@@ -176,7 +184,8 @@ pub fn mint_check(
       // 1) Only the Ask beacon and the Asset beacons are minted by this redeemer. All
       //    Asset beacons minted must be found in the redeemer.
       // 2) The Ask beacon must have the token name "Ask".
-      // 3) The token name for the Asset beacons must be: sha2_256( asset_id ++ asset_name ).
+      // 3) The token name for the Asset beacons must be: 
+      //      sha2_256( "Asset" ++ asset_id ++ asset_name ).
 
       // Sorted expected names. Includes the Ask beacon name.
       let expected_names = 
@@ -211,7 +220,8 @@ pub fn mint_check(
       //    All assets whose Asset beacons will be minted must be found in the redeemer.
       // 2) The Offer beacon must have the token name "Offer".
       // 3) The LenderID must use the credential in the redeemer as the token name.
-      // 4) The Asset beacon must have the token name: sha2_256( asset_policy_id ++ asset_name ).
+      // 4) The Asset beacon must have the token name: 
+      //      sha2_256( "Asset" ++ asset_policy_id ++ asset_name ).
 
       // Sorted expected names. Includes the Offer and LenderID beacon names.
       let expected_names = 
@@ -382,7 +392,7 @@ pub fn destination_check(
         //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in UTxO and
         //    the loan asset cannot be one of the protocol's beacons.
         //  - loan_principle > 0.
-        //  - rollover_frequency > 0 if used.
+        //  - rollover_frequency > 0 if not None.
         //  - loan_term > 0.
         //  - loan_interest must have a denominator > 0 and the interest must be >= 0.
         //  - min_payment >= 0.
@@ -661,7 +671,8 @@ fn expected_active_datum(
   )
 
   // If the previous checks passed, then the datums agree on the terms.
-  // Produce the expected datum. Convert the times to absolute times based on the start time.
+  // Produce the expected datum. Convert the relative times to absolute times based on the start
+  // time.
   ActiveDatum{
     loan_beacon_sym: offer_sym,
     borrower_id: ask_borrower_id,
@@ -819,7 +830,8 @@ pub fn acceptance_input_checks(
         // Get the datums associated with the Ask and Offer.
         when (dict.get(ask_map,ask_ref),dict.get(offer_map,offer_ref)) is {
           (Some(ask_datum),Some(offer_datum)) -> {
-            expect OfferDatum(_,lender_id,lender_address,loan_asset,_,_,_,_,_,_,_,_,deposit) = offer_datum
+            expect OfferDatum(_,lender_id,lender_address,loan_asset,_,_,_,_,_,_,_,_,deposit) = 
+              offer_datum
 
             // Generate the LoanID from the Offer input.
             let offer_id = generate_loan_id(offer_ref)
@@ -1118,9 +1130,8 @@ pub fn payment_info(
       // This guarantees a unique output for every loan payment to prevent double satisfaction.
       // The payment will only count if the datum is correct. The datum must be the beacon policy id
       // with the LoanID. Since every LoanID is guaranteed to be unique, every output UTxO will be
-      // unique. Using the full output reference can also be used to prevent double satisfaction but
-      // that would make audibility harder - the policy id implicitly says what the payment is for;
-      // the same is not true for the full output reference.
+      // unique. The inclusion of the beacon policy id future proofs the double satisfaction
+      // prevention.
       if parse_payment_datum(d) != (sym,loan_id) { 
         // If it doesn't have the proper datum, this can't be a valid payment. Invalid payments
         // can be ignored since the collateral taken check will fail due to being greater than
@@ -1320,35 +1331,45 @@ pub fn find_input_and_info(
   let foo = fn(input: Input, acc: (Option<Input>,Value,Bool)) {
     let Input(ref,Output(_,val,_,_)) = input
     when acc is {
+      // The input being validated and the Key NFT have already been found.
       (Some(_) as acc_input,acc_val,True) -> 
+        // Just add the input value to the running total.
         (acc_input,value.merge(val,acc_val),True)
+      // The input being validated has been found but the Key NFT has not.
       (Some(_) as acc_input,acc_val,False) -> 
         ( acc_input
-        , value.merge(val,acc_val)
-        , value.quantity_of(val,sym,loan_id) == 1 &&
-          value.quantity_of(val,sym,"Ask") == 0 &&
+        , value.merge(val,acc_val) // Add the input value to the running total.
+        , // Check if the Key NFT is present. It would be the LoanID without the Active beacon.
+          value.quantity_of(val,sym,loan_id) == 1 &&
           value.quantity_of(val,sym,"Active") == 0
         )
+      // The input being validated has not been found yet but the Key NFT has.
       (None,acc_val,True) -> {
+        // Check if this is the input being validated.
         if ref == output_reference {
+          // Return the input information and add the input value to the running total.
           (Some(input),value.merge(val,acc_val),True)
         } else {
+          // Otherwise, just add the input value to the running total.
           (None,value.merge(val,acc_val),True)
         }
       }
+      // Neither the input being validated or the Key NFT have been found yet.
       (None,acc_val,False) -> {
+        // Check if this is the input being validated
         if ref == output_reference {
-          ( Some(input)
-          , value.merge(val,acc_val)
-          , value.quantity_of(val,sym,loan_id) == 1 &&
-            value.quantity_of(val,sym,"Ask") == 0 &&
-            value.quantity_of(val,sym,"Active") == 0
-            )
+          ( Some(input) // Return the input.
+          , value.merge(val,acc_val) // Add the input value to the running total.
+          , // This output cannot possibly have the Key NFT since the Key NFT should not
+            // be located at a loan address.
+            False
+          )
         } else {
           ( None
-          , value.merge(val,acc_val)
-          , value.quantity_of(val,sym,loan_id) == 1 &&
-            value.quantity_of(val,sym,"Ask") == 0 &&
+          , value.merge(val,acc_val) // Add the input value to the running total.
+          , // Check if the input contains the Key NFT. It should not be found with the
+            // Active beacon.
+            value.quantity_of(val,sym,loan_id) == 1 &&
             value.quantity_of(val,sym,"Active") == 0
           )
         }

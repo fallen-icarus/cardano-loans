@@ -483,8 +483,9 @@ Claiming 5 expired loans in a single transaction exceeded the limits.
 | 1 | 0.292983 ADA | 0.439475 ADA |
 | 2 | 0.523914 ADA | 0.785871 ADA |
 | 3 | 0.924348 ADA | 1.324701 ADA |
+| 4 | 1.424498 ADA | 2.136747 ADA |
 
-Claiming 4 expired loans in a single transaction exceeded the limits.
+Claiming 5 expired loans in a single transaction exceeded the limits.
 
 #### Each loan uses one asset for collateral, is for a different loan asset, and is from a different borrower.
 | Loans Claimed | Tx Fee | Req. Collateral |
