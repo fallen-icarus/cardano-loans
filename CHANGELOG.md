@@ -25,6 +25,8 @@
   This enables the borrower to be a business using arbitrary logic to control spending (eg, multisig).
 * Add an Asset beacon for more expressive off-chain queries.
 * Allow required minimum loan payments as another way for lenders to manage risk.
+* Add prefix to LenderIDs to 1) allow the protocol to keep track of the type of credential it is and
+  2) keep it distinct from the corresponding BorrowerID for the same credential.
 
 #### Documentation
 * Add an Architectural Decision Record (ADR).

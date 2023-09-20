@@ -145,8 +145,8 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // Since Active UTxOs require an Asset beacon to be kept, requirement 2c prevents the
         // `CloseOffer` redeemer from being used in the same transaction where a loan is accepted.
         
-        // Since the lender_id in the datum has stripped away whether the lender's credential is a
-        // pubkey or a staking script, both must be tried.
+        // Since the lender_id in the datum has a prefix that dictates whether to check for a
+        // pubkey or a script, the protocol knows where to look for the lender's approval.
         
         expect Some(
           Input(
@@ -1064,7 +1064,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // 1) Only the Offer beacon, LenderID, and Asset beacons can be minted with this redeemer.
         //    All assets whose Asset beacons will be minted must be found in the redeemer.
         // 2) The Offer beacon must have the token name "Offer".
-        // 3) The LenderID must use the credential in the redeemer as the token name.
+        // 3) The LenderID must use the credential in the redeemer as the token name prefixed
+        //    with either "00" or "01" if the credential is a pubkey or script, respectively.
+        //    If a script is used as the credential, it must be a staking script.
         // 4) The Asset beacon must have the token name: 
         //      sha2_256( "Asset" ++ asset_policy_id ++ asset_name ).
         // 5) The Offer UTxO must have exactly 1 Offer beacon, 1 LenderID, 1 Asset beacon, the loan
@@ -1342,7 +1344,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
   }
 }
 
-// There are a few scenarios that need to be mentioned:
+// There are a few edge case scenarios that need to be mentioned:
 
 // 1) It is technically possible to create an Asset beacon for something that is not an asset by
 // using the `CreateAsk` redeemer. For example, if the supplied policy id was a tx hash and the
@@ -1351,44 +1353,26 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
 // always be different than actual LoanIDs. This means the protocol does not need to guard against
 // counterfeit LoanIDs.
 
-// 2) The borrower is their own lender and they use the same credential. When the loan is accepted,
-// the LenderID must be burned and the BorrowerID must be minted which, in this case, nets out to
-// nothing; the LenderID from the Offer UTxO becomes the BorrowerID in the Active UTxO. The protocol
-// enforces that the BorrowerID must still be stored with the Active UTxO. While the protocol allows
-// this scenario, the borrower still cannot fake a full payment. They must still repay the loan
-// truthfully despite being their own lender. This approach can be used by the borrower to build up
-// their good credit history. This is not a bad thing - traditional finance has similar mechanisms
-// where new borrowers can borrower money from themselves for the sole reason of building up a
-// credit history. Since most lenders will likely require several years of good credit to qualify
-// for under-collateralized loans, there is a huge incentive for borrowers to keep the credit
-// history, even if they "gamed" it in the beginning. The dilemma is basically between: 
+// 2) The borrower is their own lender and they use the same credential. Despite using the same
+// credential, the LenderID and BorrowerID will be different tokens since LenderIDs are the
+// credential prefixed with either "00" or "01". Therefore, all of the rules governing the tokens
+// still apply. While the protocol allows the borrower to be their own lender, the borrower still
+// cannot fake a full payment. They must still repay the loan truthfully despite being their own
+// lender. This approach can be used by the borrower to build up good credit history. This is not a
+// bad thing - traditional finance has similar mechanisms where new borrowers can borrower money
+// from themselves for the sole reason of building up a credit history. Since most lenders will
+// likely require several years of good credit to qualify for under-collateralized loans, there is a
+// huge incentive for borrowers to keep the credit history, even if they "gamed" it in the
+// beginning. The dilemma is basically between: 
 //   - Build up several years of good credit for a few big scores of ripping off
-//     a lender that gave you an under-collateralized loan. Other lenders will see that you did 
-//     this and will not offer that credential under-collateralized loans anymore. 
+//     a lender that gave you an under-collateralized loan. 
 //   - Build up several years of good credit for lifetime access to under-collateralized loans.
 // If the borrower chooses the former, other lenders will see that they did this and will not
 // offer them under-collateralized loans going forward. If the borrower chooses the latter, they
 // can retain access to under-collateralized loans now and in the future. The economic benefits
-// of under-collaterized loans strongly incentivize borrowers to pick the second option.
+// of under-collaterized loans strongly incentivize borrowers to pick the second option. The
+// fact that this protocol uses psuedonymous identities does not alter the game theory.
 
-// 3) The borrower is their own lender and they use different credentials. The only difference
-// between this scenario and the previous one is that the LenderID does need to be burned and
-// BorrowerID must be minted; there is no net zero here. Otherwise, the reasoning is exactly the
-// same.
- 
-// 4) The LenderID and the BorrowerID can use the same credential and therefore the minting/burning
-// history (and current UTxOs) will be combined. To be clear, this scenario is when the borrower is
-// NOT their own lender. When the same credential is used as both IDs, there are clear differences
-// between the way the two IDs are used off-chain that make this safe.
-//   - The LenderID can never be found with an Active beacon.
-//   - The LenderID can never be burned in isolation:
-//     a) Closing an offer requires burning the Offer beacon, LenderID, and Asset beacon (3 tokens).
-//     b) Accepting an offer requires burning Ask beacons, Offer beacons, LenderIDs, and
-//        Asset beacons, and minting BorrowerIDs, Active beacons, and LoanIDs (7 tokens).
-// This means that:
-//   - Looking at transactions where the BorrowerID is burned in isolation is still a secure
-//     way to find loans the borrower successfully repaid. This will never be a LenderID.
-//   - Looking at transactions where the BorrowerID is burned with other tokens can still be
-//     used to find the loans where the borrower defaulted. The UTxO inputs in the transaction that
-//     have both a BorrowerID and an Active beacon are defaults. These UTxOs will never have
-//     LenderIDs.
+// 3) The borrower is their own lender and they use different credentials. There is no difference
+// between this scenario and the previous one since the protocol treats the IDs separately
+// anyway.

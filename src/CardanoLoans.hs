@@ -487,9 +487,15 @@ genLoanId (TxOutRef (Api.TxId txHash) index) =
   TokenName $ Plutus.sha2_256 $ txHash <> index'
   where TokenName index' = fromString $ show index
 
-credentialAsToken :: Credential -> TokenName
-credentialAsToken (PubKeyCredential (PubKeyHash pkh)) = TokenName pkh
-credentialAsToken (ScriptCredential (ValidatorHash vh)) = TokenName vh
+credentialAsToken :: Bool -> Credential -> TokenName
+credentialAsToken addIdentifier (PubKeyCredential (PubKeyHash pkh)) = 
+  if addIdentifier
+  then TokenName $ (unsafeToBuiltinByteString "00") <> pkh
+  else TokenName pkh
+credentialAsToken addIdentifier (ScriptCredential (ValidatorHash vh)) = 
+  if addIdentifier
+  then TokenName $ (unsafeToBuiltinByteString "01") <> vh
+  else TokenName vh
 
 type PlutusRational = Plutus.Rational
 
@@ -508,6 +514,12 @@ posixTimeToSlot = posixTimeToEnclosingSlot preprodConfig
 -- from the time yields the normalized 0 time.
 preprodConfig :: SlotConfig
 preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
+
+unsafeToBuiltinByteString :: String -> BuiltinByteString
+unsafeToBuiltinByteString = (\(LedgerBytes bytes) -> bytes)
+                          . unsafeFromRight
+                          . fromHex
+                          . fromString
 
 -- | Parse Currency from user supplied String
 readCurrencySymbol :: String -> Either String CurrencySymbol

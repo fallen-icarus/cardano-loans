@@ -189,7 +189,7 @@ regressionTest1 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -280,7 +280,7 @@ regressionTest2 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -398,7 +398,7 @@ regressionTest3 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -520,7 +520,7 @@ regressionTest4 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -645,7 +645,7 @@ regressionTest5 = do
 
     askDatum1 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset1
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -654,7 +654,7 @@ regressionTest5 = do
 
     askDatum2 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset2
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -767,7 +767,7 @@ failureTest1 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -877,7 +877,7 @@ failureTest2 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -987,7 +987,7 @@ failureTest3 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1097,7 +1097,7 @@ failureTest4 = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1220,7 +1220,7 @@ failureTest5 = do
 
     askDatum1 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset1
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1229,7 +1229,7 @@ failureTest5 = do
 
     askDatum2 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset2
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1353,7 +1353,7 @@ failureTest6 = do
 
     askDatum1 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset1
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1362,7 +1362,7 @@ failureTest6 = do
 
     askDatum2 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset2
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1480,7 +1480,7 @@ failureTest7 = do
 
     askDatum1 = OfferDatum
       { beaconSym = beaconCurrencySymbol
-      , lenderId = credentialAsToken borrowerCred
+      , lenderId = credentialAsToken False borrowerCred
       , lenderAddress = Address borrowerCred Nothing
       , loanAsset = asset1
       , loanPrinciple = 100_000_000
@@ -1496,7 +1496,7 @@ failureTest7 = do
     
     askDatum2 = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset2
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1622,7 +1622,7 @@ failureTest8 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
     asset = (adaSymbol,adaToken)
 
@@ -1889,8 +1889,8 @@ edgeCase1 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2133,8 +2133,8 @@ edgeCase2 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -2267,7 +2267,7 @@ benchTest1 numberClosed = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -2361,7 +2361,7 @@ benchTest2 numberClosed = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -2455,7 +2455,7 @@ benchTest3 numberClosed = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -2549,7 +2549,7 @@ benchTest4 numberClosed = do
 
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000

@@ -68,23 +68,41 @@ pub fn staking_credential_approves(
 }
 
 // Check whether the lender approved the transaction. This assumes the lender is using a staking
-// credential.
+// credential when the credential is a script.
 pub fn lender_approves(
   lender_id: AssetName, 
   wtdr: Dict<StakeCredential, Int>,
   sigs: List<Hash<Blake2b_224, VerificationKey>>
 ) -> Bool {
-  // Since only the credential hash is captured by the LenderID, whether the credential is a pubkey
-  // or a script is lost. Therefore, both must be tried. At least one of them should succeed.
-  staking_credential_approves(Some(Inline(VerificationKeyCredential(lender_id))),wtdr,sigs) ||
-  staking_credential_approves(Some(Inline(ScriptCredential(lender_id))),wtdr,sigs)
+  // The first two characters of the lender_id signify what kind of credential the LenderID
+  // is. "00" means the credential is a pubkey while "01" means the credential is a script.
+  let id_1 = byte.take(lender_id,1)
+  let cred = byte.drop(lender_id,1)
+  if id_1 == #"00" {
+    staking_credential_approves(Some(Inline(VerificationKeyCredential(cred))),wtdr,sigs)
+  } else if id_1 == #"01" {
+    staking_credential_approves(Some(Inline(ScriptCredential(cred))),wtdr,sigs)
+  } else { error } // This branch should never be taken.
 }
 
-// Convert a pubkey hash or script hash to an AssetName.
-fn credential_to_asset_name(cred: Credential) -> AssetName {
+// Convert a pubkey hash or script hash to an AssetName. Allows adding an identifier for
+// what kind of credential it is.
+fn credential_to_asset_name(addIdentifier: Bool, cred: Credential) -> AssetName {
   when cred is {
-    VerificationKeyCredential(pkh) -> pkh
-    ScriptCredential(sh) -> sh
+    VerificationKeyCredential(pkh) -> {
+      if addIdentifier {
+        byte.concat(#"00",pkh)
+      } else {
+        pkh 
+      }
+    }
+    ScriptCredential(sh) -> {
+      if addIdentifier {
+        byte.concat(#"01",sh)
+      } else {
+        sh 
+      }
+    }
   }
 }
 
@@ -225,7 +243,7 @@ pub fn mint_check(
 
       // Sorted expected names. Includes the Offer and LenderID beacon names.
       let expected_names = 
-        list.concat(beacon_names,["Offer",credential_to_asset_name(lender_cred)]) 
+        list.concat(beacon_names,["Offer",credential_to_asset_name(True,lender_cred)]) 
         |> list.sort(_,byte.compare) // Must sort after adding the Offer beacon and LenderID.
 
       // Sorted actual names. This will throw an error if any tokens are burned instead of minted.
@@ -348,7 +366,7 @@ pub fn destination_check(
                   beacon_sym == beacon_id &&
 
                   // The borrower_id must be the same as the credential in the redeemer.
-                  borrower_id == credential_to_asset_name(req_borrower_id) &&
+                  borrower_id == credential_to_asset_name(False,req_borrower_id) &&
 
                   // The loan_asset must be the corresponding asset for the Asset beacon present.
                   // The loan asset associated with this beacon should be found in the map created
@@ -402,7 +420,7 @@ pub fn destination_check(
         //  - offer_deposit > 0.
 
         // Convert the lender credential to an asset name.
-        let lender_name = credential_to_asset_name(req_lender_id)
+        let lender_name = credential_to_asset_name(True,req_lender_id)
 
         // Get the beacons in this UTxO and pattern match on it.
         when value.tokens(val,beacon_id) |> dict.to_list() is {
@@ -860,7 +878,7 @@ pub fn acceptance_input_checks(
               |> value.add(_,sym,"Offer",-1) 
               |> value.add(_,sym,"Active",1)
               |> value.add(_,sym,asset_beacon,-1)
-              |> value.add(_,sym,credential_to_asset_name(borrower_cred),1)
+              |> value.add(_,sym,credential_to_asset_name(False,borrower_cred),1)
 
             // Insert the lender payment information into the lender pay_map
             let new_pay_map = dict.insert(
@@ -1006,7 +1024,7 @@ pub fn acceptance_output_checks(
   //    the output could be to the proxy script. The payment datum is (beacon_sym,"Accepted").
 
   let borrower_addr = Address(ScriptCredential(dapp_hash),Some(Inline(borrower_cred)))
-  let borrower_token = credential_to_asset_name(borrower_cred)
+  let borrower_token = credential_to_asset_name(False,borrower_cred)
 
   let foo = fn (output: Output, acc: (Int,Int)) {
     let (lenders_paid,collaterals_satisfied) = acc

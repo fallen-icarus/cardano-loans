@@ -324,8 +324,8 @@ regressionTest1 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -655,8 +655,8 @@ regressionTest2 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -770,8 +770,8 @@ regressionTest3 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -1198,8 +1198,8 @@ regressionTest4 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -1316,14 +1316,14 @@ failureTest1 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
     askDatum = AskDatum
       { beaconSym = beaconCurrencySymbol
-      , borrowerId = credentialAsToken borrowerCred
+      , borrowerId = credentialAsToken False borrowerCred
       , loanAsset = asset
       , loanPrinciple = 100_000_000
       , loanTerm = 12000
@@ -1570,8 +1570,8 @@ failureTest2 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -1841,8 +1841,8 @@ failureTest3 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2112,8 +2112,8 @@ failureTest4 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2383,8 +2383,8 @@ failureTest5 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2818,8 +2818,8 @@ failureTest6 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3253,8 +3253,8 @@ failureTest7 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3688,8 +3688,8 @@ failureTest8 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4122,8 +4122,8 @@ failureTest9 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4389,9 +4389,9 @@ benchTest1 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -4662,9 +4662,9 @@ benchTest2 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -4948,9 +4948,9 @@ benchTest3 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr = Address lenderCred Nothing
 
@@ -5228,9 +5228,9 @@ benchTest4 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr = Address lenderCred Nothing
 
@@ -5561,9 +5561,9 @@ benchTest5 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -5907,9 +5907,9 @@ benchTest6 numberUnlocked = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr = Address lenderCred Nothing
 

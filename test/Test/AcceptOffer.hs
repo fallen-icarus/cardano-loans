@@ -100,7 +100,10 @@ module Test.AcceptOffer
   , failureTest78
   , failureTest79
 
-    -- * Benchmark Tests
+    -- ** Edge Case Tests
+  , edgeCase1
+
+    -- ** Benchmark Tests
   , benchTest1
   , benchTest2
   , benchTest3
@@ -358,8 +361,8 @@ regressionTest1 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -651,8 +654,8 @@ regressionTest2 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -982,9 +985,9 @@ regressionTest3 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -1334,9 +1337,9 @@ regressionTest4 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -1683,8 +1686,8 @@ regressionTest5 = do
                  $ unPaymentPubKeyHash 
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -1942,8 +1945,8 @@ regressionTest6 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2179,8 +2182,8 @@ regressionTest7 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2411,8 +2414,8 @@ regressionTest8 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2640,8 +2643,8 @@ regressionTest9 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -2813,8 +2816,8 @@ failureTest1 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3004,8 +3007,8 @@ failureTest2 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3098,8 +3101,8 @@ failureTest3 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3300,8 +3303,8 @@ failureTest4 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3528,8 +3531,8 @@ failureTest5 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -3756,8 +3759,8 @@ failureTest6 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4047,8 +4050,8 @@ failureTest7 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4338,8 +4341,8 @@ failureTest8 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4613,8 +4616,8 @@ failureTest9 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -4888,8 +4891,8 @@ failureTest10 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -5166,8 +5169,8 @@ failureTest11 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -5395,8 +5398,8 @@ failureTest12 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -5685,8 +5688,8 @@ failureTest13 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -5960,8 +5963,8 @@ failureTest14 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -6236,8 +6239,8 @@ failureTest15 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -6524,8 +6527,8 @@ failureTest16 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -6795,8 +6798,8 @@ failureTest17 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -7064,8 +7067,8 @@ failureTest18 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -7270,8 +7273,8 @@ failureTest19 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -7478,8 +7481,8 @@ failureTest20 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -7756,8 +7759,8 @@ failureTest21 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -7984,8 +7987,8 @@ failureTest22 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -8213,8 +8216,8 @@ failureTest23 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -8442,8 +8445,8 @@ failureTest24 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -8671,8 +8674,8 @@ failureTest25 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -8900,8 +8903,8 @@ failureTest26 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -9129,8 +9132,8 @@ failureTest27 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -9357,8 +9360,8 @@ failureTest28 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -9585,8 +9588,8 @@ failureTest29 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -9877,8 +9880,8 @@ failureTest30 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -10169,8 +10172,8 @@ failureTest31 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -10461,8 +10464,8 @@ failureTest32 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -10753,8 +10756,8 @@ failureTest33 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -11045,8 +11048,8 @@ failureTest34 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -11378,9 +11381,9 @@ failureTest35 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -11739,9 +11742,9 @@ failureTest36 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -12054,8 +12057,8 @@ failureTest37 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -12283,8 +12286,8 @@ failureTest38 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -12513,8 +12516,8 @@ failureTest39 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -12743,8 +12746,8 @@ failureTest40 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -12973,8 +12976,8 @@ failureTest41 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -13202,8 +13205,8 @@ failureTest42 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -13538,9 +13541,9 @@ failureTest43 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -13900,9 +13903,9 @@ failureTest44 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -14157,8 +14160,8 @@ failureTest45 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -14389,8 +14392,8 @@ failureTest46 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -14618,8 +14621,8 @@ failureTest47 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -14847,8 +14850,8 @@ failureTest48 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -15076,8 +15079,8 @@ failureTest49 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -15409,9 +15412,9 @@ failureTest50 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -15666,8 +15669,8 @@ failureTest51 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -15895,8 +15898,8 @@ failureTest52 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -16124,8 +16127,8 @@ failureTest53 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -16353,8 +16356,8 @@ failureTest54 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -16582,8 +16585,8 @@ failureTest55 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -16811,8 +16814,8 @@ failureTest56 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -17041,8 +17044,8 @@ failureTest57 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -17271,8 +17274,8 @@ failureTest58 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -17500,8 +17503,8 @@ failureTest59 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -17729,8 +17732,8 @@ failureTest60 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -17958,8 +17961,8 @@ failureTest61 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -18187,8 +18190,8 @@ failureTest62 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -18417,8 +18420,8 @@ failureTest63 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -18709,8 +18712,8 @@ failureTest64 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -19002,8 +19005,8 @@ failureTest65 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -19295,8 +19298,8 @@ failureTest66 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -19588,8 +19591,8 @@ failureTest67 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -19881,8 +19884,8 @@ failureTest68 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -20110,8 +20113,8 @@ failureTest69 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -20339,8 +20342,8 @@ failureTest70 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -20569,8 +20572,8 @@ failureTest71 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -20801,8 +20804,8 @@ failureTest72 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -21036,8 +21039,8 @@ failureTest73 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -21273,8 +21276,8 @@ failureTest74 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -21505,8 +21508,8 @@ failureTest75 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -21837,9 +21840,9 @@ failureTest76 = do
                  $ knownWallet 3
 
     
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken1 = credentialAsToken lenderCred1
-    lenderToken2 = credentialAsToken lenderCred2
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken1 = credentialAsToken True lenderCred1
+    lenderToken2 = credentialAsToken True lenderCred2
     
     asset1 = (adaSymbol,adaToken)
     assetBeacon1 = genAssetBeaconName asset1
@@ -22094,8 +22097,8 @@ failureTest77 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -22323,8 +22326,8 @@ failureTest78 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -22552,8 +22555,242 @@ failureTest79 = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    borrowerToken = credentialAsToken borrowerCred
-    lenderToken = credentialAsToken lenderCred
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-------------------------------------------------
+-- Edge Cases
+-------------------------------------------------
+-- | Accept a loan when the borrower is their own lender and uses the same credential for both.
+-- This transaction should succeed but the BorrowerID and LenderID should be different
+-- tokens despite using the same credential.
+edgeCase1 :: EmulatorTrace ()
+edgeCase1 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 1) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
     
     asset = (adaSymbol,adaToken)
     assetBeacon = genAssetBeaconName asset
@@ -22776,9 +23013,9 @@ benchTest1 numberAccepted = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -23001,9 +23238,9 @@ benchTest2 numberAccepted = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -23237,9 +23474,9 @@ benchTest3 numberAccepted = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr = Address lenderCred Nothing
 
@@ -23468,9 +23705,9 @@ benchTest4 numberAccepted = do
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 2
 
-    lenderToken = credentialAsToken lenderCred
+    lenderToken = credentialAsToken True lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr = Address lenderCred Nothing
 
@@ -23716,9 +23953,9 @@ benchTest5 numberAccepted = do
                . mockWalletPaymentPubKeyHash 
                . knownWallet
 
-    lenderToken = credentialAsToken . lenderCred
+    lenderToken = credentialAsToken True . lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     asset = (adaSymbol,adaToken)
 
@@ -23754,9 +23991,527 @@ benchTest5 numberAccepted = do
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
 -- | Accept multiple loans for different loan assets and from different lenders. Each loan
--- uses three assets for collateral, usage was split evenly.
+-- uses one asset for collateral.
 benchTest6 :: Int -> EmulatorTrace ()
 benchTest6 numberAccepted = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  h3 <- activateContractWallet (knownWallet 3) endpoints
+  h4 <- activateContractWallet (knownWallet 4) endpoints
+  h5 <- activateContractWallet (knownWallet 5) endpoints
+  h6 <- activateContractWallet (knownWallet 6) endpoints
+  h7 <- activateContractWallet (knownWallet 7) endpoints
+  h8 <- activateContractWallet (knownWallet 8) endpoints
+  h9 <- activateContractWallet (knownWallet 9) endpoints
+  h10 <- activateContractWallet (knownWallet 10) endpoints
+
+  let lenderHandles = [h2,h3,h4,h5,h6,h7,h8,h9,h10]
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let assets = map (\i -> (fst testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
+  let beacons = map genAssetBeaconName assets
+
+  let sampleAskOutputs =
+        zipWith (\a b ->
+                   ( Just $ TxOutDatumInline 
+                          $ toDatum askDatum{loanAsset = a}
+                   , lovelaceValueOf 3_000_000
+                   <> singleton beaconCurrencySymbol "Ask" 1
+                   <> singleton beaconCurrencySymbol b 1
+                   )  
+                )
+                assets
+                beacons
+  let sampleAskMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets 
+          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1)
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleAskMints ( 9 :: Int ) ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 9 sampleAskOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  mapM_ 
+    (\i -> do
+      let asset = assets!!(i-2)
+      let assetBeacon = beacons!!(i-2)
+
+      void $ waitNSlots 2
+      callEndpoint @"create-transaction" (lenderHandles!!(i-2)) $
+        CreateTransactionParams
+          { tokens = 
+              [ 
+                TokenMint 
+                  { mintWitness = 
+                      ( beaconMintingPolicy
+                      , Just (refScriptAddress, mintRef)
+                      )
+                  , mintRedeemer = 
+                      toRedeemer $ CreateOffer (lenderCred $ fromIntegral i) [asset]
+                  , mintTokens = 
+                      [ ("Offer",1)
+                      , (assetBeacon,1)
+                      , (lenderToken $ fromIntegral i, 1)
+                      ]
+                  }
+              ]
+          , inputs = []
+          , outputs =
+              [ UtxoOutput
+                  { toAddress = loanAddr
+                  , outputUtxos = 
+                      [ ( Just $ TxOutDatumInline 
+                               $ toDatum offerDatum{ lenderId = lenderToken $ fromIntegral i
+                                                   , lenderAddress = lenderAddr $ fromIntegral i
+                                                   , loanAsset = asset
+                                                   }
+                        , lovelaceValueOf 4_000_000 
+                        <> singleton beaconCurrencySymbol "Offer" 1
+                        <> singleton beaconCurrencySymbol assetBeacon 1
+                        <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
+                        <> uncurry singleton asset 10
+                        )
+                      ]
+                  }
+              ]
+          , validityRange = ValidityInterval Nothing Nothing
+          }
+    )
+    [2..10]
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  targetAsks <- mapM txOutRefWithValue $ take numberAccepted $ map snd sampleAskOutputs
+  targetOffers <- mapM txOutRefWithValue $ take numberAccepted $ map
+    (\i ->
+      lovelaceValueOf 4_000_000 
+      <> singleton beaconCurrencySymbol "Offer" 1
+      <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
+      <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
+      <> uncurry singleton (assets!!(i-2)) 10
+    )
+    [2..10]
+
+  let loanIds = map genLoanId targetOffers
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr 1 -- This will get replaced.
+        , loanAsset = testToken1 -- This will get replaced.
+        , loanPrinciple = 10
+        , rolloverFrequency = Nothing
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = collateralization offerDatum
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + loanTerm offerDatum + claimPeriod offerDatum
+        , loanExpiration = startTime + loanTerm offerDatum
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = "" -- This will get replaced.
+        }
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = 
+              toRedeemer $ CreateActive borrowerCred $ zip targetAsks targetOffers 
+          , mintTokens = mconcat 
+              [ zip loanIds (repeat 2)
+              , [ ("Ask",fromIntegral (-i))
+                , ("Offer",fromIntegral (-i))
+                , ("Active",fromIntegral i)
+                , (borrowerToken, fromIntegral i)
+                ]
+              , take i $ map (\y -> (lenderToken y,-1)) [2..10]
+              , take i $ map (\y -> (beacons!!(y-2),-1)) [2..10]
+              ] 
+          }
+
+  let sampleCollateral =  
+        map (\i ->
+               ( Just $ TxOutDatumInline 
+                      $ toDatum activeDatum{ loanId = loanIds!!(i-2)
+                                           , lenderAddress = lenderAddr $ fromIntegral i
+                                           , loanAsset = assets!!(i-2)
+                                           }
+               , lovelaceValueOf 4_000_000
+               <> singleton beaconCurrencySymbol "Active" 1
+               <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
+               <> singleton beaconCurrencySymbol borrowerToken 1
+               <> singleton beaconCurrencySymbol (loanIds!!(i-2)) 1
+               <> uncurry singleton testToken15 10
+               )  
+            )
+            [2..10]
+
+  let samplePayments =  
+        map (\i ->
+              UtxoOutput
+                { toAddress = lenderAddr i
+                , outputUtxos = 
+                    [ ( Just $ TxOutDatumInline 
+                             $ toDatum 
+                             $ PaymentDatum (beaconCurrencySymbol, "Accepted")
+                      , lovelaceValueOf 4_000_000
+                      <> singleton beaconCurrencySymbol (loanIds!!(fromIntegral i - 2)) 1
+                      ) 
+                    ]
+                }
+            )
+            [2..10]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberAccepted ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = targetAsks <> targetOffers
+              }
+          ]
+      , outputs = mconcat
+          [ [ UtxoOutput
+                { toAddress = loanAddr
+                , outputUtxos = take numberAccepted sampleCollateral
+                }
+            ]
+          , take numberAccepted samplePayments
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    lenderCred = PubKeyCredential
+               . unPaymentPubKeyHash 
+               . mockWalletPaymentPubKeyHash 
+               . knownWallet
+
+    lenderToken = credentialAsToken True . lenderCred
+
+    borrowerToken = credentialAsToken False borrowerCred
+
+    lenderAddr i = Address (lenderCred i) Nothing
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = testToken1 -- This will be replaced.
+      , loanPrinciple = 10
+      , loanTerm = 12000
+      , collateral = [testToken15]
+      }
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken 1 -- This will be changed.
+        , lenderAddress = Address (lenderCred 1) Nothing -- This will be changed.
+        , loanAsset = testToken1 -- This will be changed.
+        , loanPrinciple = 10
+        , rolloverFrequency = Nothing
+        , minPayment = 2
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = 
+            [ (testToken15,unsafeRatio 1 1)
+            ]
+        , claimPeriod = 10000
+        , offerDeposit = 4_000_000
+        , collateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | Accept multiple loans for different loan assets and from different lenders. Each loan
+-- uses two assets for collateral, usage was split evenly.
+benchTest7 :: Int -> EmulatorTrace ()
+benchTest7 numberAccepted = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  h3 <- activateContractWallet (knownWallet 3) endpoints
+  h4 <- activateContractWallet (knownWallet 4) endpoints
+  h5 <- activateContractWallet (knownWallet 5) endpoints
+  h6 <- activateContractWallet (knownWallet 6) endpoints
+  h7 <- activateContractWallet (knownWallet 7) endpoints
+  h8 <- activateContractWallet (knownWallet 8) endpoints
+  h9 <- activateContractWallet (knownWallet 9) endpoints
+  h10 <- activateContractWallet (knownWallet 10) endpoints
+
+  let lenderHandles = [h2,h3,h4,h5,h6,h7,h8,h9,h10]
+
+  ( mintRef,spendRef ) <- initializeScripts
+
+  let assets = map (\i -> (fst testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
+  let beacons = map genAssetBeaconName assets
+
+  let sampleAskOutputs =
+        zipWith (\a b ->
+                   ( Just $ TxOutDatumInline 
+                          $ toDatum askDatum{loanAsset = a}
+                   , lovelaceValueOf 3_000_000
+                   <> singleton beaconCurrencySymbol "Ask" 1
+                   <> singleton beaconCurrencySymbol b 1
+                   )  
+                )
+                assets
+                beacons
+  let sampleAskMints i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets 
+          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1)
+          }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleAskMints ( 9 :: Int ) ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = take 9 sampleAskOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  mapM_ 
+    (\i -> do
+      let asset = assets!!(i-2)
+      let assetBeacon = beacons!!(i-2)
+
+      void $ waitNSlots 2
+      callEndpoint @"create-transaction" (lenderHandles!!(i-2)) $
+        CreateTransactionParams
+          { tokens = 
+              [ 
+                TokenMint 
+                  { mintWitness = 
+                      ( beaconMintingPolicy
+                      , Just (refScriptAddress, mintRef)
+                      )
+                  , mintRedeemer = 
+                      toRedeemer $ CreateOffer (lenderCred $ fromIntegral i) [asset]
+                  , mintTokens = 
+                      [ ("Offer",1)
+                      , (assetBeacon,1)
+                      , (lenderToken $ fromIntegral i, 1)
+                      ]
+                  }
+              ]
+          , inputs = []
+          , outputs =
+              [ UtxoOutput
+                  { toAddress = loanAddr
+                  , outputUtxos = 
+                      [ ( Just $ TxOutDatumInline 
+                               $ toDatum offerDatum{ lenderId = lenderToken $ fromIntegral i
+                                                   , lenderAddress = lenderAddr $ fromIntegral i
+                                                   , loanAsset = asset
+                                                   }
+                        , lovelaceValueOf 4_000_000 
+                        <> singleton beaconCurrencySymbol "Offer" 1
+                        <> singleton beaconCurrencySymbol assetBeacon 1
+                        <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
+                        <> uncurry singleton asset 10
+                        )
+                      ]
+                  }
+              ]
+          , validityRange = ValidityInterval Nothing Nothing
+          }
+    )
+    [2..10]
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  targetAsks <- mapM txOutRefWithValue $ take numberAccepted $ map snd sampleAskOutputs
+  targetOffers <- mapM txOutRefWithValue $ take numberAccepted $ map
+    (\i ->
+      lovelaceValueOf 4_000_000 
+      <> singleton beaconCurrencySymbol "Offer" 1
+      <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
+      <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
+      <> uncurry singleton (assets!!(i-2)) 10
+    )
+    [2..10]
+
+  let loanIds = map genLoanId targetOffers
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr 1 -- This will get replaced.
+        , loanAsset = testToken1 -- This will get replaced.
+        , loanPrinciple = 10
+        , rolloverFrequency = Nothing
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 2
+        , collateralization = collateralization offerDatum
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + loanTerm offerDatum + claimPeriod offerDatum
+        , loanExpiration = startTime + loanTerm offerDatum
+        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = "" -- This will get replaced.
+        }
+
+  let sampleBurn i =
+        TokenMint
+          { mintWitness = 
+              ( beaconMintingPolicy
+              , Just (refScriptAddress, mintRef)
+              )
+          , mintRedeemer = 
+              toRedeemer $ CreateActive borrowerCred $ zip targetAsks targetOffers 
+          , mintTokens = mconcat 
+              [ zip loanIds (repeat 2)
+              , [ ("Ask",fromIntegral (-i))
+                , ("Offer",fromIntegral (-i))
+                , ("Active",fromIntegral i)
+                , (borrowerToken, fromIntegral i)
+                ]
+              , take i $ map (\y -> (lenderToken y,-1)) [2..10]
+              , take i $ map (\y -> (beacons!!(y-2),-1)) [2..10]
+              ] 
+          }
+
+  let sampleCollateral =  
+        map (\i ->
+               ( Just $ TxOutDatumInline 
+                      $ toDatum activeDatum{ loanId = loanIds!!(i-2)
+                                           , lenderAddress = lenderAddr $ fromIntegral i
+                                           , loanAsset = assets!!(i-2)
+                                           }
+               , lovelaceValueOf 4_000_000
+               <> singleton beaconCurrencySymbol "Active" 1
+               <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
+               <> singleton beaconCurrencySymbol borrowerToken 1
+               <> singleton beaconCurrencySymbol (loanIds!!(i-2)) 1
+               <> uncurry singleton testToken15 5
+               <> uncurry singleton testToken16 5
+               )  
+            )
+            [2..10]
+
+  let samplePayments =  
+        map (\i ->
+              UtxoOutput
+                { toAddress = lenderAddr i
+                , outputUtxos = 
+                    [ ( Just $ TxOutDatumInline 
+                             $ toDatum 
+                             $ PaymentDatum (beaconCurrencySymbol, "Accepted")
+                      , lovelaceValueOf 4_000_000
+                      <> singleton beaconCurrencySymbol (loanIds!!(fromIntegral i - 2)) 1
+                      ) 
+                    ]
+                }
+            )
+            [2..10]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = [ sampleBurn numberAccepted ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = targetAsks <> targetOffers
+              }
+          ]
+      , outputs = mconcat
+          [ [ UtxoOutput
+                { toAddress = loanAddr
+                , outputUtxos = take numberAccepted sampleCollateral
+                }
+            ]
+          , take numberAccepted samplePayments
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+
+    lenderCred = PubKeyCredential
+               . unPaymentPubKeyHash 
+               . mockWalletPaymentPubKeyHash 
+               . knownWallet
+
+    lenderToken = credentialAsToken True . lenderCred
+
+    borrowerToken = credentialAsToken False borrowerCred
+
+    lenderAddr i = Address (lenderCred i) Nothing
+
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = testToken1 -- This will be replaced.
+      , loanPrinciple = 10
+      , loanTerm = 12000
+      , collateral = [testToken15,testToken16]
+      }
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken 1 -- This will be changed.
+        , lenderAddress = Address (lenderCred 1) Nothing -- This will be changed.
+        , loanAsset = testToken1 -- This will be changed.
+        , loanPrinciple = 10
+        , rolloverFrequency = Nothing
+        , minPayment = 2
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = 
+            [ (testToken15,unsafeRatio 1 1)
+            , (testToken16,unsafeRatio 1 1)
+            ]
+        , claimPeriod = 10000
+        , offerDeposit = 4_000_000
+        , collateralIsSwappable = True
+        }
+      
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | Accept multiple loans for different loan assets and from different lenders. Each loan
+-- uses three assets for collateral, usage was split evenly.
+benchTest8 :: Int -> EmulatorTrace ()
+benchTest8 numberAccepted = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
   h3 <- activateContractWallet (knownWallet 3) endpoints
@@ -23978,9 +24733,9 @@ benchTest6 numberAccepted = do
                . mockWalletPaymentPubKeyHash 
                . knownWallet
 
-    lenderToken = credentialAsToken . lenderCred
+    lenderToken = credentialAsToken True . lenderCred
 
-    borrowerToken = credentialAsToken borrowerCred
+    borrowerToken = credentialAsToken False borrowerCred
 
     lenderAddr i = Address (lenderCred i) Nothing
 
@@ -24015,526 +24770,8 @@ benchTest6 numberAccepted = do
       
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
--- | Accept multiple loans for different loan assets and from different lenders. Each loan
--- uses one asset for collateral.
-benchTest7 :: Int -> EmulatorTrace ()
-benchTest7 numberAccepted = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  h3 <- activateContractWallet (knownWallet 3) endpoints
-  h4 <- activateContractWallet (knownWallet 4) endpoints
-  h5 <- activateContractWallet (knownWallet 5) endpoints
-  h6 <- activateContractWallet (knownWallet 6) endpoints
-  h7 <- activateContractWallet (knownWallet 7) endpoints
-  h8 <- activateContractWallet (knownWallet 8) endpoints
-  h9 <- activateContractWallet (knownWallet 9) endpoints
-  h10 <- activateContractWallet (knownWallet 10) endpoints
-
-  let lenderHandles = [h2,h3,h4,h5,h6,h7,h8,h9,h10]
-
-  ( mintRef,spendRef ) <- initializeScripts
-
-  let assets = map (\i -> (fst testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
-  let beacons = map genAssetBeaconName assets
-
-  let sampleAskOutputs =
-        zipWith (\a b ->
-                   ( Just $ TxOutDatumInline 
-                          $ toDatum askDatum{loanAsset = a}
-                   , lovelaceValueOf 3_000_000
-                   <> singleton beaconCurrencySymbol "Ask" 1
-                   <> singleton beaconCurrencySymbol b 1
-                   )  
-                )
-                assets
-                beacons
-  let sampleAskMints i =
-        TokenMint
-          { mintWitness = 
-              ( beaconMintingPolicy
-              , Just (refScriptAddress, mintRef)
-              )
-          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets 
-          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1)
-          }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = [ sampleAskMints ( 9 :: Int ) ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = take 9 sampleAskOutputs
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  mapM_ 
-    (\i -> do
-      let asset = assets!!(i-2)
-      let assetBeacon = beacons!!(i-2)
-
-      void $ waitNSlots 2
-      callEndpoint @"create-transaction" (lenderHandles!!(i-2)) $
-        CreateTransactionParams
-          { tokens = 
-              [ 
-                TokenMint 
-                  { mintWitness = 
-                      ( beaconMintingPolicy
-                      , Just (refScriptAddress, mintRef)
-                      )
-                  , mintRedeemer = 
-                      toRedeemer $ CreateOffer (lenderCred $ fromIntegral i) [asset]
-                  , mintTokens = 
-                      [ ("Offer",1)
-                      , (assetBeacon,1)
-                      , (lenderToken $ fromIntegral i, 1)
-                      ]
-                  }
-              ]
-          , inputs = []
-          , outputs =
-              [ UtxoOutput
-                  { toAddress = loanAddr
-                  , outputUtxos = 
-                      [ ( Just $ TxOutDatumInline 
-                               $ toDatum offerDatum{ lenderId = lenderToken $ fromIntegral i
-                                                   , lenderAddress = lenderAddr $ fromIntegral i
-                                                   , loanAsset = asset
-                                                   }
-                        , lovelaceValueOf 4_000_000 
-                        <> singleton beaconCurrencySymbol "Offer" 1
-                        <> singleton beaconCurrencySymbol assetBeacon 1
-                        <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
-                        <> uncurry singleton asset 10
-                        )
-                      ]
-                  }
-              ]
-          , validityRange = ValidityInterval Nothing Nothing
-          }
-    )
-    [2..10]
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  targetAsks <- mapM txOutRefWithValue $ take numberAccepted $ map snd sampleAskOutputs
-  targetOffers <- mapM txOutRefWithValue $ take numberAccepted $ map
-    (\i ->
-      lovelaceValueOf 4_000_000 
-      <> singleton beaconCurrencySymbol "Offer" 1
-      <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
-      <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
-      <> uncurry singleton (assets!!(i-2)) 10
-    )
-    [2..10]
-
-  let loanIds = map genLoanId targetOffers
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr 1 -- This will get replaced.
-        , loanAsset = testToken1 -- This will get replaced.
-        , loanPrinciple = 10
-        , rolloverFrequency = Nothing
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 2
-        , collateralization = collateralization offerDatum
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + loanTerm offerDatum + claimPeriod offerDatum
-        , loanExpiration = startTime + loanTerm offerDatum
-        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = "" -- This will get replaced.
-        }
-
-  let sampleBurn i =
-        TokenMint
-          { mintWitness = 
-              ( beaconMintingPolicy
-              , Just (refScriptAddress, mintRef)
-              )
-          , mintRedeemer = 
-              toRedeemer $ CreateActive borrowerCred $ zip targetAsks targetOffers 
-          , mintTokens = mconcat 
-              [ zip loanIds (repeat 2)
-              , [ ("Ask",fromIntegral (-i))
-                , ("Offer",fromIntegral (-i))
-                , ("Active",fromIntegral i)
-                , (borrowerToken, fromIntegral i)
-                ]
-              , take i $ map (\y -> (lenderToken y,-1)) [2..10]
-              , take i $ map (\y -> (beacons!!(y-2),-1)) [2..10]
-              ] 
-          }
-
-  let sampleCollateral =  
-        map (\i ->
-               ( Just $ TxOutDatumInline 
-                      $ toDatum activeDatum{ loanId = loanIds!!(i-2)
-                                           , lenderAddress = lenderAddr $ fromIntegral i
-                                           , loanAsset = assets!!(i-2)
-                                           }
-               , lovelaceValueOf 4_000_000
-               <> singleton beaconCurrencySymbol "Active" 1
-               <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
-               <> singleton beaconCurrencySymbol borrowerToken 1
-               <> singleton beaconCurrencySymbol (loanIds!!(i-2)) 1
-               <> uncurry singleton testToken15 10
-               )  
-            )
-            [2..10]
-
-  let samplePayments =  
-        map (\i ->
-              UtxoOutput
-                { toAddress = lenderAddr i
-                , outputUtxos = 
-                    [ ( Just $ TxOutDatumInline 
-                             $ toDatum 
-                             $ PaymentDatum (beaconCurrencySymbol, "Accepted")
-                      , lovelaceValueOf 4_000_000
-                      <> singleton beaconCurrencySymbol (loanIds!!(fromIntegral i - 2)) 1
-                      ) 
-                    ]
-                }
-            )
-            [2..10]
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = [ sampleBurn numberAccepted ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = targetAsks <> targetOffers
-              }
-          ]
-      , outputs = mconcat
-          [ [ UtxoOutput
-                { toAddress = loanAddr
-                , outputUtxos = take numberAccepted sampleCollateral
-                }
-            ]
-          , take numberAccepted samplePayments
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-
-    lenderCred = PubKeyCredential
-               . unPaymentPubKeyHash 
-               . mockWalletPaymentPubKeyHash 
-               . knownWallet
-
-    lenderToken = credentialAsToken . lenderCred
-
-    borrowerToken = credentialAsToken borrowerCred
-
-    lenderAddr i = Address (lenderCred i) Nothing
-
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = testToken1 -- This will be replaced.
-      , loanPrinciple = 10
-      , loanTerm = 12000
-      , collateral = [testToken15]
-      }
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken 1 -- This will be changed.
-        , lenderAddress = Address (lenderCred 1) Nothing -- This will be changed.
-        , loanAsset = testToken1 -- This will be changed.
-        , loanPrinciple = 10
-        , rolloverFrequency = Nothing
-        , minPayment = 2
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = 
-            [ (testToken15,unsafeRatio 1 1)
-            ]
-        , claimPeriod = 10000
-        , offerDeposit = 4_000_000
-        , collateralIsSwappable = True
-        }
-      
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
--- | Accept multiple loans for different loan assets and from different lenders. Each loan
--- uses two assets for collateral, usage was split evenly.
-benchTest8 :: Int -> EmulatorTrace ()
-benchTest8 numberAccepted = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-  h2 <- activateContractWallet (knownWallet 2) endpoints
-  h3 <- activateContractWallet (knownWallet 3) endpoints
-  h4 <- activateContractWallet (knownWallet 4) endpoints
-  h5 <- activateContractWallet (knownWallet 5) endpoints
-  h6 <- activateContractWallet (knownWallet 6) endpoints
-  h7 <- activateContractWallet (knownWallet 7) endpoints
-  h8 <- activateContractWallet (knownWallet 8) endpoints
-  h9 <- activateContractWallet (knownWallet 9) endpoints
-  h10 <- activateContractWallet (knownWallet 10) endpoints
-
-  let lenderHandles = [h2,h3,h4,h5,h6,h7,h8,h9,h10]
-
-  ( mintRef,spendRef ) <- initializeScripts
-
-  let assets = map (\i -> (fst testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
-  let beacons = map genAssetBeaconName assets
-
-  let sampleAskOutputs =
-        zipWith (\a b ->
-                   ( Just $ TxOutDatumInline 
-                          $ toDatum askDatum{loanAsset = a}
-                   , lovelaceValueOf 3_000_000
-                   <> singleton beaconCurrencySymbol "Ask" 1
-                   <> singleton beaconCurrencySymbol b 1
-                   )  
-                )
-                assets
-                beacons
-  let sampleAskMints i =
-        TokenMint
-          { mintWitness = 
-              ( beaconMintingPolicy
-              , Just (refScriptAddress, mintRef)
-              )
-          , mintRedeemer = toRedeemer $ CreateAsk borrowerCred $ take i assets 
-          , mintTokens = ("Ask",fromIntegral i) : take i (zip beacons $ repeat 1)
-          }
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = [ sampleAskMints ( 9 :: Int ) ]
-      , inputs = []
-      , outputs =
-          [ UtxoOutput
-              { toAddress = loanAddr
-              , outputUtxos = take 9 sampleAskOutputs
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  mapM_ 
-    (\i -> do
-      let asset = assets!!(i-2)
-      let assetBeacon = beacons!!(i-2)
-
-      void $ waitNSlots 2
-      callEndpoint @"create-transaction" (lenderHandles!!(i-2)) $
-        CreateTransactionParams
-          { tokens = 
-              [ 
-                TokenMint 
-                  { mintWitness = 
-                      ( beaconMintingPolicy
-                      , Just (refScriptAddress, mintRef)
-                      )
-                  , mintRedeemer = 
-                      toRedeemer $ CreateOffer (lenderCred $ fromIntegral i) [asset]
-                  , mintTokens = 
-                      [ ("Offer",1)
-                      , (assetBeacon,1)
-                      , (lenderToken $ fromIntegral i, 1)
-                      ]
-                  }
-              ]
-          , inputs = []
-          , outputs =
-              [ UtxoOutput
-                  { toAddress = loanAddr
-                  , outputUtxos = 
-                      [ ( Just $ TxOutDatumInline 
-                               $ toDatum offerDatum{ lenderId = lenderToken $ fromIntegral i
-                                                   , lenderAddress = lenderAddr $ fromIntegral i
-                                                   , loanAsset = asset
-                                                   }
-                        , lovelaceValueOf 4_000_000 
-                        <> singleton beaconCurrencySymbol "Offer" 1
-                        <> singleton beaconCurrencySymbol assetBeacon 1
-                        <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
-                        <> uncurry singleton asset 10
-                        )
-                      ]
-                  }
-              ]
-          , validityRange = ValidityInterval Nothing Nothing
-          }
-    )
-    [2..10]
-
-  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
-
-  targetAsks <- mapM txOutRefWithValue $ take numberAccepted $ map snd sampleAskOutputs
-  targetOffers <- mapM txOutRefWithValue $ take numberAccepted $ map
-    (\i ->
-      lovelaceValueOf 4_000_000 
-      <> singleton beaconCurrencySymbol "Offer" 1
-      <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
-      <> singleton beaconCurrencySymbol (lenderToken $ fromIntegral i) 1
-      <> uncurry singleton (assets!!(i-2)) 10
-    )
-    [2..10]
-
-  let loanIds = map genLoanId targetOffers
-  let activeDatum = ActiveDatum
-        { beaconSym = beaconCurrencySymbol 
-        , borrowerId = borrowerToken
-        , lenderAddress = lenderAddr 1 -- This will get replaced.
-        , loanAsset = testToken1 -- This will get replaced.
-        , loanPrinciple = 10
-        , rolloverFrequency = Nothing
-        , lastCheckpoint = startTime
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , minPayment = 2
-        , collateralization = collateralization offerDatum
-        , collateralIsSwappable = True
-        , claimExpiration = startTime + loanTerm offerDatum + claimPeriod offerDatum
-        , loanExpiration = startTime + loanTerm offerDatum
-        , loanOutstanding = fromInt 10 .*. (fromInt 1 .+. unsafeRatio 1 10) 
-        , loanId = "" -- This will get replaced.
-        }
-
-  let sampleBurn i =
-        TokenMint
-          { mintWitness = 
-              ( beaconMintingPolicy
-              , Just (refScriptAddress, mintRef)
-              )
-          , mintRedeemer = 
-              toRedeemer $ CreateActive borrowerCred $ zip targetAsks targetOffers 
-          , mintTokens = mconcat 
-              [ zip loanIds (repeat 2)
-              , [ ("Ask",fromIntegral (-i))
-                , ("Offer",fromIntegral (-i))
-                , ("Active",fromIntegral i)
-                , (borrowerToken, fromIntegral i)
-                ]
-              , take i $ map (\y -> (lenderToken y,-1)) [2..10]
-              , take i $ map (\y -> (beacons!!(y-2),-1)) [2..10]
-              ] 
-          }
-
-  let sampleCollateral =  
-        map (\i ->
-               ( Just $ TxOutDatumInline 
-                      $ toDatum activeDatum{ loanId = loanIds!!(i-2)
-                                           , lenderAddress = lenderAddr $ fromIntegral i
-                                           , loanAsset = assets!!(i-2)
-                                           }
-               , lovelaceValueOf 4_000_000
-               <> singleton beaconCurrencySymbol "Active" 1
-               <> singleton beaconCurrencySymbol (beacons!!(i-2)) 1
-               <> singleton beaconCurrencySymbol borrowerToken 1
-               <> singleton beaconCurrencySymbol (loanIds!!(i-2)) 1
-               <> uncurry singleton testToken15 5
-               <> uncurry singleton testToken16 5
-               )  
-            )
-            [2..10]
-
-  let samplePayments =  
-        map (\i ->
-              UtxoOutput
-                { toAddress = lenderAddr i
-                , outputUtxos = 
-                    [ ( Just $ TxOutDatumInline 
-                             $ toDatum 
-                             $ PaymentDatum (beaconCurrencySymbol, "Accepted")
-                      , lovelaceValueOf 4_000_000
-                      <> singleton beaconCurrencySymbol (loanIds!!(fromIntegral i - 2)) 1
-                      ) 
-                    ]
-                }
-            )
-            [2..10]
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = [ sampleBurn numberAccepted ]
-      , inputs = 
-          [ ScriptUtxoInput
-              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer AcceptOffer
-              , spendFromAddress = loanAddr
-              , spendUtxos = targetAsks <> targetOffers
-              }
-          ]
-      , outputs = mconcat
-          [ [ UtxoOutput
-                { toAddress = loanAddr
-                , outputUtxos = take numberAccepted sampleCollateral
-                }
-            ]
-          , take numberAccepted samplePayments
-          ]
-      , validityRange = ValidityInterval (Just startTime) Nothing
-      }
-
-  where
-    borrowerCred = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-
-    lenderCred = PubKeyCredential
-               . unPaymentPubKeyHash 
-               . mockWalletPaymentPubKeyHash 
-               . knownWallet
-
-    lenderToken = credentialAsToken . lenderCred
-
-    borrowerToken = credentialAsToken borrowerCred
-
-    lenderAddr i = Address (lenderCred i) Nothing
-
-    askDatum = AskDatum
-      { beaconSym = beaconCurrencySymbol
-      , borrowerId = borrowerToken
-      , loanAsset = testToken1 -- This will be replaced.
-      , loanPrinciple = 10
-      , loanTerm = 12000
-      , collateral = [testToken15,testToken16]
-      }
-
-    offerDatum = OfferDatum
-        { beaconSym = beaconCurrencySymbol
-        , lenderId = lenderToken 1 -- This will be changed.
-        , lenderAddress = Address (lenderCred 1) Nothing -- This will be changed.
-        , loanAsset = testToken1 -- This will be changed.
-        , loanPrinciple = 10
-        , rolloverFrequency = Nothing
-        , minPayment = 2
-        , loanTerm = 12000
-        , loanInterest = unsafeRatio 1 10
-        , collateralization = 
-            [ (testToken15,unsafeRatio 1 1)
-            , (testToken16,unsafeRatio 1 1)
-            ]
-        , claimPeriod = 10000
-        , offerDeposit = 4_000_000
-        , collateralIsSwappable = True
-        }
-      
-    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
-
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest6
 
 -------------------------------------------------
 -- Test Function
@@ -24723,6 +24960,10 @@ tests = do
     , checkPredicateOptions opts "failureTest79"
         (assertEvaluationError "All datums must be inline datums") failureTest79
 
+      -- Edge Case Tests
+    , checkPredicateOptions opts "edgeCase1"
+        assertNoFailedTransactions edgeCase1
+
       -- Benchmarks
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 5
@@ -24743,5 +24984,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest2
-
+testTrace = runEmulatorTraceIO' def emConfig edgeCase1

@@ -17,13 +17,13 @@ import CardanoLoans
 -------------------------------------------------
 -- Configs
 -------------------------------------------------
--- | 52 ADA is the default. This is what the cardano-loans spending validator requires.
+-- | 62 ADA is the default. This is what the cardano-loans spending validator requires.
 minUTxOSpendRef :: Integer
-minUTxOSpendRef = 61_000_000
+minUTxOSpendRef = 62_000_000
 
--- | 62 ADA is the default. This is what the cardano-loans minting policy requires.
+-- | 70 ADA is the default. This is what the cardano-loans minting policy requires.
 minUTxOMintRef :: Integer
-minUTxOMintRef = 69_000_000
+minUTxOMintRef = 70_000_000
 
 -- | An always succeeding validator address without a staking credential.
 refScriptAddress :: Address
