@@ -5314,7 +5314,7 @@ regressionTest15 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }

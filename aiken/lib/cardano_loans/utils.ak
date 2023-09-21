@@ -1303,6 +1303,7 @@ pub fn collateral_taken_check(
 pub fn update_loan_check(
   loan_addr: Address,
   req_val: Value,
+  deposit_increase: Int,
   req_datum: LoanDatum,
   outputs: List<Output>
 ) -> Bool {
@@ -1318,14 +1319,14 @@ pub fn update_loan_check(
         // this function must first check if the proper output has already been found.
 
         // If acc is True, the proper output has already been found and all other outputs can be
-        // skipped. Otherwise, both the datum and value must be correct. In the case where the
-        // datum grows in size, the amount of ADA stored with the UTxO may no longer be enough.
-        // There needs to be a way for the minimum ADA amount to increase whenever this is the
-        // case. To this end, the new UTxO value must either be exactly equal to the input value
-        // OR equal to the input value + 1 ADA.
+        // skipped. Otherwise, both the datum and value must be correct. In the case where the datum
+        // grows in size or the parameters change, the amount of ADA stored with the UTxO may no
+        // longer be enough. There needs to be a way for the minimum ADA amount to increase whenever
+        // this is the case. The redeemer can specify the amount of ADA to increase the deposit by.
+
         acc || (
           parse_datum(d) == req_datum && 
-          ( req_val == oval || value.add(req_val,#"",#"",1_000_000) == oval )
+          ( value.add(req_val,#"",#"",deposit_increase) == oval )
         )
       }
     }

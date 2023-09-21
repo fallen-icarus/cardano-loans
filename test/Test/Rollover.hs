@@ -45,8 +45,9 @@ module Test.Rollover
   , failureTest28
   , failureTest29
   , failureTest30
+  , failureTest31
 
-    -- * Benchmark Tests
+    -- ** Benchmark Tests
   , benchTest1
   , benchTest2
 
@@ -323,7 +324,7 @@ regressionTest1 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -689,7 +690,7 @@ regressionTest2 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1, active2 ]
               }
@@ -984,7 +985,7 @@ regressionTest3 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 1_000_000
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -1386,7 +1387,7 @@ regressionTest4 = do
               }
           , ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active2 ]
               }
@@ -1560,7 +1561,7 @@ failureTest1 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ ask1 ]
               }
@@ -1881,7 +1882,7 @@ failureTest2 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ post1 ]
               }
@@ -2166,7 +2167,7 @@ failureTest3 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -2453,7 +2454,7 @@ failureTest4 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -2741,7 +2742,7 @@ failureTest5 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -3029,7 +3030,7 @@ failureTest6 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -3317,7 +3318,7 @@ failureTest7 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -3605,7 +3606,7 @@ failureTest8 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -3893,7 +3894,7 @@ failureTest9 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -4181,7 +4182,7 @@ failureTest10 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -4467,7 +4468,7 @@ failureTest11 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -4755,7 +4756,7 @@ failureTest12 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -5043,7 +5044,7 @@ failureTest13 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -5331,7 +5332,7 @@ failureTest14 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -5619,7 +5620,7 @@ failureTest15 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -5907,7 +5908,7 @@ failureTest16 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -6195,7 +6196,7 @@ failureTest17 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -6483,7 +6484,7 @@ failureTest18 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -6769,7 +6770,7 @@ failureTest19 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -7057,7 +7058,7 @@ failureTest20 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -7344,7 +7345,7 @@ failureTest21 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -7630,7 +7631,7 @@ failureTest22 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -7916,7 +7917,7 @@ failureTest23 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -8202,7 +8203,7 @@ failureTest24 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -8488,7 +8489,7 @@ failureTest25 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -8555,7 +8556,7 @@ failureTest25 = do
     
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
--- | The value of ADA is increased by less than 1 ADA.
+-- | The value of ADA is increased by less than ADA in redeemer.
 failureTest26 :: EmulatorTrace ()
 failureTest26 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -8774,7 +8775,7 @@ failureTest26 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 1_000_000
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -9141,7 +9142,7 @@ failureTest27 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1, active2 ]
               }
@@ -9515,7 +9516,7 @@ failureTest28 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1, active2 ]
               }
@@ -9810,7 +9811,7 @@ failureTest29 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -10162,7 +10163,7 @@ failureTest30 = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = [ active1 ]
               }
@@ -10183,6 +10184,293 @@ failureTest30 = do
               }
           ]
       , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  where
+    borrowerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+    lenderCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+
+    borrowerToken = credentialAsToken False borrowerCred
+    lenderToken = credentialAsToken True lenderCred
+    
+    asset = (adaSymbol,adaToken)
+    assetBeacon = genAssetBeaconName asset
+    
+    askDatum = AskDatum
+      { beaconSym = beaconCurrencySymbol
+      , borrowerId = borrowerToken
+      , loanAsset = asset
+      , loanPrinciple = 100_000_000
+      , loanTerm = 12000
+      , collateral = [testToken1]
+      }
+
+    lenderAddr = Address lenderCred Nothing
+
+    offerDatum = OfferDatum
+        { beaconSym = beaconCurrencySymbol
+        , lenderId = lenderToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , minPayment = 500_000
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , collateralization = [(testToken1,unsafeRatio 1 10_000_000)]
+        , claimPeriod = 10000
+        , offerDeposit = 3_000_000
+        , collateralIsSwappable = True
+        }
+    
+    loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
+
+-- | The redeemer has a negative `Integer`.
+failureTest31 :: EmulatorTrace ()
+failureTest31 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  
+  (mintRef,spendRef) <- initializeScripts
+
+  -- Create the Ask UTxO.
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateAsk borrowerCred [asset]
+              , mintTokens = [("Ask",1),(assetBeacon,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum askDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Ask" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+  
+  -- Create the Offer UTxO.
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateOffer lenderCred [asset]
+              , mintTokens = [("Offer",1),(assetBeacon,1),(lenderToken,1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum offerDatum
+                    , lovelaceValueOf 103_000_000 
+                    <> singleton beaconCurrencySymbol "Offer" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol lenderToken 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  startTime <- slotToBeginPOSIXTime def <$> waitNSlots 2
+
+  ask1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Ask" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            askDatum
+  offer1 <- txOutRefWithValueAndDatum 
+            ( lovelaceValueOf 103_000_000 
+            <> singleton beaconCurrencySymbol "Offer" 1
+            <> singleton beaconCurrencySymbol lenderToken 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            )
+            offerDatum
+
+  let loanIdToken = genLoanId offer1
+  let activeDatum = ActiveDatum
+        { beaconSym = beaconCurrencySymbol 
+        , borrowerId = borrowerToken
+        , lenderAddress = lenderAddr
+        , loanAsset = asset
+        , loanPrinciple = 100_000_000
+        , rolloverFrequency = Just 1
+        , lastCheckpoint = startTime
+        , loanTerm = 12000
+        , loanInterest = unsafeRatio 1 10
+        , minPayment = 500_000
+        , collateralization = [(testToken1, unsafeRatio 1 10_000_000)]
+        , collateralIsSwappable = True
+        , claimExpiration = startTime + 12000 + 10000
+        , loanExpiration = startTime + 12000
+        , loanOutstanding = fromInt 100_000_000 .*. (fromInt 1 .+. unsafeRatio 1 10) 
+        , loanId = loanIdToken
+        }
+  
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer $ CreateActive borrowerCred [(ask1,offer1)]
+              , mintTokens = 
+                  [ ("Active",1)
+                  , (assetBeacon,-1)
+                  , (lenderToken,-1)
+                  , (borrowerToken,1)
+                  , ("Ask",-1)
+                  , ("Offer",-1)
+                  , (loanIdToken,2)
+                  ]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer AcceptOffer
+              , spendFromAddress = loanAddr
+              , spendUtxos = 
+                  [ ask1
+                  , offer1
+                  ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum activeDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = lenderAddr
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline
+                           $ toDatum 
+                           $ PaymentDatum (beaconCurrencySymbol,"Accepted") 
+                    , lovelaceValueOf 3_000_000
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval (Just startTime) Nothing
+      }
+
+  void $ waitNSlots 2
+
+  active1 <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol "Active" 1
+            <> singleton beaconCurrencySymbol assetBeacon 1
+            <> singleton beaconCurrencySymbol loanIdToken 1
+            <> singleton beaconCurrencySymbol borrowerToken 1
+            <> uncurry singleton testToken1 10
+            )
+            activeDatum
+
+  let newActiveDatum = activeDatum
+        { lastCheckpoint = 
+            lastCheckpoint activeDatum + fromMaybe 0 (rolloverFrequency activeDatum)
+        , loanOutstanding = 
+            loanOutstanding activeDatum .*. (fromInt 1 .+. loanInterest activeDatum)
+        }
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer BurnBeacons
+              , mintTokens = []
+              }
+          ]
+      , inputs = 
+          [ ScriptUtxoInput
+              { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer $ Rollover (-1)
+              , spendFromAddress = loanAddr
+              , spendUtxos = [ active1 ]
+              }
+          ]
+      , outputs =
+          [ UtxoOutput
+              { toAddress = loanAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum newActiveDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol "Active" 1
+                    <> singleton beaconCurrencySymbol assetBeacon 1
+                    <> singleton beaconCurrencySymbol loanIdToken 1
+                    <> singleton beaconCurrencySymbol borrowerToken 1
+                    <> uncurry singleton testToken1 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing (Just $ loanExpiration activeDatum)
       }
 
   where
@@ -10446,7 +10734,7 @@ benchTest1 numberPaid = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = take numberPaid $ map fst targetLoans
               }
@@ -10728,7 +11016,7 @@ benchTest2 numberPaid = do
       , inputs = 
           [ ScriptUtxoInput
               { spendWitness = (loanValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer Rollover
+              , spendRedeemer = toRedeemer $ Rollover 0
               , spendFromAddress = loanAddr
               , spendUtxos = take numberPaid $ map fst targetLoans
               }
@@ -10879,6 +11167,8 @@ tests = do
         (assertEvaluationError "Next rollover is required") failureTest29
     , checkPredicateOptions opts "failureTest30"
         (assertEvaluationError "invalid-hereafter not specified") failureTest30
+    , checkPredicateOptions opts "failureTest31"
+        (assertEvaluationError "Int not >= 0") failureTest31
 
       -- Benchmarks
     , checkPredicateOptions opts "benchTest1"

@@ -478,7 +478,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         }
       }
 
-      Rollover -> {
+      Rollover(deposit_increase) -> {
         // This redeemer is used to have the loan accrue interest at set intervals.
         
         // The Active UTxO must be re-output to this address with the proper value and the properly
@@ -492,9 +492,10 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // 2) The input must have a BorrowerID. This implies the other beacons are also present.
         // 3) The loan must not be expired.
         // 4) The address' staking credential must signal approval.
-        // 5) There must be an corresponding Active UTxO output to this address with the exact 
-        //    same value (or the exact same value + 1 ADA) and proper datum. The datum must be
-        //    the same as input except:
+        // 5) The deposit_increase must be >= 0.
+        // 6) There must be an corresponding Active UTxO output to this address with the exact 
+        //    same value + the amount of ADA specified by the redeemer and proper datum. The 
+        //    datum must be the same as input except:
         //      - loan_outstanding == outstanding * (1 + loan_interest)
         //      - last_checkpoint == last_checkpoint + rollover_frequency
         
@@ -519,13 +520,11 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // more involved data analyses of the credit history. To keep the data analyses simple, the
         // protocol just prevents this scenario in the first place.
         
-        // Because the datum can grow with this redeemer, the minUTxOValue requirement can also
-        // increase. Therefore, requiring the value of the new UTxO to be exactly the same
-        // as the input could be too strict in some situations. To relax this restriction
-        // slightly, the output UTxO can have the input value + 1 ADA. IT MUST BE EXACTLY 1
-        // ADA. This hardcoding makes it cheap to check that this relaxation is not abused.
-        // 1 ADA should be more than enough for most situations. This should also be enough
-        // in the scenario where the Cardano protocol parameters are updated.
+        // Because the datum can grow with this redeemer, the minUTxOValue requirement can increase.
+        // Parameter changes can also make this requirement grow. Therefore, requiring the value of
+        // the new UTxO to be exactly the same as the input could be too strict in some situations.
+        // To relax this restriction slightly, the output UTxO can have the input value + the amount
+        // of ADA specified by the redeemer. 
         
         expect Some(
           Input(
@@ -605,13 +604,19 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
               utils.staking_credential_approves(stake,wdrw,sigs)
             ) &&
 
+            // The deposit_increase must be >= 0.
+            trace_if_false(
+              @"Int not >= 0",
+              deposit_increase >= 0
+            ) &&
+
             // There must be an output to this address with:
               // An updated datum:
                 // 1) The loan outstanding must acrue interest.
                 // 2) The last_checkpoint must be updated.
               // The exact same value as the input.
-            // Requirement 5.
-            utils.update_loan_check(addr,utxo_value,expected_datum,outputs)
+            // Requirement 6.
+            utils.update_loan_check(addr,utxo_value,deposit_increase,expected_datum,outputs)
           }
 
           _ -> error @"Datum is not an ActiveDatum"
@@ -731,7 +736,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         }
       }
 
-      UpdateLenderAddress(new_address) -> {
+      UpdateLenderAddress(new_address,deposit_increase) -> {
 
         // Since the Key NFT can be traded among lenders, there needs to be a way for the new owner
         // of the Key NFT to update the lender_address field of the corresponding loan. That is the
@@ -748,18 +753,17 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // 5) There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
         // 6) The new address must use either the pubkey or the proxy script for the payment
         //    credential. If the proxy script is used, the address must have a staking credential.
-        // 7) There must be an Active UTxO output to this address with the exact same value and
+        // 7) The deposit_increase must be >= 0.
+        // 8) There must be an Active UTxO output to this address with the exact same value and
         //    proper datum, same as input datum except for the new lender_address. The address
-        //    in the datum must be the same address in the redeemer. The value can be increased
-        //    by exactly 1 ADA if necessary.
+        //    in the datum must be the same address in the redeemer. The value must be the same
+        //    as the input value + the amount of lovelace specified in the redeemer.
         
-        // Since the datum can grow with this redeemer, the minUTxOValue requirement can also
-        // increase. Therefore, requiring the value of the new UTxO to be exactly the same as the
-        // input could be too strict in some situations. To relax this restriction slightly, the
-        // output UTxO can have the input value + 1 ADA. IT MUST BE EXACTLY 1 ADA. This hardcoding
-        // makes it cheap to check that this relaxation is not abused. 1 ADA should be more than
-        // enough for most situations. This should also be enough if the Cardano protocol parameters
-        // change.
+        // Since the datum can grow with this redeemer, the minUTxOValue requirement can increase.
+        // This requirement can also increase due to parameter changes. Therefore, requiring the
+        // value of the new UTxO to be exactly the same as the input could be too strict in some
+        // situations. To relax this restriction slightly, the output UTxO can have the input value
+        // + the amount of ADA specified by the redeemer. IT MUST BE EXACTLY THIS AMOUNT OF ADA.
         
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
@@ -838,8 +842,14 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
               utils.valid_lender_address(proxy_hash,new_address)
             ) &&
 
-            // There must be the proper output to this address. Requirement 7.
-            utils.update_loan_check(addr,utxo_value,expected_datum,outputs)
+            // The deposit_increase increase must be >= 0. Requirement 7.
+            trace_if_false(
+              @"Int not >= 0",
+              deposit_increase >= 0
+            ) &&
+
+            // There must be the proper output to this address. Requirement 8.
+            utils.update_loan_check(addr,utxo_value,deposit_increase,expected_datum,outputs)
           }
 
           _ -> error @"Datum is not an ActiveDatum"

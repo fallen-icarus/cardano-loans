@@ -399,9 +399,9 @@ data LoanRedeemer
   | CloseOffer
   | AcceptOffer
   | MakePayment
-  | Rollover
+  | Rollover Integer
   | ClaimExpired
-  | UpdateLenderAddress Address
+  | UpdateLenderAddress Address Integer
   | Unlock
   deriving (Generic,Show)
 

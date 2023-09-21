@@ -53,9 +53,9 @@ pub type LoanRedeemer {
   CloseOffer
   AcceptOffer
   MakePayment
-  Rollover
+  Rollover{deposit_increase: Int}
   ClaimExpired
-  UpdateLenderAddress{new_address: Address}
+  UpdateLenderAddress{new_address: Address, deposit_increase: Int}
   Unlock
 }
 
