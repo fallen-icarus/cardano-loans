@@ -2,8 +2,8 @@
 
 All benchmarks were done using reference scripts and the cardano-node emulator that is part of [plutus-apps](https://github.com/input-output-hk/plutus-apps). The scripts for this protocol are too large to be used locally so it is required that reference scripts are used. The emulator used the same parameters as the mainnet.
 
-The loan validator script requires about 61 ADA to be stored on-chain as a reference script.
-The beacon policy script requires about 69 ADA to be stored on-chain as a reference script.
+The loan validator script requires about 62 ADA to be stored on-chain as a reference script.
+The beacon policy script requires about 70 ADA to be stored on-chain as a reference script.
 
 It is recommended that users share reference scripts using something like [cardano-reference-script](https://github.com/fallen-icarus/cardano-reference-scripts) so that there is only one copy of each script stored on chain at a time.
 
