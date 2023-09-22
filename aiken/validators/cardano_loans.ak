@@ -634,12 +634,10 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         
         // To successfully claim the collateral for an expired loan, all of the following must be true:
         // 1) The input must have an ActiveDatum.
-        // 2) The input must have an Active beacon.
-        // 3) The input must have a BorrowerID.
-        // 4) The input must have a LoanID.
-        // 5) The loan must be expired.
-        // 6) There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
-        // 7) All of the beacons among the tx inputs must be burned.
+        // 2) The input must have a BorrowerID.
+        // 3) The loan must be expired.
+        // 4) There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
+        // 5) All of the beacons among the tx inputs must be burned.
         
         // The BorrowerID is required so that only the borrower can claim the minUTxOValue deposit
         // that was stored with the Active UTxO. This deposit belongs to the borrower. Finished
@@ -683,38 +681,26 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
             let asset_name = utils.generate_beacon_name(loan_asset)
             let mint_as_val = value.from_minted_value(mint)
 
-            // The input must have an Active beacon. Requirement 2.
-            trace_if_false(
-              @"Input missing Active beacon",
-              value.quantity_of(utxo_value,sym,"Active") == 1
-            ) &&
-
-            // The input must have a BorrowerID. Requirement 3.
+            // The input must have a BorrowerID. Requirement 2.
             trace_if_false(
               @"Input missing BorrowerID",
               value.quantity_of(utxo_value,sym,borrower_id) == 1
             ) &&
 
-            // The input must have the Lock NFT. Requirement 4.
-            trace_if_false(
-              @"Input missing LoanID",
-              value.quantity_of(utxo_value,sym,loan_id) == 1
-            ) &&
-
-            // The loan must be expired. Requirement 5.
+            // The loan must be expired. Requirement 3.
             trace_if_false(
               @"Loan is not expired",
               claim_time > expiration
             ) &&
 
             // There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
-            // Requirement 6.
+            // Requirement 4.
             trace_if_false(
               @"Key NFT not found",
               key_present
             ) &&
             
-            // All beacons among inputs must be burned. Requirement 7.
+            // All beacons among inputs must be burned. Requirement 5.
             trace_if_false(
               @"Not all beacons burned",
               // Active beacons burned.
@@ -748,13 +734,12 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // To successfully update the loan_address for an active loan, all of the following must be
         // true:
         // 1) The input must have an ActiveDatum.
-        // 3) The input must have a BorrowerID.
-        // 4) The input must have a LoanID.
-        // 5) There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
-        // 6) The new address must use either the pubkey or the proxy script for the payment
+        // 2) The input must have a BorrowerID.
+        // 3) There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
+        // 4) The new address must use either the pubkey or the proxy script for the payment
         //    credential. If the proxy script is used, the address must have a staking credential.
-        // 7) The deposit_increase must be >= 0.
-        // 8) There must be an Active UTxO output to this address with the exact same value and
+        // 5) The deposit_increase must be >= 0.
+        // 6) There must be an Active UTxO output to this address with the exact same value and
         //    proper datum, same as input datum except for the new lender_address. The address
         //    in the datum must be the same address in the redeemer. The value must be the same
         //    as the input value + the amount of lovelace specified in the redeemer.
@@ -810,45 +795,33 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
               loan_id
             )
 
-            // The input must have an Active beacon. Requirement 2.
-            trace_if_false(
-              @"Input missing Active beacon",
-              value.quantity_of(utxo_value,sym,"Active") == 1
-            ) &&
-
-            // The input must have a BorrowerID. Requirement 3.
+            // The input must have a BorrowerID. Requirement 2.
             trace_if_false(
               @"Input missing BorrowerID",
               value.quantity_of(utxo_value,sym,borrower_id) == 1
             ) &&
 
-            // The input must have the Lock NFT. Requirement 4.
-            trace_if_false(
-              @"Input missing LoanID",
-              value.quantity_of(utxo_value,sym,loan_id) == 1
-            ) &&
-
             // There must be 1 LoanID among the tx inputs that is NOT located at a dapp address.
-            // Requirement 5.
+            // Requirement 3.
             trace_if_false(
               @"Key NFT not found",
               key_present
             ) &&
 
             // The new address uses a pubkey or the proxy script for the payment credential.
-            // Requirement 6.
+            // Requirement 4.
             trace_if_false(
               @"Invalid new address",
               utils.valid_lender_address(proxy_hash,new_address)
             ) &&
 
-            // The deposit_increase increase must be >= 0. Requirement 7.
+            // The deposit_increase increase must be >= 0. Requirement 5.
             trace_if_false(
               @"Int not >= 0",
               deposit_increase >= 0
             ) &&
 
-            // There must be the proper output to this address. Requirement 8.
+            // There must be the proper output to this address. Requirement 6.
             utils.update_loan_check(addr,utxo_value,deposit_increase,expected_datum,outputs)
           }
 

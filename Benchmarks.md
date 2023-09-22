@@ -503,8 +503,9 @@ Claiming 5 expired loans in a single transaction exceeded the limits.
 | 1 | 0.294414 ADA | 0.441621 ADA |
 | 2 | 0.526129 ADA | 0.789194 ADA |
 | 3 | 0.888355 ADA | 1.332533 ADA |
+| 4 | 1.418012 ADA | 2.127018 ADA |
 
-Claiming 4 expired loans in a single transaction exceeded the limits.
+Claiming 5 expired loans in a single transaction exceeded the limits.
 
 
 

@@ -11453,7 +11453,7 @@ tests = do
     , checkPredicateOptions opts "failureTest27"
         (assertEvaluationError "Datum is not an ActiveDatum") failureTest27
     , checkPredicateOptions opts "failureTest28"
-        (assertEvaluationError "Input missing Active beacon") failureTest28
+        (assertEvaluationError "Input missing BorrowerID") failureTest28
     , checkPredicateOptions opts "failureTest29"
         (assertEvaluationError "Input missing BorrowerID") failureTest29
     , checkPredicateOptions opts "failureTest30"

@@ -5454,7 +5454,7 @@ benchTest6 numberClaimed = do
     groupSize = 4
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest6
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest5
 
 -------------------------------------------------
 -- Test Function
@@ -5474,7 +5474,7 @@ tests = do
     , checkPredicateOptions opts "failureTest1"
         (assertEvaluationError "Datum is not an ActiveDatum") failureTest1
     , checkPredicateOptions opts "failureTest2"
-        (assertEvaluationError "Input missing Active beacon") failureTest2
+        (assertEvaluationError "Input missing BorrowerID") failureTest2
     , checkPredicateOptions opts "failureTest3"
         (assertEvaluationError "Input missing BorrowerID") failureTest3
     , checkPredicateOptions opts "failureTest4"
@@ -5506,7 +5506,7 @@ tests = do
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 4
     , checkPredicateOptions opts "benchTest6"
-        assertNoFailedTransactions $ benchTest6 3
+        assertNoFailedTransactions $ benchTest6 4
     ]
 
 testTrace :: IO ()
