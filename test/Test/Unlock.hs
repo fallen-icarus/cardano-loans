@@ -5946,7 +5946,7 @@ benchTest6 numberUnlocked = do
     groupSize = 4
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest2
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest5
 
 -------------------------------------------------
 -- Test Function
@@ -5996,9 +5996,23 @@ tests = do
     , checkPredicateOptions opts "benchTest4"
         assertNoFailedTransactions $ benchTest4 4
     , checkPredicateOptions opts "benchTest5"
-        assertNoFailedTransactions $ benchTest5 5
+        assertNoFailedTransactions $ benchTest5 6
     , checkPredicateOptions opts "benchTest6"
         assertNoFailedTransactions $ benchTest6 5
+
+      -- Performance Increase Tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 6
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 5
+    , checkPredicateOptions opts "perfIncreaseTest3"
+        (Test.not assertNoFailedTransactions) $ benchTest3 5
+    , checkPredicateOptions opts "perfIncreaseTest4"
+        (Test.not assertNoFailedTransactions) $ benchTest4 5
+    , checkPredicateOptions opts "perfIncreaseTest5"
+        (Test.not assertNoFailedTransactions) $ benchTest5 7
+    , checkPredicateOptions opts "perfIncreaseTest6"
+        (Test.not assertNoFailedTransactions) $ benchTest6 6
     ]
 
 testTrace :: IO ()

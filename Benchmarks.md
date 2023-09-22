@@ -173,9 +173,9 @@ Closing 32 Offers in a single transaction exceeded the limits.
 | 15 | 1.208952 ADA | 1.813428 ADA |
 | 20 | 1.541535 ADA | 2.312303 ADA |
 | 25 | 1.874471 ADA | 2.811707 ADA |
-| 26 | 1.939773 ADA | 2.909660 ADA |
+| 27 | 1.989545 ADA | 2.984318 ADA |
 
-Closing 27 Offers in a single transaction exceeded the limits.
+Closing 28 Offers in a single transaction exceeded the limits.
 
 #### All UTxOs are for different loan assets. One asset was offered for collateral.
 | Offers Created | Tx Fee | Req. Collateral |
@@ -196,9 +196,9 @@ over the limits.
 | 5 | 0.634659 ADA | 0.951989 ADA |
 | 10 | 1.091064 ADA | 1.636596 ADA |
 | 15 | 1.582113 ADA | 2.373170 ADA |
-| 17 | 1.810400 ADA | 2.715600 ADA |
+| 18 | 1.874089 ADA | 2.811134 ADA |
 
-The maximum number of Offer UTxOs that could be created was 17. The 18th pushed the transaction 
+The maximum number of Offer UTxOs that could be created was 18. The 19th pushed the transaction 
 over the limits.
 
 
@@ -559,8 +559,9 @@ Unlocking 5 UTxOs in a single transaction exceeded the limits.
 | 3 | 0.479526 ADA | 0.719289 ADA |
 | 4 | 0.693287 ADA | 1.039931 ADA |
 | 5 | 1.002028 ADA | 1.503042 ADA |
+| 6 | 1.403347 ADA | 2.105021 ADA |
 
-Unlocking 6 UTxOs in a single transaction exceeded the limits.
+Unlocking 7 UTxOs in a single transaction exceeded the limits.
 
 #### All UTxOs were finished loans. Each UTxO was for a different loan asset. No collateral was still present.
 | UTxOs Unlocked | Tx Fee | Req. Collateral |

@@ -25452,6 +25452,24 @@ tests = do
         assertNoFailedTransactions $ benchTest7 5
     , checkPredicateOptions opts "benchTest8"
         assertNoFailedTransactions $ benchTest8 4
+
+      -- Performance Increase Tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 6
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 6
+    , checkPredicateOptions opts "perfIncreaseTest3"
+        (Test.not assertNoFailedTransactions) $ benchTest3 6
+    , checkPredicateOptions opts "perfIncreaseTest4"
+        (Test.not assertNoFailedTransactions) $ benchTest4 6
+    , checkPredicateOptions opts "perfIncreaseTest5"
+        (Test.not assertNoFailedTransactions) $ benchTest5 6
+    , checkPredicateOptions opts "perfIncreaseTest6"
+        (Test.not assertNoFailedTransactions) $ benchTest6 6
+    , checkPredicateOptions opts "perfIncreaseTest7"
+        (Test.not assertNoFailedTransactions) $ benchTest7 6
+    , checkPredicateOptions opts "perfIncreaseTest8"
+        (Test.not assertNoFailedTransactions) $ benchTest8 5
     ]
 
 testTrace :: IO ()

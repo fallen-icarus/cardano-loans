@@ -11175,6 +11175,12 @@ tests = do
         assertNoFailedTransactions $ benchTest1 12
     , checkPredicateOptions opts "benchTest2"
         assertNoFailedTransactions $ benchTest2 11
+
+      -- Performance Increase Tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 13
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 12
     ]
 
 testTrace :: IO ()

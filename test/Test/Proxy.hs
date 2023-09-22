@@ -258,6 +258,10 @@ tests = do
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 58
+
+      -- Performance Increase tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 59
     ]
 
 testTrace :: IO ()

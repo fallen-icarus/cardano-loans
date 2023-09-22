@@ -22302,7 +22302,17 @@ tests = do
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 5
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 6
+        assertNoFailedTransactions $ benchTest4 7
+
+      -- Performance Increase Tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 8
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 7
+    , checkPredicateOptions opts "perfIncreaseTest3"
+        (Test.not assertNoFailedTransactions) $ benchTest3 6
+    , checkPredicateOptions opts "perfIncreaseTest4"
+        (Test.not assertNoFailedTransactions) $ benchTest4 8
     ]
 
 testTrace :: IO ()
