@@ -13,8 +13,8 @@ repository cardano-haskell-packages
 
 -- See CONTRIBUTING.adoc for how to update index-state
 index-state:
-  , hackage.haskell.org 2023-04-20T00:00:00Z
-  , cardano-haskell-packages 2023-05-10T00:00:00Z
+  , hackage.haskell.org 2023-04-19T21:29:05Z
+  , cardano-haskell-packages 2023-05-09T19:32:49Z
 
 extra-packages:
   cardano-crypto-class
@@ -27,8 +27,8 @@ with-compiler: ghc-8.10.7
 write-ghc-environment-files: never
 
 -- Always build tests and benchmarks.
-tests: false
-benchmarks: false
+tests: true
+benchmarks: true
 
 -- The only sensible test display option.
 test-show-details: direct
