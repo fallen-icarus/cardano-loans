@@ -13,29 +13,35 @@ use cardano_loans/utils.{trace_if_false,error_if_false}
 
 validator { 
   fn proxy(_datum: Data, _redeemer: Data, ctx: ScriptContext) -> Bool {
+    
+    // Since using the datums to guarantee uniqueness of loan payments is currently the cheapest
+    // option, all lender addresses must be able to accept this datum. In the future, it may
+    // be possible to cheaply use the reference script field of the UTxO for uniqueness instead
+    // which would free up the datum. For now, all lender addresses must be able to accept UTxOs
+    // with the datum enforced by the protocol.
 
-    // Since borrowers make payments directly to lenders, borrowers cannot be trusted to create
-    // datums on behalf of the lender in the case where the lender's address uses a payment script.
-    // Furthermore, requiring a specific datum to be used with loan payments would either increase
-    // the size of loan datums (if the required datum is stored in the loan datum) or increase the
-    // script's computation (if the required datum is referenced in the transaction). Either way, it
-    // could significantly hurt the number of loans that can be combined into a single transaction.
-    // On the other hand, allowing addresses with any arbitrary payment script can result in
-    // payments to lenders being locked forever due to malformed datums. Unfortunately, since a
-    // plutus script cannot distinguish between a native script and a plutus script, not allowing
-    // any payment script would prevent the use of multisig (a desirable feature for pooled
-    // lenders).
-     
+    // One option would be allow addresses with any arbitrary payment script and trust the lender
+    // to ensure that the script can accept the required datum. However, mistakes happen and these
+    // are financial transactions so safe guards should be used whenever possible.
+
+    // Another option is to disallow plutus scripts. Unfortunately, since a plutus script cannot
+    // distinguish between a native script and a plutus script, the only way to actually do this is
+    // to disallow all payment scripts altogether. Not allowing any payment script would prevent the
+    // use of multisig - a desirable feature for pooled lenders. Therefore, this option is too
+    // strict.
+
     // A different approach would be to allow the lenders to set up a personal, "pre-approved" proxy
     // script address that can have arbitrary logic for what to do next. It can accept any datum and
     // redeemer. The proxy payment script would simply delegate spending authority to the staking
     // credential for the proxy address. This has a few benefits: 1) There can be a single payment
-    // script hash that the loan validator can look for. 2) The proxy script can still have
-    // arbitrary logic since it can accept any datum and redeemer, and just delegates to the staking
-    // script, which can be a pubkey, native script, or plutus script. 3) The datum in loan payment
-    // outputs can still be determined by the loan validator which is more convenient than using a
-    // receipt token. This approach still allows lenders to use multisig despite being strict on the
-    // type of datum used for loan payments.
+    // script hash that the loan validator can look for which make the check cheap. 2) The proxy
+    // script can still have arbitrary logic since it can accept any datum and redeemer, and just
+    // delegates to the staking script, which can be a pubkey, native script, or plutus script. 3)
+    // The datum in loan payment outputs can still be determined by the loan validator which is more
+    // convenient than using a receipt token. This approach still allows lenders to use multisig
+    // despite being strict on the type of datum used for loan payments. This is the approach that
+    // will be taken until it is possible to use the reference script field for uniqueness. This
+    // proxy validator is the "pre-approved" scripts.
     
     // It is important to note that a staking script can be executed by withdrawing 0 ADA from the
     // rewards address. In order to use this method, the rewards address must be

@@ -253,15 +253,14 @@ relying on a specialized aggregator/batcher.
 #### Proxy Script
 
 Since Cardano-Loans has borrowers make payments directly to lender's, care must be taken when the
-lender's address uses a payment plutus script. If the datum is malformed (or missing), the loan
-payment can be locked forever. Unfortunately, plutus scripts cannot differentiate between native
-scripts (which do not require a datum) and plutus scripts. Therefore, all scripts must be treated
-equally.
+lender's address uses a payment plutus script. This is because the protocol enforces a specific
+datum with loan payments in order to guarantee uniqueness of outputs - this is currently the
+cheapest option. If the loan payments with this enforced datum are sent to a lender address that
+requires a different datum, the loan payment can be locked forever.
 
-Since lenders may want to manage their revenue using arbitrary logic (eq, multisig), there is demand
-for allowing arbitrary logic for lender address. The protocol uses a pre-approved proxy script to
-trustlessly enable this feature without compromising security and composition. The proxy script can
-accept any datum, use any redeemer, and simply delegates spending authorization to the address'
+To address this issue, Cardano-Loans uses a pre-approved proxy script to trustlessly enable
+arbitrary logic for lender addresses without compromising security and composition. The proxy script
+can accept any datum, use any redeemer, and simply delegates spending authorization to the address'
 staking credential, which can be anything. You can read more about this in the
 [ADR](architectural-decisions/002-proxy-script.md).
 
