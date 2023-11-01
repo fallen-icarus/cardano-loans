@@ -285,10 +285,12 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // 4) The BorrowerID must be present in the input.
         // 5) The loan must not be expired.
         // 6) The next rollover must not be required yet.
-        // 7) There must be an Active UTxO output to the dapp address with the proper datum:
-        //  - Exactly the same as the input's datum except the outstanding balance is updated
-        //    to reflect payment.
-        // 8) Payments to the lender's address must include the proper datum.
+        // 7) There must be an Active UTxO output to the same address as the input with the proper 
+        //    datum:
+        //      - Exactly the same as the input's datum except the outstanding balance is updated
+        //        to reflect payment.
+        // 8) Payments to the lender's address must include the proper datum: 
+        //      - (beacon policy id, this loanId) 
         // 9) If the total amount paid to the lender is >= outstanding balance, the 
         //    loan is fully repaid:
         //      a) The BorrowerID for this loan must be burned.
@@ -656,7 +658,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // transaction as long as they control all the required Key NFTs.
         
         // All loans claimed with this redeemer will count as defaults against the borrower.
-        
+
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
           ActiveDatum(
@@ -755,6 +757,12 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // value of the new UTxO to be exactly the same as the input could be too strict in some
         // situations. To relax this restriction slightly, the output UTxO can have the input value
         // + the amount of ADA specified by the redeemer. IT MUST BE EXACTLY THIS AMOUNT OF ADA.
+
+        // The dominant use case for this redeemer is when a Key NFT is purchased on the secondary
+        // market and the new owner needs to change the address. This redeemer therefore prioritizes
+        // composing the purchase of the Key NFT with the changing of the lender address. In this
+        // scenario, the Key NFT would be "moving" to a new UTxO which means it would be found in
+        // the transaction inputs, as opposed to the reference inputs.
         
         // The datum must be an ActiveDatum. Requirement 1.
         when datum is {
@@ -840,15 +848,15 @@ validator(proxy_hash: Hash<Blake2b_224,Script>) {
         // This redeemer has three purposes:
         // 1) Spend invalid Active UTxOs (ie, UTxO with an ActiveDatum but missing an Active Beacon).
         //    None of the other redeemers allow spending invalid ActiveDatums. One is required to
-        //    prevent permanent locking in case of accidents. This redeemer can be used for this
-        //    purpose.
+        //    prevent permanent locking in case of accidents. 
         // 2) Unlock expired collateral if the Key NFT is lost. Since the Key NFT can be 
         //    accidentally lost forever, it would be possible for the corresponding collateral to 
         //    also be lost forever without an escape hatch. This redeemer can be used by the 
         //    borrower to claim lost collateral but only after the agreed upon claim period has 
         //    passed. Any collateral claimed with this redeemer will still count as a default 
         //    against the borrower.
-        // 3) Clean up finished Active UTxOs.
+        // 3) Clean up finished Active UTxOs since not all of the beacons could be burned during the
+        // full payment.
         
         // The invalid-before flag is used as a proxy for the current time.
          
@@ -955,7 +963,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // The datum attached to the Ask UTxO details what terms the borrower is looking for.
         // All datums are inline datums that way other users can easily check the terms.
         
-        // This redeemer allows created multiple Ask UTxOs in a single transaction. They do not need
+        // This redeemer allows creating multiple Ask UTxOs in a single transaction. They do not need
         // to be for the same loan asset. THIS REDEEMER IS THE ONLY WAY TO CREATE A VALID ASK UTXO.
         
         // Only the borrower is allowed to create an Ask UTxO at their dapp address. This prevents
@@ -1064,7 +1072,7 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // 6) The Offer UTxO must be locked at a dapp address with a staking credential.
         // 7) The Offer UTxO must have a valid inline OfferDatum:
         //  - loan_beacon_sym == this policy id.
-        //  - lender_id == credential in redeemer as token name.
+        //  - lender_id == credential in redeemer as token name with the proper prefix.
         //  - lender_address must either use the proxy script or a pubkey as the payment credential, 
         //    and if the proxy script is used, the address must have a staking credential.
         //  - loan_asset == asset in redeemer that corresponds to the Asset beacon stored in the
@@ -1079,23 +1087,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         //  - claim_period > 0.
         //  - offer_deposit > 0.
         // 8) The lender credential must signal approval.
-        
-        // Since the borrower is the one making payments to the lender's address, the borrower
-        // cannot be trusted to create a datum on the lender's behalf. Adding a required datum field
-        // to the OfferDatum would increase the size of the datum, while referencing a required
-        // datum would would increse the computation required for each execution. Either way, it
-        // could hurt how many loans can be processed in a single transaction. One option would be
-        // to disallow payment scripts for lender addresses but, ideally, multisig would still be
-        // allowed. Currently, a plutus script cannot differentiate between native scripts and
-        // plutus scripts (the former does not require a datum while the latter does). Therefore,
-        // this approach would inevitably rule out multisig as well. Another approach, and the one
-        // this protocol takes, it to use a "pre-approved" proxy payment script that can have
-        // arbitrary logic by delegating spending authority to the staking script of the proxy
-        // address. The staking script could be a multisig or any other kind of logic. The proxy
-        // script can take any datum and redeemer which allows for composability with any p2p
-        // protocol that allows paying directly to a user's address. All proxy addresses would have
-        // the same payment credential which means this protocol can check whether a lender is using
-        // it depsite every lender getting their own proxy address.
+
+        // See the proxy-script ADR for an explanation as to why the lender address can only use a
+        // proxy script if a payment script is desired.
         
         // The rollover_frequency field is how often interest should be applied to the outstanding
         // balance. The first interest calculation is made upon accepting the loan. If this field is
@@ -1205,6 +1199,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // allows for non-compounding interest, as well as compounding interest.
         
         // This redeemer relies on the invalid-before flag as a proxy for the current time.
+
+        // At a high-level, accepting a loan involves consuming an Ask UTxO and an Offer UTxO
+        // to produce one Active UTxO.
         
         // To accept loans, all of the following must be true:
         // 1) All Ask UTxOs must have an Ask beacon.
@@ -1266,9 +1263,9 @@ validator(proxy_hash: Hash<Blake2b_224,Script>, dapp_hash: Hash<Blake2b_224, Scr
         // Since the proxy payment script can be used for the lender's address, the Key NFT and
         // offer deposit must be sent to the lender with a datum. The datum does not matter since
         // the proxy script can be used with any datum and the Key NFT ensures all outputs to the
-        // address are unique. For convenience of the logic for this script, the datum will just be
-        // (PolicyId,AssetName) where the policy id is the beacon minting policy id and the asset
-        // name will be "Accepted".
+        // address in this transaction are unique. For convenience of the logic for this script, the
+        // datum will just be (PolicyId,AssetName) where the policy id is the beacon minting policy
+        // id and the asset name will be "Accepted".
         
         // Since this redeemer requires an exact match for the minting, it cannot be composed
         // with the other policy redeemers.
