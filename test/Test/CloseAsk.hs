@@ -2607,9 +2607,9 @@ tests = do
 
       -- Benchmarks
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 8
+        assertNoFailedTransactions $ benchTest1 9
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 8
+        assertNoFailedTransactions $ benchTest2 9
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 6
     , checkPredicateOptions opts "benchTest4"
@@ -2617,9 +2617,9 @@ tests = do
 
       -- Performance Increase Tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 9
+        (Test.not assertNoFailedTransactions) $ benchTest1 10
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 9
+        (Test.not assertNoFailedTransactions) $ benchTest2 10
     , checkPredicateOptions opts "perfIncreaseTest3"
         (Test.not assertNoFailedTransactions) $ benchTest3 7
     , checkPredicateOptions opts "perfIncreaseTest4"

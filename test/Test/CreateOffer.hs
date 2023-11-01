@@ -5782,7 +5782,7 @@ benchTest4 numberCreated = do
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest4
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
 
 -------------------------------------------------
 -- Test Function
@@ -5938,23 +5938,23 @@ tests = do
 
       -- Benchmarks
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 31
+        assertNoFailedTransactions $ benchTest1 33
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 27
+        assertNoFailedTransactions $ benchTest2 28
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 19
+        assertNoFailedTransactions $ benchTest3 20
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 18
+        assertNoFailedTransactions $ benchTest4 19
 
       -- Performance Increase Tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 32
+        (Test.not assertNoFailedTransactions) $ benchTest1 34
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 28
+        (Test.not assertNoFailedTransactions) $ benchTest2 29
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 20
+        (Test.not assertNoFailedTransactions) $ benchTest3 21
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 19
+        (Test.not assertNoFailedTransactions) $ benchTest4 20
     ]
 
 testTrace :: IO ()

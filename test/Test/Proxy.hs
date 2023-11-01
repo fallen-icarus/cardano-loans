@@ -184,7 +184,7 @@ benchTest1 numberSpent = do
       , outputs =
           [ UtxoOutput
               { toAddress = proxyAddr
-              , outputUtxos = replicate 60
+              , outputUtxos = replicate 70
                   ( Just $ TxOutDatumInline 
                          $ toDatum 
                          $ PaymentDatum (beaconCurrencySymbol,genAssetBeaconName testToken1)
@@ -257,11 +257,11 @@ tests = do
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 58
+        assertNoFailedTransactions $ benchTest1 66
 
       -- Performance Increase tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 59
+        (Test.not assertNoFailedTransactions) $ benchTest1 67
     ]
 
 testTrace :: IO ()

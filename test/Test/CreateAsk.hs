@@ -2913,7 +2913,7 @@ benchTest6 numberCreated = do
     loanAddr = Address (ScriptCredential loanValidatorHash) (Just $ StakingHash borrowerCred)
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest2
 
 -------------------------------------------------
 -- Test Function
@@ -3011,29 +3011,29 @@ tests = do
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 59
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 28
+        assertNoFailedTransactions $ benchTest2 29
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 51
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 28
+        assertNoFailedTransactions $ benchTest4 29
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 45
     , checkPredicateOptions opts "benchTest6"
-        assertNoFailedTransactions $ benchTest6 28
+        assertNoFailedTransactions $ benchTest6 29
 
       -- Performance Increase Tests
     , checkPredicateOptions opts "perfIncreaseTest1"
         (Test.not assertNoFailedTransactions) $ benchTest1 60
-    , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest2 29
-    , checkPredicateOptions opts "perfIncreaseTest1"
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 30
+    , checkPredicateOptions opts "perfIncreaseTest3"
         (Test.not assertNoFailedTransactions) $ benchTest3 52
-    , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest4 29
-    , checkPredicateOptions opts "perfIncreaseTest1"
+    , checkPredicateOptions opts "perfIncreaseTest4"
+        (Test.not assertNoFailedTransactions) $ benchTest4 30
+    , checkPredicateOptions opts "perfIncreaseTest5"
         (Test.not assertNoFailedTransactions) $ benchTest5 46
-    , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest6 29
+    , checkPredicateOptions opts "perfIncreaseTest6"
+        (Test.not assertNoFailedTransactions) $ benchTest6 30
     ]
 
 testTrace :: IO ()
