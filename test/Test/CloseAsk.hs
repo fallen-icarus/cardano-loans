@@ -39,7 +39,6 @@ module Test.CloseAsk
   , tests
   ) where
 
-import PlutusTx.Prelude (unsafeRatio)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test

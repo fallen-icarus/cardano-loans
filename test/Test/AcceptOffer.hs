@@ -119,13 +119,11 @@ module Test.AcceptOffer
   , tests
   ) where
 
-import PlutusTx.Prelude (unsafeRatio)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.String (fromString)
-import Plutus.V2.Ledger.Api (TxId(..))
 
 import Test.Internal
 import Test.Config

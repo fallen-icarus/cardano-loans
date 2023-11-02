@@ -91,12 +91,10 @@ module Test.CreateOffer
   , tests
   ) where
 
-import PlutusTx.Prelude (unsafeRatio)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
-import Plutus.V2.Ledger.Api (TxId(..))
 import Data.String (fromString)
 
 import Test.Internal

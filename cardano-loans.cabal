@@ -30,13 +30,17 @@ common internals
 
 library
   import: lang, internals
-  exposed-modules: CardanoLoans
+  exposed-modules: 
+      CardanoLoans
+    , CardanoLoans.Blueprints
+    , CardanoLoans.Utils
   build-depends:
-    bytestring,
-    serialise,
-    aeson,
-    text,
-    file-embed
+      bytestring
+    , serialise
+    , aeson
+    , text
+    , file-embed
+    , prettyprinter
   hs-source-dirs: src
   ghc-options: 
     -fobject-code 
