@@ -60,7 +60,7 @@ import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.Maybe (fromMaybe)
-import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime)
+import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime, slotToBeginPOSIXTime)
 import Control.Monad (zipWithM_)
 
 import Test.Internal

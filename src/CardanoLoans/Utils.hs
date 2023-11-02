@@ -41,7 +41,6 @@ module CardanoLoans.Utils
   , posixTimeToSlot
   , preprodConfig
   , mainnetConfig
-  , slotToBeginPOSIXTime -- This is needed for the test-suite
 
     -- * Misc
   , (.*.)

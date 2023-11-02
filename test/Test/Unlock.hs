@@ -44,7 +44,7 @@ import Test.Tasty
 import Control.Monad (zipWithM_)
 import Data.List (zip4)
 import Data.String (fromString)
-import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime)
+import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime,slotToBeginPOSIXTime)
 
 import Test.Internal
 import Test.Config

@@ -124,6 +124,7 @@ import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.String (fromString)
+import Cardano.Node.Emulator.TimeSlot (slotToBeginPOSIXTime)
 
 import Test.Internal
 import Test.Config

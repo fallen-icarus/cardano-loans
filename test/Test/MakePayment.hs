@@ -96,7 +96,7 @@ import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.Maybe (fromMaybe)
 import Control.Monad (zipWithM_)
-import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime)
+import Cardano.Node.Emulator.TimeSlot (slotToEndPOSIXTime, slotToBeginPOSIXTime)
 
 import Test.Internal
 import Test.Config

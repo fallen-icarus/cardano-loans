@@ -64,6 +64,7 @@ import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.String (fromString)
 import Control.Monad (zipWithM_)
+import Cardano.Node.Emulator.TimeSlot (slotToBeginPOSIXTime)
 
 import Test.Internal
 import Test.Config
