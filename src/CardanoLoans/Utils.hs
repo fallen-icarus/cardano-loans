@@ -1,255 +1,220 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module CardanoLoans.Utils
-  ( 
-    -- * On-Chain Data Types
-    PlutusRational
-
-    -- * Generate Beacon Names
-  , genAssetBeaconName
-  , genLoanId
-  , credentialAsToken
-
+  (
     -- * Serialization
-  , writeData
+    writeData
   , writeScript
   , decodeDatum
   , dataFromCBOR
   , decodeHex
   , toCBOR
   , parseScriptFromCBOR
-  , unsafeFromRight
-  , unsafeFromData
 
     -- * Parsing User Inputs
     -- This is just so that certain things do not need to be re-exported.
+  , readAsset
   , readTokenName
   , readCurrencySymbol
   , readTxId
-  , readPubKeyHash
-  , readValidatorHash
-
-    -- * Time
-  , slotToPOSIXTime
-  , posixTimeToSlot
-  , preprodConfig
-  , mainnetConfig
+  , readTxOutRef
+  , readFraction
 
     -- * Misc
-  , (.*.)
-  , (.+.)
-  , (.-.)
-  , fromInt
+  , unsafeFromRight
   , showTokenName
+  , unsafeToBuiltinByteString
+  , scriptHash
+  , datumHash
+  , toLedgerScript
+  , toVersionedLedgerScript
+  , wrapVersionedLedgerScript
+  , toCardanoApiScript
+  , UPLC.serialisedSize
 
   -- * Re-exports
   , applyArguments
-  , Ledger.scriptSize
-  , CurrencySymbol(..)
-  , TokenName(..)
-  , unsafeRatio
-  , adaSymbol
-  , adaToken
+  , PV2.CurrencySymbol(..)
+  , PV2.TokenName(..)
+  , PV2.Address
+  , PV2.Credential
+  , PV2.POSIXTime
+  , PV2.adaSymbol
+  , PV2.adaToken
   , numerator
   , denominator
-  , TxOutRef(..)
-  , TxId(..)
+  , PV2.TxOutRef(..)
+  , PV2.TxId(..)
+  , PV2.SerialisedScript
   ) where
 
-import Data.Aeson as Aeson
-import Plutus.V2.Ledger.Api as Api
-import qualified PlutusTx
-import qualified PlutusTx.Prelude as Plutus
-import Codec.Serialise hiding (decode,encode)
-import Ledger (Script(..),applyArguments,scriptSize)
-import Cardano.Api hiding (TxId,Script,Address)
-import Cardano.Api.Shelley (PlutusScript (..))
+import qualified Data.Aeson as Aeson
+import Lens.Micro (over)
+import qualified Codec.Serialise as Serial
 import Data.ByteString.Lazy (fromStrict,toStrict)
-import Data.Text (Text)
+import Data.Text (Text,unpack,pack,replace)
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Short as SBS
 import Data.String (fromString)
-import Ledger.Bytes (fromHex,bytes,encodeByteString)
-import Ledger.Tx.CardanoAPI.Internal
-import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
-import Prettyprinter
-import Cardano.Node.Emulator.TimeSlot
-import Ledger.Slot
-import Data.Maybe (fromJust)
+import Text.Read (readMaybe)
+import Control.Applicative ((<|>))
+import qualified Data.ByteString.Base16 as Base16
+import Relude (toShort,encodeUtf8)
+import Data.Ratio (numerator,denominator)
 
--------------------------------------------------
--- On-Chain Data Types
--------------------------------------------------
-type PlutusRational = Plutus.Rational
+import qualified PlutusTx.Prelude as PlutusTx
+import qualified PlutusCore.MkPlc as PLC
+import qualified UntypedPlutusCore as UPLC
+import qualified Cardano.Api as Api 
+import Cardano.Api.Shelley (fromPlutusData,PlutusScript(..))
+import PlutusLedgerApi.V1.Bytes (fromHex,bytes,encodeByteString,LedgerBytesError)
+import Ledger.Tx.CardanoAPI.Internal (fromCardanoScriptData)
+import qualified Ledger as L
+import qualified PlutusTx.Builtins as Builtins
+import qualified Plutus.Script.Utils.Scripts as PV2
+import qualified PlutusLedgerApi.V2 as PV2
 
-instance Pretty PlutusRational where
-  pretty num = pretty (numerator num) <> " / " <> pretty (denominator num)
-
--------------------------------------------------
--- Generate Beacon Names
--------------------------------------------------
-genAssetBeaconName :: (CurrencySymbol,TokenName) -> TokenName
-genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
-  TokenName $ Plutus.sha2_256 $ "Asset" <> sym <> name
-
-genLoanId :: TxOutRef -> TokenName
-genLoanId (TxOutRef (Api.TxId txHash) index) = 
-  TokenName $ Plutus.sha2_256 $ txHash <> index'
-  where TokenName index' = fromString $ show index
-
--- | Convert a credential to a token name and optionally add the identifier
--- prefix (used for LenderIDs).
-credentialAsToken :: Bool -> Credential -> TokenName
-credentialAsToken addIdentifier (PubKeyCredential (PubKeyHash pkh)) = 
-  if addIdentifier
-  then TokenName $ (unsafeToBuiltinByteString "00") <> pkh
-  else TokenName pkh
-credentialAsToken addIdentifier (ScriptCredential (ValidatorHash vh)) = 
-  if addIdentifier
-  then TokenName $ (unsafeToBuiltinByteString "01") <> vh
-  else TokenName vh
+import CardanoLoans.Types
 
 -------------------------------------------------
 -- Serialization
 -------------------------------------------------
-dataToScriptData :: Data -> ScriptData
-dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs
-dataToScriptData (Map xs)      = ScriptDataMap [(dataToScriptData x, dataToScriptData y) | (x, y) <- xs]
-dataToScriptData (List xs)     = ScriptDataList $ dataToScriptData <$> xs
-dataToScriptData (I n)         = ScriptDataNumber n
-dataToScriptData (B bs)        = ScriptDataBytes bs
+toJSONValue :: PV2.ToData a => a -> Aeson.Value
+toJSONValue = Api.scriptDataToJson Api.ScriptDataJsonDetailedSchema
+            . Api.unsafeHashableScriptData
+            . fromPlutusData
+            . PV2.toData
 
-toJSONValue :: PlutusTx.ToData a => a -> Aeson.Value
-toJSONValue = scriptDataToJson ScriptDataJsonDetailedSchema
-           . dataToScriptData
-           . PlutusTx.toData
+writeScript :: FilePath -> PV2.SerialisedScript -> IO (Either (Api.FileError ()) ())
+writeScript file script = 
+  Api.writeFileTextEnvelope @(Api.PlutusScript Api.PlutusScriptV2) (Api.File file) Nothing $ 
+    PlutusScriptSerialised script
 
-writeJSON :: PlutusTx.ToData a => FilePath -> a -> IO ()
-writeJSON file = LBS.writeFile file . encode . toJSONValue
+writeData :: PV2.ToData a => FilePath -> a -> IO ()
+writeData file = LBS.writeFile file . Aeson.encode . toJSONValue
 
-serialisedScript :: Script -> PlutusScript PlutusScriptV2
-serialisedScript = PlutusScriptSerialised . SBS.toShort . LBS.toStrict . serialise
+decodeDatum :: (PV2.FromData a) => Aeson.Value -> Maybe a
+decodeDatum = either (const Nothing) (PV2.fromBuiltinData . fromCardanoScriptData)
+            . Api.scriptDataFromJson Api.ScriptDataJsonDetailedSchema
 
-writeScript :: FilePath -> Script -> IO (Either (FileError ()) ())
-writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) file Nothing
-                         $ serialisedScript script
+parseScriptFromCBOR :: String -> PV2.SerialisedScript
+parseScriptFromCBOR script =
+  case Base16.decode base16Bytes of
+    Left e -> error $ "Failed to decode validator: " <> show e
+    Right bytes' -> toShort bytes'
+ where
+  base16Bytes = encodeUtf8 script
 
-writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
-writeData = writeJSON
+dataFromCBOR :: String -> Either LedgerBytesError PV2.Data
+dataFromCBOR = fmap Serial.deserialise . decodeHex
 
-decodeDatum :: (FromData a) => Aeson.Value -> Maybe a
-decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScriptData)
-            . scriptDataFromJson ScriptDataJsonDetailedSchema
-
-parseScriptFromCBOR :: String -> Ledger.Script
-parseScriptFromCBOR cbor = 
-  case fmap (deserialise . fromStrict . bytes) . fromHex $ fromString cbor of
-    Left err -> error err
-    Right script -> script
-
-dataFromCBOR :: String -> Either String Data
-dataFromCBOR = fmap deserialise . decodeHex
-
-decodeHex :: String -> Either String LBS.ByteString
+decodeHex :: String -> Either LedgerBytesError LBS.ByteString
 decodeHex = fmap (fromStrict . bytes) . fromHex . fromString
 
-toCBOR :: Serialise a => a -> Text
-toCBOR = encodeByteString . toStrict . serialise
-
-unsafeToBuiltinByteString :: String -> BuiltinByteString
-unsafeToBuiltinByteString = (\(LedgerBytes bytes') -> bytes')
-                          . unsafeFromRight
-                          . fromHex
-                          . fromString
-
-unsafeFromData :: (FromData a) => Data -> a
-unsafeFromData = fromJust . fromData
+toCBOR :: Serial.Serialise a => a -> Text
+toCBOR = encodeByteString . toStrict . Serial.serialise
 
 -------------------------------------------------
 -- Functions for parsing user input.
 -------------------------------------------------
+-- | Parse `Asset` from user supplied `String`. The input is expected to either be
+-- "lovelace" or of the form "policy_id.asset_name".
+readAsset :: String -> Either String Asset
+readAsset s =
+    if s == "lovelace" then Right $ Asset (PV2.adaSymbol,PV2.adaToken)
+    else fmap Asset . (,) <$> readCurrencySymbol policy <*> readTokenName (drop 1 name)
+  where
+    (policy,name) = span (/='.') s
+
 -- | Parse `CurrencySymbol` from user supplied `String`.
-readCurrencySymbol :: String -> Either String CurrencySymbol
+readCurrencySymbol :: String -> Either String PV2.CurrencySymbol
 readCurrencySymbol s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+  Right (PV2.LedgerBytes bytes') -> Right $ PV2.CurrencySymbol bytes'
+  Left msg                   -> Left $ show msg
 
 -- | Parse `TokenName` from user supplied `String`.
-readTokenName :: String -> Either String TokenName
+readTokenName :: String -> Either String PV2.TokenName
 readTokenName s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+  Right (PV2.LedgerBytes bytes') -> Right $ PV2.TokenName bytes'
+  Left msg                   -> Left $ show msg
 
 -- | Parse `TxId` from user supplied `String`.
-readTxId :: String -> Either String TxId
+readTxId :: String -> Either String PV2.TxId
 readTxId s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ TxId bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+  Right (PV2.LedgerBytes bytes') -> Right $ PV2.TxId bytes'
+  Left msg                   -> Left $ show msg
 
--- | Parse PubKeyHash from user supplied String
-readPubKeyHash :: String -> Either String PubKeyHash
-readPubKeyHash s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ PubKeyHash bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+readTxOutRef :: String -> Either String PV2.TxOutRef
+readTxOutRef s = PV2.TxOutRef <$> readTxId txHash <*> readIndex (drop 1 index)
+  where
+    (txHash,index) = span (/='#') s
 
--- | Parse ValidatorHash from user supplied String
-readValidatorHash :: String -> Either String ValidatorHash
-readValidatorHash s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ ValidatorHash bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
+    readIndex :: String -> Either String Integer
+    readIndex i = case readMaybe i of
+      Nothing -> Left $ "could not convert: " <> i
+      Just i' -> Right i'
 
--------------------------------------------------
--- Time
--------------------------------------------------
-slotToPOSIXTime :: SlotConfig -> Slot -> POSIXTime
-slotToPOSIXTime = slotToBeginPOSIXTime
+-- | Parse `Fraction` from user supplied `String` of either a decimal or a fraction.
+readFraction :: String -> Either String Fraction
+readFraction s = case toFraction <$> (readMaybeRatio sample <|> readMaybeDouble sample) of
+    Nothing -> Left $ "could not convert: " <> s
+    Just r -> Right r
+  where
+    -- Replace / with % since Haskell fractions use % while humans use /.
+    sample :: String
+    sample = unpack $ replace "/" "%" $ pack s 
 
-posixTimeToSlot :: SlotConfig -> POSIXTime -> Slot
-posixTimeToSlot = posixTimeToEnclosingSlot
+    toFraction :: Rational -> Fraction
+    toFraction rat = Fraction (numerator rat , denominator rat)
 
--- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
--- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
--- normalized to "pretend" that the testnet has always used 1 second slot intervals.
---
--- The normalization is done by taking a slot time and subtracting the slot number from it.
--- For example, slot 23210080 occurred at 1678893280 POSIXTime. So subtracting the slot number 
--- from the time yields the normalized 0 time.
-preprodConfig :: SlotConfig
-preprodConfig = SlotConfig 1000 (POSIXTime 1655683200000)
+    readMaybeRatio :: String -> Maybe Rational
+    readMaybeRatio = readMaybe
 
--- | The normalized mainnet `SlotConfig`. The normalization is done by taking a slot time and 
--- subtracting the slot number from it. For example, slot 107368296 occurred at 1698934587 
--- POSIXTime. So subtracting the slot number from the time yields the normalized 0 time.
-mainnetConfig :: SlotConfig
-mainnetConfig = SlotConfig 1000 (POSIXTime 1591566291000)
+    readMaybeDouble :: String -> Maybe Rational
+    readMaybeDouble = fmap toRational . readMaybe @Double
 
 -------------------------------------------------
 -- Misc
 -------------------------------------------------
-(.*.) :: PlutusRational -> PlutusRational -> PlutusRational
-num1 .*. num2 = num1 Plutus.* num2
+toCardanoApiScript :: PV2.SerialisedScript -> Api.Script Api.PlutusScriptV2
+toCardanoApiScript = Api.PlutusScript Api.PlutusScriptV2 . PlutusScriptSerialised
 
-(.+.) :: PlutusRational -> PlutusRational -> PlutusRational
-num1 .+. num2 = num1 Plutus.+ num2
+toLedgerScript :: PV2.SerialisedScript -> PV2.Script
+toLedgerScript = PV2.Script
 
-(.-.) :: PlutusRational -> PlutusRational -> PlutusRational
-num1 .-. num2 = num1 Plutus.- num2
+toVersionedLedgerScript :: PV2.SerialisedScript -> PV2.Versioned PV2.Script
+toVersionedLedgerScript script = PV2.Versioned (toLedgerScript script) PV2.PlutusV2
 
-fromInt :: Integer -> PlutusRational
-fromInt = Plutus.fromInteger
+wrapVersionedLedgerScript :: (PV2.Script -> a) -> PV2.Versioned PV2.Script -> PV2.Versioned a
+wrapVersionedLedgerScript wrapper v@PV2.Versioned{PV2.unversioned} = 
+  v{PV2.unversioned = wrapper unversioned}
+
+scriptHash :: PV2.SerialisedScript -> PV2.ScriptHash
+scriptHash =
+  PV2.ScriptHash
+    . Builtins.toBuiltin
+    . Api.serialiseToRawBytes
+    . Api.hashScript
+    . toCardanoApiScript
+
+datumHash :: (PV2.ToData a) => a -> PV2.DatumHash
+datumHash = L.datumHash . L.Datum . PV2.dataToBuiltinData . PV2.toData
+
+applyArguments :: PV2.SerialisedScript -> [PV2.Data] -> PV2.SerialisedScript
+applyArguments p args =
+    let termArgs = fmap (PLC.mkConstant ()) args
+        applied t = PLC.mkIterAppNoAnn t termArgs
+    in PV2.serialiseUPLC $ over UPLC.progTerm applied $ PV2.uncheckedDeserialiseUPLC p
 
 unsafeFromRight :: Either a b -> b
 unsafeFromRight (Right x) = x
 unsafeFromRight _ = error "unsafeFromRight used on Left"
 
 -- | Show the token name in hexidecimal.
-showTokenName :: TokenName -> String
-showTokenName (TokenName name) = show $ PubKeyHash name
+showTokenName :: PV2.TokenName -> String
+showTokenName (PV2.TokenName name) = show $ PV2.PubKeyHash name
 
+unsafeToBuiltinByteString :: String -> Builtins.BuiltinByteString
+unsafeToBuiltinByteString = (\(PV2.LedgerBytes bytes') -> bytes')
+                          . unsafeFromRight
+                          . fromHex
+                          . fromString
