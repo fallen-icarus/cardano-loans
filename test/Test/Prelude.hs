@@ -347,7 +347,7 @@ testTokenSymbol = CurrencySymbol
 -------------------------------------------------
 -- Initialize Emulator
 -------------------------------------------------
-initializeReferenceScripts :: E.MonadEmulator m => m (TxOutRef,TxOutRef,TxOutRef,TxOutRef)
+initializeReferenceScripts :: E.MonadEmulator m => m (TxOutRef,TxOutRef,TxOutRef,TxOutRef,TxOutRef)
 initializeReferenceScripts = do
   let w1 = Mock.knownMockWallet 1
   
@@ -368,7 +368,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 42_000_000
+              , outputValue = LV.lovelaceToValue 43_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just activeBeaconScript
               }
@@ -399,10 +399,23 @@ initializeReferenceScripts = do
           ]
       }
 
-  (,,,) <$> txOutRefWithReferenceScript (scriptHash negotiationBeaconScript)
+  void $ transact (Mock.mockWalletAddress w1) [refScriptAddress] [Mock.paymentPrivateKey w1] $
+    emptyTxParams
+      { outputs =
+          [ Output
+              { outputAddress = refScriptAddress
+              , outputValue = LV.lovelaceToValue 47_000_000
+              , outputDatum = PV2.NoOutputDatum
+              , outputReferenceScript = toReferenceScript $ Just paymentObserverScript
+              }
+          ]
+      }
+
+  (,,,,) <$> txOutRefWithReferenceScript (scriptHash negotiationBeaconScript)
         <*> txOutRefWithReferenceScript (scriptHash activeBeaconScript)
         <*> txOutRefWithReferenceScript (scriptHash loanScript)
         <*> txOutRefWithReferenceScript (scriptHash proxyScript)
+        <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
 
 mintTestTokens :: E.MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
 mintTestTokens w lovelace ts = do

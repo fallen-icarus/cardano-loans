@@ -1,4 +1,5 @@
 use aiken/bytearray as byte
+use aiken/hash.{Blake2b_224,Hash}
 use aiken/list
 use aiken/option
 use aiken/dict.{Dict}
@@ -10,6 +11,7 @@ use aiken/transaction.{
   }
 use aiken/transaction/credential.{
     Address,
+    Script
   }
 use aiken/transaction/value.{
     AssetName,
@@ -47,6 +49,7 @@ fn extract_output_info(
   upper_bound: ExpirationTime,
   borrower_id: BorrowerID,
   offer_datum: LoanDatum,
+  payment_observer_hash: Hash<Blake2b_224,Script>,
   loan_id: LoanID // This is taken from the output reference for the Offer UTxO.
 ) -> (LoanDatum,(LoanID,(Int,Address)),AssetBeacon) {
   // Pattern match out the required terms from the OfferDatum.
@@ -81,6 +84,7 @@ fn extract_output_info(
   // Produce the expected datum. Calculate the expiration times.
   let req_datum = ActiveDatum{
     active_beacon_id: active_beacon_id_,
+    payment_observer: payment_observer_hash,
     borrower_id: borrower_id,
     lender_address: lender_address_,
     loan_asset: loan_asset_,
@@ -108,6 +112,7 @@ fn extract_output_info(
 // output information to expect.
 fn get_input_info(
   negotiation_beacon_id: NegotiationID,
+  payment_observer_hash: Hash<Blake2b_224,Script>,
   borrower_id: BorrowerID,
   borrower_loan_address: Address,
   validity_range: ValidityRange,
@@ -180,6 +185,7 @@ fn get_input_info(
           upper_bound,
           borrower_id,
           parse_datum(d),
+          payment_observer_hash,
           loan_id
         )
 
@@ -353,6 +359,7 @@ fn offer_inputs_all_satisfied(
             _,
             _,
             _,
+            _,
             asset_beacon,
             principle_taken,
             _,
@@ -482,6 +489,7 @@ fn get_beacon_mint_and_burn(
 pub fn valid_loan_acceptances(
   negotiation_beacon_id: NegotiationID,
   active_beacon_id: ActiveID,
+  payment_observer_hash: Hash<Blake2b_224,Script>,
   borrower_id: BorrowerID,
   borrower_loan_address: Address,
   validity_range: ValidityRange,
@@ -492,6 +500,7 @@ pub fn valid_loan_acceptances(
   let (req_collateral,req_payments,offers_accepted,asks_closed,req_mint,req_burn) =
     get_input_info(
       negotiation_beacon_id,
+      payment_observer_hash,
       borrower_id,
       borrower_loan_address,
       validity_range,

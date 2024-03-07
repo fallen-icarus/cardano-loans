@@ -334,6 +334,7 @@ pub fn valid_payment(
   when old_datum is {
     ActiveDatum(
       active_beacon_id,
+      payment_observer,
       borrower_id,
       lender_address,
       loan_asset,
@@ -382,6 +383,7 @@ pub fn valid_payment(
       // Determine the required collateral datum given the payment amount.
       let req_datum = ActiveDatum{
         active_beacon_id: active_beacon_id,
+        payment_observer: payment_observer,
         borrower_id: borrower_id,
         lender_address: lender_address,
         loan_asset: loan_asset,

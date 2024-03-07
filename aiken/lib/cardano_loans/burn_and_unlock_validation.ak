@@ -73,6 +73,7 @@ fn get_beacons_to_burn(
           _,
           _,
           _,
+          _,
           claim_expiration,
           _,
           _,

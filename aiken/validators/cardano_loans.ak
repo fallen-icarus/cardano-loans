@@ -41,6 +41,10 @@ use cardano_loans/data/redeemers.{
     BurnRemainderOrUnlockLost,
     BurnActiveBeacons,
 
+    PaymentObserverRedeemer,
+    ObservePayment, 
+    RegisterPaymentObserverScript,
+
     LoanRedeemer, 
     CloseOrUpdateAsk, 
     CloseOrUpdateOffer, 
@@ -58,6 +62,7 @@ use cardano_loans/ask_validation as ask
 use cardano_loans/offer_validation as offer
 use cardano_loans/accept_validation as accept
 use cardano_loans/payment_validation as payment
+use cardano_loans/observe_payment
 use cardano_loans/rollover_validation as rollover
 use cardano_loans/update_address_validation as update_address
 use cardano_loans/burn_and_claim_validation as burn_and_claim
@@ -323,30 +328,20 @@ validator(proxy_hash: Hash<Blake2b_224, Script>) {
         // the outstanding_balance paid off. This ensures there will always be collateral until
         // the very end of the loan which helps incentivize proper behavior from borrowers.
 
-        expect Some(
-          Input(
-            _,
-            Output(
-              Address(_,stake) as addr,
-              utxo_value,
-              ..))) = tx.find_input(inputs,out_ref)
+        expect Some( Input( _, Output( Address(_,stake), ..))) = tx.find_input(inputs,out_ref)
 
-        and {
-          // This has its own trace messages.
-          payment.valid_payment(
-            utxo_value,
-            payment_amount,
-            datum, 
-            addr, 
-            outputs,
-            value.from_minted_value(mint),
-            core.get_end_time(validity_range)
-          ),
-          trace_if_false( 
-            @"Borrower did not approve",
-            utils.staking_credential_approves(stake,wdrw,sigs)
-          )
+        // Get the observer_hash from the Active datum.
+        let observer_hash = when datum is {
+          ActiveDatum(_,observer_hash,..) -> observer_hash
+          _ -> error @"UTxO is not an Active UTxO"
         }
+
+        // The negotiation beacon script must be executed using CreateOrCloseAsk(stake_cred).
+        let req_redeemer: Data = ObservePayment // Cast to Data type.
+        trace_if_false(
+          @"Observe payment script not executed with proper redeemer",
+          utils.beacon_script_executed(redeemers,req_redeemer,observer_hash)
+        )
       }
       
       Rollover(deposit_increase) -> {
@@ -537,6 +532,48 @@ validator(proxy_hash: Hash<Blake2b_224, Script>) {
 }
 
 validator( loan_script_hash: Hash<Blake2b_224, Script> ) {
+  fn payment_observer_script(redeemer: PaymentObserverRedeemer, ctx: ScriptContext) -> Bool {
+    when redeemer is {
+      RegisterPaymentObserverScript -> {
+        // Only allow registering the script. It cannot be delegated or deregistered.
+        expect ScriptContext( _, tx.Publish(CredentialRegistration(_))) = ctx
+
+        True
+      }
+
+      ObservePayment -> {
+        let ScriptContext( 
+          Transaction(inputs,_,outputs,_,mint,_,_,validity_range,_,redeemers,..), 
+          purpose
+        ) = ctx
+
+        // This redeemer must be used with either a staking execution or a minting execution.
+        expect True = utils.error_if_false(
+          @"This redeemer must be used with minting or staking execution",
+          when purpose is {
+            tx.Mint(_) -> True
+            tx.WithdrawFrom(_) -> True
+            _ -> False
+          }
+        )
+
+        observe_payment.valid_payment(
+          inputs,
+          outputs,
+          redeemers,
+          value.from_minted_value(mint),
+          loan_script_hash,
+          core.get_end_time(validity_range),
+        )
+      }
+    }
+  }
+}
+
+validator( 
+  loan_script_hash: Hash<Blake2b_224, Script>,
+  payment_observer_script_hash: Hash<Blake2b_224, Script>
+) {
   fn active_beacon_script(redeemer: ActiveBeaconsRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
       CreateActive(borrower_cred,negotiation_beacon_id) -> {
@@ -647,6 +684,7 @@ validator( loan_script_hash: Hash<Blake2b_224, Script> ) {
           accept.valid_loan_acceptances(
             negotiation_beacon_id,
             core.to_active_id(active_beacon_id),
+            payment_observer_script_hash,
             core.credential_to_borrower_id(borrower_cred),
             Address(ScriptCredential(loan_script_hash),Some(Inline(borrower_cred))),
             validity_range,

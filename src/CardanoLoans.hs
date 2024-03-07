@@ -14,6 +14,7 @@ module CardanoLoans
 
     -- * On-chain Redeemers
   , LoanRedeemer(..) 
+  , PaymentObserverRedeemer(..)
   , NegotiationBeaconsRedeemer(..) 
   , ActiveBeaconsRedeemer(..) 
 
@@ -22,6 +23,8 @@ module CardanoLoans
   , proxyValidatorHash
   , loanScript
   , loanValidatorHash
+  , paymentObserverScript
+  , paymentObserverCurrencySymbol
   , activeBeaconScript
   , activeBeaconCurrencySymbol
   , negotiationBeaconScript
@@ -123,6 +126,8 @@ data OfferDatum = OfferDatum
 data ActiveDatum = ActiveDatum
   -- | The policy id for the active beacon script.
   { activeBeaconId :: ActiveBeaconID
+  -- | The hash for the payment observer script.
+  , paymentObserverHash :: PV2.ScriptHash
   -- | The borrower's staking credential as a token name.
   , borrowerId :: BorrowerID
   -- | The lender's address.
@@ -184,6 +189,13 @@ data LoanRedeemer
   | Unlock
   deriving (Generic,Show)
 
+data PaymentObserverRedeemer
+  -- | Observer a borrower's loan payment transaction.
+  = ObservePayment
+  -- | Register the script.
+  | RegisterPaymentObserverScript
+  deriving (Generic,Show)
+
 data NegotiationBeaconsRedeemer
   -- | Create, close, or update some Ask UTxOs (1 or more). The credential is the borrower's
   -- staking credential.
@@ -213,6 +225,7 @@ PlutusTx.makeIsDataIndexed ''AskDatum [('AskDatum,0)]
 PlutusTx.makeIsDataIndexed ''OfferDatum [('OfferDatum,1)]
 PlutusTx.makeIsDataIndexed ''ActiveDatum [('ActiveDatum,2)]
 PlutusTx.unstableMakeIsData ''LoanRedeemer
+PlutusTx.unstableMakeIsData ''PaymentObserverRedeemer
 PlutusTx.unstableMakeIsData ''NegotiationBeaconsRedeemer
 PlutusTx.unstableMakeIsData ''ActiveBeaconsRedeemer
 
@@ -234,11 +247,25 @@ loanScript =
 loanValidatorHash :: PV2.ValidatorHash
 loanValidatorHash = PV2.ValidatorHash $ PV2.getScriptHash $ scriptHash loanScript
 
+paymentObserverScript :: SerialisedScript
+paymentObserverScript =
+  applyArguments
+    (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.payment_observer_script")
+    [PV2.toData loanValidatorHash]
+
+-- paymentObserverValidatorHash :: PV2.ValidatorHash
+-- paymentObserverValidatorHash = 
+--   PV2.ValidatorHash $ PV2.getScriptHash $ scriptHash paymentObserverScript
+
+paymentObserverCurrencySymbol :: PV2.CurrencySymbol
+paymentObserverCurrencySymbol = 
+  PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash paymentObserverScript
+
 activeBeaconScript :: SerialisedScript
 activeBeaconScript =
   applyArguments
     (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.active_beacon_script")
-    [PV2.toData loanValidatorHash]
+    [PV2.toData loanValidatorHash, PV2.toData paymentObserverCurrencySymbol]
 
 activeBeaconCurrencySymbol :: PV2.CurrencySymbol
 activeBeaconCurrencySymbol = PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash activeBeaconScript
@@ -392,6 +419,7 @@ unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
 createAcceptanceDatum :: Credential -> TxOutRef -> POSIXTime -> OfferDatum -> ActiveDatum
 createAcceptanceDatum borrowerCred offerId startTime OfferDatum{..} = ActiveDatum
   { activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
+  , paymentObserverHash = scriptHash paymentObserverScript
   , borrowerId = genBorrowerID borrowerCred
   , lenderAddress = lenderAddress
   , loanAsset = loanAsset

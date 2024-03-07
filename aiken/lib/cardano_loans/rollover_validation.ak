@@ -38,6 +38,7 @@ fn get_required_datum(
   when old_datum is {
     ActiveDatum(
       active_beacon_id,
+      payment_observer_hash,
       borrower_id,
       lender_address,
       loan_asset,
@@ -67,6 +68,7 @@ fn get_required_datum(
         borrower_id,
         ActiveDatum{
           active_beacon_id: active_beacon_id,
+          payment_observer: payment_observer_hash,
           borrower_id: borrower_id,
           lender_address: lender_address,
           loan_asset: loan_asset,

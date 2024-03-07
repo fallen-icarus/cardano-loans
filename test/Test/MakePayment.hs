@@ -86,7 +86,7 @@ regressionTest1 = do
         }
 
   -- Initialize scenario
-  (negotiationRef,activeRef,loanRef,_) <- initializeReferenceScripts 
+  (negotiationRef,activeRef,loanRef,_,paymentObserverRef) <- initializeReferenceScripts 
   mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
 
   -- Create the Ask UTxO.
@@ -272,14 +272,22 @@ regressionTest1 = do
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
     emptyTxParams
-      { inputs = flip map activeUTxOs $ \(activeRef,_) ->
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("dummy",1)]
+              , mintRedeemer = toRedeemer ObservePayment
+              , mintPolicy = toVersionedMintingPolicy paymentObserverScript
+              , mintReference = Just paymentObserverRef
+              }
+          ]
+      , inputs = flip map activeUTxOs $ \(activeRef,_) ->
           Input
             { inputId = activeRef
             , inputWitness = 
                 SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
             }
       , outputs = samplePayments activeUTxOs
-      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Just startSlot
@@ -343,7 +351,7 @@ benchTest1 number = do
         }
 
   -- Initialize scenario
-  (negotiationRef,activeRef,loanRef,_) <- initializeReferenceScripts 
+  (negotiationRef,activeRef,loanRef,_,paymentObserverRef) <- initializeReferenceScripts 
   mintTestTokens borrowerWallet 900_000_000 [("TestToken1",1000)]
 
   -- Create the Ask UTxO.
@@ -545,14 +553,22 @@ benchTest1 number = do
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
     emptyTxParams
-      { inputs = flip map activeUTxOs $ \(activeRef,_) ->
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("dummy",1)]
+              , mintRedeemer = toRedeemer ObservePayment
+              , mintPolicy = toVersionedMintingPolicy paymentObserverScript
+              , mintReference = Just paymentObserverRef
+              }
+          ]
+      , inputs = flip map activeUTxOs $ \(activeRef,_) ->
           Input
             { inputId = activeRef
             , inputWitness = 
                 SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
             }
       , outputs = samplePayments activeUTxOs
-      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Just paymentTime

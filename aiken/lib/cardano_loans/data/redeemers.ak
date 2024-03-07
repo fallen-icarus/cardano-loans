@@ -67,3 +67,12 @@ pub type ActiveBeaconsRedeemer {
   // Burn any beacons.
   BurnActiveBeacons
 }
+
+pub type PaymentObserverRedeemer {
+  // Observe a borrower's loan payment transaction.
+  ObservePayment
+
+  // Register the negotiation beacon script as a staking script to allow it to be used
+  // as a staking script.
+  RegisterPaymentObserverScript
+}

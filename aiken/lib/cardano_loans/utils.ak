@@ -10,6 +10,7 @@ use aiken/transaction.{
   } as tx
 use aiken/transaction/credential.{
     Address,
+    Credential,
     Inline,
     StakeCredential,
     Script,
@@ -122,4 +123,11 @@ pub fn beacon_script_executed(
   }
 
   list.find(dict.to_list(redeemers),foo) |> option.is_some(_)
+}
+
+pub fn is_pub_key_credential(cred: Credential) -> Bool {
+  when cred is {
+    VerificationKeyCredential(_) -> True
+    _ -> False
+  }
 }

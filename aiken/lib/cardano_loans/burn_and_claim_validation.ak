@@ -60,6 +60,7 @@ fn get_beacons_to_burn(
           // LoanID is to check the datum. The LoanID requires two units to be burned.
           expect ActiveDatum(
             _,
+            _,
             borrower_id,
             _,
             _,

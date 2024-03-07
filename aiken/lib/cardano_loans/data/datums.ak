@@ -1,4 +1,5 @@
-use aiken/transaction/credential.{Address}
+use aiken/hash.{Blake2b_224,Hash}
+use aiken/transaction/credential.{Address,Script}
 
 use cardano_loans/data/core.{
     ActiveID,
@@ -54,6 +55,7 @@ pub type LoanDatum {
 
   ActiveDatum { 
     active_beacon_id: ActiveID, // The policy id for the beacon script.
+    payment_observer: Hash<Blake2b_224,Script>, // The script has for the payment observer script.
     borrower_id: BorrowerID, // The borrower's staking credential as a token name.
     lender_address: Address, // The address where loan payments must be made.
     loan_asset: Asset, // The loan asset.
