@@ -14,9 +14,9 @@ repository cardano-haskell-packages
 -- update either of these.
 index-state:
   -- Bump both the following dates if you need newer packages from Hackage
-  , hackage.haskell.org 2024-01-08T22:38:30Z
+  , hackage.haskell.org 2024-02-14T00:00:00Z
   -- Bump this if you need newer packages from CHaP
-  , cardano-haskell-packages 2024-01-16T10:58:01Z
+  , cardano-haskell-packages 2024-02-14T00:00:00Z
 
 with-compiler: ghc-9.6.4
 
@@ -30,8 +30,17 @@ package plutus-script-utils
   haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
 package plutus-ledger
   haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
+package cardano-ledger-alonzo
+  optimization: False
+package ouroboros-consensus-cardano
+  optimization: False
+package cardano-api
+  optimization: False
 
 test-show-details: direct
+
+constraints:
+  cardano-api ^>= 8.38
 
 source-repository-package
     type: git
@@ -39,3 +48,21 @@ source-repository-package
     tag: b7273a5d3c21f1a003595ebf1e1f79c28cd72513
     subdir:
       core
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-node-emulator
+    tag: 695dcd5
+    subdir:
+      cardano-node-emulator
+      plutus-ledger
+      plutus-script-utils
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/quickcheck-contractmodel
+    tag: 266b94017e24aff37c9d57cd8d4bafe4237f56df
+    --sha256: sha256-na8LEzjUcycdQecwfyiGcP7C2xCtBv+MXEtzK76YB+E=
+    subdir:
+      quickcheck-contractmodel
+      quickcheck-threatmodel

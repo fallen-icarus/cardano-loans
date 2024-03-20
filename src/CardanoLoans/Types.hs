@@ -3,13 +3,13 @@
 {-# LANGUAGE StrictData #-}
 
 module CardanoLoans.Types
-  ( NegotiationBeaconID(..)
-  , ActiveBeaconID(..)
+  ( NegotiationBeaconId(..)
+  , ActiveBeaconId(..)
   , Fraction(..)
   , Asset(..)
-  , LenderID(..)
-  , BorrowerID(..)
-  , LoanID(..)
+  , LenderId(..)
+  , BorrowerId(..)
+  , LoanId(..)
   , AssetBeacon(..)
   , Collateralization(..)
   , Collateral(..)
@@ -23,18 +23,18 @@ import qualified PlutusLedgerApi.V2 as PV2
 -- On-Chain Data Types
 -------------------------------------------------
 -- | A wrapper around the policy id for the negotation beacon script.
-newtype NegotiationBeaconID = NegotiationBeaconID { unNegotiationBeaconID :: PV2.CurrencySymbol }
+newtype NegotiationBeaconId = NegotiationBeaconId { _unNegotiationBeaconId :: PV2.CurrencySymbol }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around the policy id for the active beacon script.
-newtype ActiveBeaconID = ActiveBeaconID { unActiveBeaconID :: PV2.CurrencySymbol }
+newtype ActiveBeaconId = ActiveBeaconId { _unActiveBeaconId :: PV2.CurrencySymbol }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around two integers that make up a fraction. This is used
 -- in the absence of a decimal type on change.
-newtype Fraction = Fraction (Integer,Integer)
+newtype Fraction = Fraction { _unFraction :: (Integer,Integer) }
   deriving (Show,Eq)
 
 instance PV2.ToData Fraction where
@@ -55,7 +55,7 @@ instance PV2.UnsafeFromData Fraction where
 
 -- | A wrapper around an asset's full name (policy id, token name). It uses
 -- a custom data encoding since Aiken uses a different encoding for it.
-newtype Asset = Asset { unAsset :: (PV2.CurrencySymbol,PV2.TokenName) }
+newtype Asset = Asset { _unAsset :: (PV2.CurrencySymbol,PV2.TokenName) }
   deriving (Show,Eq)
 
 instance PV2.ToData Asset where
@@ -77,30 +77,30 @@ instance PV2.UnsafeFromData Asset where
 -- | A wrapper around the token name for a lender id. It is prefixed with
 -- either "00" or "01" depending on whether the lender's credential is a pub key credential
 -- or a script credential, respectively.
-newtype LenderID = LenderID { unLenderID :: PV2.TokenName }
+newtype LenderId = LenderId { _unLenderId :: PV2.TokenName }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around the token name for a borrower id.
-newtype BorrowerID = BorrowerID { unBorrowerID :: PV2.TokenName }
+newtype BorrowerId = BorrowerId { _unBorrowerId :: PV2.TokenName }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around the token name for a loan asset's beacon name. The name is:
 -- sha2_256 ( "Asset" ++ policy id ++ token name ).
-newtype AssetBeacon = AssetBeacon { unAssetBeacon :: PV2.TokenName }
+newtype AssetBeacon = AssetBeacon { _unAssetBeacon :: PV2.TokenName }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around the token name for a loan's unique identifier. The name is:
 -- sha2_256 ( offer tx hash ++ offer output index ).
-newtype LoanID = LoanID { unLoanID :: PV2.TokenName }
+newtype LoanId = LoanId { _unLoanId :: PV2.TokenName }
   deriving (Show,Eq)
   deriving newtype (PV2.ToData,PV2.FromData,PV2.UnsafeFromData)
 
 -- | A wrapper around a list of collateral and their values relative to the loan asset. It uses
 -- a custom data encoding since Aiken uses a different encoding for it.
-newtype Collateralization = Collateralization [(Asset,Fraction)]
+newtype Collateralization = Collateralization { _unCollateralization :: [(Asset,Fraction)] }
   deriving (Show,Eq)
 
 instance PV2.ToData Collateralization where
@@ -120,12 +120,12 @@ instance PV2.UnsafeFromData Collateralization where
 
 -- | A wrapper around a list of collateral. It uses a custom data encoding since Aiken uses a 
 -- different encoding for it.
-newtype Collateral = Collateral { unCollateral :: [Asset] }
+newtype Collateral = Collateral { _unCollateral :: [Asset] }
   deriving (Show,Eq)
 
 instance PV2.ToData Collateral where
   toBuiltinData (Collateral xs) = 
-    PV2.BuiltinData $ PV2.Map $ map (bimap PV2.toData PV2.toData . unAsset) xs
+    PV2.BuiltinData $ PV2.Map $ map (bimap PV2.toData PV2.toData . _unAsset) xs
 
 instance PV2.FromData Collateral where
   fromBuiltinData (PV2.BuiltinData (PV2.Map collats)) = 

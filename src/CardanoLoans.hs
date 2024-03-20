@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module CardanoLoans
   ( -- * On-chain Datums
@@ -33,8 +34,8 @@ module CardanoLoans
     -- * Beacon Names
   , genLoanAssetBeaconName
   , genLoanId
-  , genLenderID
-  , genBorrowerID
+  , genLenderId
+  , genBorrowerId
     
     -- * Calculations
   , applyInterest
@@ -71,95 +72,97 @@ import CardanoLoans.Utils
 -------------------------------------------------
 data AskDatum = AskDatum
   -- | The policy id for the negotiation beacon script.
-  { negotiationBeaconId :: NegotiationBeaconID
+  { _negotiationBeaconId :: NegotiationBeaconId
   -- | The policy id for the active beacon script.
-  , activeBeaconId :: ActiveBeaconID
+  , _activeBeaconId :: ActiveBeaconId
   -- | The borrower's staking credential as a token name.
-  , borrowerId :: BorrowerID
+  , _borrowerId :: BorrowerId
   -- | The asset to be loaned out.
-  , loanAsset :: Asset
+  , _loanAsset :: Asset
   -- | The token name for the loan asset beacon.
-  , assetBeacon :: AssetBeacon
+  , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , loanPrinciple :: Integer
+  , _loanPrinciple :: Integer
   -- | How long the loan is active once accepted.
-  , loanTerm :: POSIXTime
+  , _loanTerm :: POSIXTime
   -- | The assets that will be used as collateral
-  , collateral :: Collateral
+  , _collateral :: Collateral
   } deriving (Generic,Show)
 
 data OfferDatum = OfferDatum
   -- | The policy id for the negotiation beacon script.
-  { negotiationBeaconId :: NegotiationBeaconID
+  { _negotiationBeaconId :: NegotiationBeaconId
   -- | The policy id for the active beacon script.
-  , activeBeaconId :: ActiveBeaconID
+  , _activeBeaconId :: ActiveBeaconId
   -- | The prefixed lender's staking credential as a token name.
-  , lenderId :: LenderID
+  , _lenderId :: LenderId
   -- | The lender's address.
-  , lenderAddress :: Address
+  , _lenderAddress :: Address
   -- | The asset to be loaned out.
-  , loanAsset :: Asset
+  , _loanAsset :: Asset
   -- | The token name for the loan asset beacon.
-  , assetBeacon :: AssetBeacon
+  , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , loanPrinciple :: Integer
+  , _loanPrinciple :: Integer
   -- | The frequency at which interest must be applied.
-  , rolloverFrequency :: Maybe POSIXTime
+  , _rolloverFrequency :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
-  , loanTerm :: POSIXTime
+  , _loanTerm :: POSIXTime
   -- | The interest that is applied with each rollover.
-  , loanInterest :: Fraction
+  , _loanInterest :: Fraction
   -- | The minimum loan partial payment that can be made.
-  , minPayment :: Integer
+  , _minPayment :: Integer
   -- | The relative values of the collateral assets.
-  , collateralization :: Collateralization
+  , _collateralization :: Collateralization
   -- | Whether collateral can be swapped out during a loan payment.
-  , collateralIsSwappable :: Bool
+  , _collateralIsSwappable :: Bool
   -- | How long the lender will have to claim the defaulted UTxO.
-  , claimPeriod :: POSIXTime
+  , _claimPeriod :: POSIXTime
   -- | How much ADA was used for the UTxO's minUTxOValue.
-  , offerDeposit :: Integer
+  , _offerDeposit :: Integer
   -- | An optional offer expiration time.
-  , offerExpiration :: Maybe POSIXTime
+  , _offerExpiration :: Maybe POSIXTime
   } deriving (Generic,Show)
 
 data ActiveDatum = ActiveDatum
   -- | The policy id for the active beacon script.
-  { activeBeaconId :: ActiveBeaconID
+  { _activeBeaconId :: ActiveBeaconId
   -- | The hash for the payment observer script.
-  , paymentObserverHash :: PV2.ScriptHash
+  , _paymentObserverHash :: PV2.ScriptHash
+  -- | The hash for the rollover observer script.
+  , _rolloverObserverHash :: PV2.ScriptHash
   -- | The borrower's staking credential as a token name.
-  , borrowerId :: BorrowerID
+  , _borrowerId :: BorrowerId
   -- | The lender's address.
-  , lenderAddress :: Address
+  , _lenderAddress :: Address
   -- | The asset to be loaned out.
-  , loanAsset :: Asset
+  , _loanAsset :: Asset
   -- | The token name for the loan asset beacon.
-  , assetBeacon :: AssetBeacon
+  , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , loanPrinciple :: Integer
+  , _loanPrinciple :: Integer
   -- | The frequency at which interest must be applied.
-  , rolloverFrequency :: Maybe POSIXTime
+  , _rolloverFrequency :: Maybe POSIXTime
   -- | The last time interest was applied.
-  , lastCheckpoint :: POSIXTime
+  , _lastCheckpoint :: POSIXTime
   -- | How long the loan is active once accepted.
-  , loanTerm :: POSIXTime
+  , _loanTerm :: POSIXTime
   -- | The interest that is applied with each rollover.
-  , loanInterest :: Fraction
+  , _loanInterest :: Fraction
   -- | The minimum loan partial payment that can be made.
-  , minPayment :: Integer
+  , _minPayment :: Integer
   -- | The relative values of the collateral assets.
-  , collateralization :: Collateralization
+  , _collateralization :: Collateralization
   -- | Whether collateral can be swapped out during a loan payment.
-  , collateralIsSwappable :: Bool
+  , _collateralIsSwappable :: Bool
   -- | The time at which the lender's claim period will expire.
-  , claimExpiration :: POSIXTime
+  , _claimExpiration :: POSIXTime
   -- | The time at which the loan will expire.
-  , loanExpiration :: POSIXTime
+  , _loanExpiration :: POSIXTime
   -- | The loan's remaining unpaid balance.
-  , loanOutstanding :: Fraction
+  , _loanOutstanding :: Fraction
   -- | The loan's unique indentifier.
-  , loanId :: LoanID
+  , _loanId :: LoanId
   } deriving (Generic,Show)
 
 newtype PaymentDatum = PaymentDatum (CurrencySymbol,TokenName)
@@ -203,7 +206,8 @@ data NegotiationBeaconsRedeemer
   -- | Create, close, or update some Offer UTxOs (1 or more). The credential is the lender's
   -- staking credential.
   | CreateCloseOrUpdateOffer Credential
-  -- | Burn any beacons.
+  -- | Burn any beacons. This can only be used in the same transaction where CreateActive is used
+  -- for the active beacon script.
   | BurnNegotiationBeacons
   -- | Register the script.
   | RegisterNegotiationScript
@@ -261,11 +265,24 @@ paymentObserverCurrencySymbol :: PV2.CurrencySymbol
 paymentObserverCurrencySymbol = 
   PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash paymentObserverScript
 
+rolloverObserverScript :: SerialisedScript
+rolloverObserverScript =
+  applyArguments
+    (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.rollover_observer_script")
+    [PV2.toData loanValidatorHash]
+
+rolloverObserverCurrencySymbol :: PV2.CurrencySymbol
+rolloverObserverCurrencySymbol = 
+  PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash rolloverObserverScript
+
 activeBeaconScript :: SerialisedScript
 activeBeaconScript =
   applyArguments
     (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.active_beacon_script")
-    [PV2.toData loanValidatorHash, PV2.toData paymentObserverCurrencySymbol]
+    [ PV2.toData loanValidatorHash
+    , PV2.toData paymentObserverCurrencySymbol
+    , PV2.toData rolloverObserverCurrencySymbol
+    ]
 
 activeBeaconCurrencySymbol :: PV2.CurrencySymbol
 activeBeaconCurrencySymbol = PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash activeBeaconScript
@@ -292,20 +309,20 @@ genLoanAssetBeaconName (Asset ((CurrencySymbol sym),(TokenName name))) =
   AssetBeacon $ TokenName $ PlutusTx.sha2_256 $ "Asset" <> sym <> name
 
 -- | Create the loan id from the offer's output reference.
-genLoanId :: TxOutRef -> LoanID
+genLoanId :: TxOutRef -> LoanId
 genLoanId (TxOutRef (TxId txHash) index) = 
   let TokenName index' = show index
-  in LoanID $ TokenName $ PlutusTx.sha2_256 $ txHash <> index'
+  in LoanId $ TokenName $ PlutusTx.sha2_256 $ txHash <> index'
 
--- | Create the prefixed LenderID from the lender's staking credential.
-genLenderID :: Credential -> LenderID
-genLenderID cred = LenderID $ TokenName $ case cred of
+-- | Create the prefixed LenderId from the lender's staking credential.
+genLenderId :: Credential -> LenderId
+genLenderId cred = LenderId $ TokenName $ case cred of
   PV2.PubKeyCredential (PV2.PubKeyHash pkh) -> unsafeToBuiltinByteString "00" <> pkh
   PV2.ScriptCredential (PV2.ScriptHash sh) -> unsafeToBuiltinByteString "01" <> sh
 
--- | Create the BorrowerID from the borrower's staking credential.
-genBorrowerID :: Credential -> BorrowerID
-genBorrowerID cred = BorrowerID $ TokenName $ case cred of
+-- | Create the BorrowerId from the borrower's staking credential.
+genBorrowerId :: Credential -> BorrowerId
+genBorrowerId cred = BorrowerId $ TokenName $ case cred of
   PV2.PubKeyCredential (PV2.PubKeyHash pkh) -> pkh
   PV2.ScriptCredential (PV2.ScriptHash sh) -> sh
 
@@ -338,109 +355,110 @@ subtractPayment paymentAmount (Fraction (balNum,balDen)) =
 -- | Required information for creating an AskDatum.
 data NewAskInfo = NewAskInfo
   -- | The borrower's staking credential.
-  { borrowerId :: Credential
+  { _borrowerId :: Credential
   -- | The asset to be loaned out.
-  , loanAsset :: Asset
+  , _loanAsset :: Asset
   -- | The size of the loan.
-  , loanPrinciple :: Integer
+  , _loanPrinciple :: Integer
   -- | How long the loan is active once accepted.
-  , loanTerm :: POSIXTime
+  , _loanTerm :: POSIXTime
   -- | The assets that will be used as collateral
-  , collateral :: [Asset]
+  , _collateral :: [Asset]
   } deriving (Show)
 
 -- | Convert the ask info to the AskDatum without checking any invariants. This is
 -- useful for testing the smart contracts.
 unsafeCreateAskDatum :: NewAskInfo -> AskDatum
 unsafeCreateAskDatum NewAskInfo{..} = AskDatum
-  { negotiationBeaconId = NegotiationBeaconID negotiationBeaconCurrencySymbol
-  , activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
-  , borrowerId = genBorrowerID borrowerId
-  , loanAsset = loanAsset
-  , assetBeacon = genLoanAssetBeaconName loanAsset
-  , loanPrinciple = loanPrinciple
-  , loanTerm = loanTerm
-  , collateral = Collateral collateral
+  { _negotiationBeaconId = NegotiationBeaconId negotiationBeaconCurrencySymbol
+  , _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+  , _borrowerId = genBorrowerId _borrowerId
+  , _loanAsset = _loanAsset
+  , _assetBeacon = genLoanAssetBeaconName _loanAsset
+  , _loanPrinciple = _loanPrinciple
+  , _loanTerm = _loanTerm
+  , _collateral = Collateral _collateral
   }
 
 data NewOfferInfo = NewOfferInfo
   -- | The lender's staking credential.
-  { lenderId :: Credential
+  { _lenderId :: Credential
   -- | The lender's address.
-  , lenderAddress :: Address
+  , _lenderAddress :: Address
   -- | The asset to be loaned out.
-  , loanAsset :: Asset
+  , _loanAsset :: Asset
   -- | The size of the loan.
-  , loanPrinciple :: Integer
+  , _loanPrinciple :: Integer
   -- | The frequency at which interest must be applied.
-  , rolloverFrequency :: Maybe POSIXTime
+  , _rolloverFrequency :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
-  , loanTerm :: POSIXTime
+  , _loanTerm :: POSIXTime
   -- | The interest that is applied with each rollover.
-  , loanInterest :: Fraction
+  , _loanInterest :: Fraction
   -- | The minimum loan partial payment that can be made.
-  , minPayment :: Integer
+  , _minPayment :: Integer
   -- | The relative values of the collateral assets.
-  , collateralization :: [(Asset,Fraction)]
+  , _collateralization :: [(Asset,Fraction)]
   -- | Whether collateral can be swapped out during a loan payment.
-  , collateralIsSwappable :: Bool
+  , _collateralIsSwappable :: Bool
   -- | How long the lender will have to claim the defaulted UTxO.
-  , claimPeriod :: POSIXTime
+  , _claimPeriod :: POSIXTime
   -- | How much ADA was used for the UTxO's minUTxOValue.
-  , offerDeposit :: Integer
+  , _offerDeposit :: Integer
   -- | An optional offer expiration time.
-  , offerExpiration :: Maybe POSIXTime
+  , _offerExpiration :: Maybe POSIXTime
   } deriving (Show)
 
 -- | Convert the offer info to the OfferDatum without checking any invariants. This is
 -- useful for testing the smart contracts.
 unsafeCreateOfferDatum :: NewOfferInfo -> OfferDatum
 unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
-  { negotiationBeaconId = NegotiationBeaconID negotiationBeaconCurrencySymbol
-  , activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
-  , lenderId = genLenderID lenderId
-  , lenderAddress = lenderAddress
-  , loanAsset = loanAsset
-  , assetBeacon = genLoanAssetBeaconName loanAsset
-  , loanPrinciple = loanPrinciple
-  , rolloverFrequency = rolloverFrequency
-  , loanTerm = loanTerm
-  , loanInterest = loanInterest
-  , minPayment = minPayment
-  , collateralization = Collateralization collateralization
-  , collateralIsSwappable = collateralIsSwappable
-  , claimPeriod = claimPeriod
-  , offerDeposit = offerDeposit
-  , offerExpiration = offerExpiration
+  { _negotiationBeaconId = NegotiationBeaconId negotiationBeaconCurrencySymbol
+  , _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+  , _lenderId = genLenderId _lenderId
+  , _lenderAddress = _lenderAddress
+  , _loanAsset = _loanAsset
+  , _assetBeacon = genLoanAssetBeaconName _loanAsset
+  , _loanPrinciple = _loanPrinciple
+  , _rolloverFrequency = _rolloverFrequency
+  , _loanTerm = _loanTerm
+  , _loanInterest = _loanInterest
+  , _minPayment = _minPayment
+  , _collateralization = Collateralization _collateralization
+  , _collateralIsSwappable = _collateralIsSwappable
+  , _claimPeriod = _claimPeriod
+  , _offerDeposit = _offerDeposit
+  , _offerExpiration = _offerExpiration
   }
 
--- | Create an ActiveDatum from an OfferDatum, offer output reference, BorrowerID, and loan 
+-- | Create an ActiveDatum from an OfferDatum, offer output reference, BorrowerId, and loan 
 -- start time.
 createAcceptanceDatum :: Credential -> TxOutRef -> POSIXTime -> OfferDatum -> ActiveDatum
 createAcceptanceDatum borrowerCred offerId startTime OfferDatum{..} = ActiveDatum
-  { activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
-  , paymentObserverHash = scriptHash paymentObserverScript
-  , borrowerId = genBorrowerID borrowerCred
-  , lenderAddress = lenderAddress
-  , loanAsset = loanAsset
-  , assetBeacon = assetBeacon
-  , loanPrinciple = loanPrinciple
-  , rolloverFrequency = rolloverFrequency
-  , loanTerm = loanTerm
-  , loanInterest = loanInterest
-  , minPayment = minPayment
-  , collateralization = collateralization
-  , collateralIsSwappable = collateralIsSwappable
-  , lastCheckpoint = startTime
-  , claimExpiration = startTime + loanTerm + claimPeriod
-  , loanExpiration = startTime + loanTerm
-  , loanOutstanding = applyInterest (Fraction (loanPrinciple,1)) loanInterest
-  , loanId = genLoanId offerId
+  { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+  , _paymentObserverHash = scriptHash paymentObserverScript
+  , _rolloverObserverHash = scriptHash rolloverObserverScript
+  , _borrowerId = genBorrowerId borrowerCred
+  , _lenderAddress = _lenderAddress
+  , _loanAsset = _loanAsset
+  , _assetBeacon = _assetBeacon
+  , _loanPrinciple = _loanPrinciple
+  , _rolloverFrequency = _rolloverFrequency
+  , _loanTerm = _loanTerm
+  , _loanInterest = _loanInterest
+  , _minPayment = _minPayment
+  , _collateralization = _collateralization
+  , _collateralIsSwappable = _collateralIsSwappable
+  , _lastCheckpoint = startTime
+  , _claimExpiration = startTime + _loanTerm + _claimPeriod
+  , _loanExpiration = startTime + _loanTerm
+  , _loanOutstanding = applyInterest (Fraction (_loanPrinciple,1)) _loanInterest
+  , _loanId = genLoanId offerId
   }
 
 createPostPaymentActiveDatum :: Integer -> ActiveDatum -> ActiveDatum
-createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{loanOutstanding} =
-  activeDatum{loanOutstanding = subtractPayment paymentAmount loanOutstanding}
+createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{_loanOutstanding} =
+  activeDatum{_loanOutstanding = subtractPayment paymentAmount _loanOutstanding}
 
 -- -- | Required information from the user for creating a loan datum.
 -- data UserLoanInfo
@@ -521,9 +539,9 @@ createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{loanOutstandi
 -- unsafeCreateLoanDatum :: UserLoanInfo -> LoanDatum
 -- unsafeCreateLoanDatum info = case info of
 --   NewAskInfo{..} -> AskDatum
---     { negotiationBeaconId = NegotiationBeaconID negotiationBeaconCurrencySymbol
---     , activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
---     , borrowerId = genBorrowerID borrowerId
+--     { negotiationBeaconId = NegotiationBeaconId negotiationBeaconCurrencySymbol
+--     , activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+--     , borrowerId = genBorrowerId borrowerId
 --     , loanAsset = loanAsset
 --     , assetBeacon = genLoanAssetBeaconName loanAsset
 --     , loanPrinciple = loanPrinciple
@@ -531,9 +549,9 @@ createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{loanOutstandi
 --     , collateral = Collateral collateral
 --     }
 --   NewOfferInfo{..} -> OfferDatum
---     { negotiationBeaconId = NegotiationBeaconID negotiationBeaconCurrencySymbol
---     , activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
---     , lenderId = genLenderID lenderId
+--     { negotiationBeaconId = NegotiationBeaconId negotiationBeaconCurrencySymbol
+--     , activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+--     , lenderId = genLenderId lenderId
 --     , lenderAddress = lenderAddress
 --     , loanAsset = loanAsset
 --     , assetBeacon = genLoanAssetBeaconName loanAsset
@@ -549,8 +567,8 @@ createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{loanOutstandi
 --     , offerExpiration = offerExpiration
 --     }
 --   NewActiveInfo{..} -> ActiveDatum
---     { activeBeaconId = ActiveBeaconID activeBeaconCurrencySymbol
---     , borrowerId = genBorrowerID borrowerId
+--     { activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+--     , borrowerId = genBorrowerId borrowerId
 --     , lenderAddress = lenderAddress
 --     , loanAsset = loanAsset
 --     , assetBeacon = genLoanAssetBeaconName loanAsset

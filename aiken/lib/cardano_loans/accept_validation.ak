@@ -1,237 +1,55 @@
 use aiken/bytearray as byte
-use aiken/hash.{Blake2b_224,Hash}
-use aiken/list
-use aiken/option
 use aiken/dict.{Dict}
-use aiken/transaction.{
-    InlineDatum,
-    Output,
-    Input,
-    ValidityRange
-  }
-use aiken/transaction/credential.{
-    Address,
-    Script
-  }
-use aiken/transaction/value.{
-    AssetName,
-    PolicyId,
-    Value
-  }
+use aiken/option
+use aiken/list
+use aiken/time.{PosixTime}
+use aiken/transaction.{Datum, InlineDatum, Output, Input, Redeemer, ValidityRange}
+use aiken/transaction/credential.{Address}
+use aiken/transaction/value.{Value, PolicyId, AssetName}
+
+use aiken/cbor
 
 use cardano_loans/data/core.{
-    NegotiationID,
-    ActiveID,
-    StartTime,
-    ExpirationTime,
-    LoanID,
+    ScriptHash,
+    ActiveId,
+    BorrowerId,
+    LoanId,
+    AssetBeacon,
     Asset,
-    Rational,
-    BorrowerID,
-    AssetBeacon
+    Fraction,
+    NegotiationId
   }
-use cardano_loans/data/datums.{
-    LoanDatum,
-    OfferDatum,
-    ActiveDatum
-  }
-use cardano_loans/utils.{
-    trace_if_false,
-    error_if_false,
-    parse_datum,
-  }
+use cardano_loans/data/datums.{LoanDatum, OfferDatum, ActiveDatum}
+use cardano_loans/utils.{error_if_false, trace_if_false, parse_datum}
 
-// Returns what information the collateral output and lender output should have based on the
-// offer. It will also check if the offer has expired. It returns the AssetBeacon so that it can
-// be marked for minting an active version.
-fn extract_output_info(
-  lower_bound: StartTime,
-  upper_bound: ExpirationTime,
-  borrower_id: BorrowerID,
-  offer_datum: LoanDatum,
-  payment_observer_hash: Hash<Blake2b_224,Script>,
-  loan_id: LoanID // This is taken from the output reference for the Offer UTxO.
-) -> (LoanDatum,(LoanID,(Int,Address)),AssetBeacon) {
-  // Pattern match out the required terms from the OfferDatum.
-  expect OfferDatum(
-    _,
-    active_beacon_id_,
-    _,
-    lender_address_,
-    loan_asset_,
-    asset_beacon_,
-    loan_principle_,
-    rollover_frequency_,
-    loan_term_,
-    loan_interest_,
-    min_payment_,
-    collateralization_,
-    collateral_is_swappable_,
-    claim_period_,
-    offer_deposit_,
-    offer_expiration_
-  ) = offer_datum
-
-  // The offer must not be expired.
-  expect True = error_if_false(
-    @"Offer has expired",
-    when offer_expiration_ is {
-      None -> True
-      Some(x) -> core.expiration_time_has_not_passed(upper_bound,x)
-    }
-  )
-
-  // Produce the expected datum. Calculate the expiration times.
-  let req_datum = ActiveDatum{
-    active_beacon_id: active_beacon_id_,
-    payment_observer: payment_observer_hash,
-    borrower_id: borrower_id,
-    lender_address: lender_address_,
-    loan_asset: loan_asset_,
-    asset_beacon: asset_beacon_,
-    loan_principle: loan_principle_,
-    rollover_frequency: rollover_frequency_,
-    last_checkpoint: lower_bound,
-    loan_term: loan_term_,
-    loan_interest: loan_interest_,
-    min_payment: min_payment_,
-    collateralization: collateralization_,
-    collateral_is_swappable: collateral_is_swappable_,
-    claim_expiration: 
-      core.add_duration(loan_term_,claim_period_) |> core.calc_expiration_time(lower_bound,_),
-    loan_expiration: core.calc_expiration_time(lower_bound,loan_term_),
-    loan_outstanding: // Must apply the first interest calculation.
-      core.apply_interest((loan_principle_,1),loan_interest_),
-    loan_id: loan_id
-  }
-
-  ( req_datum, (loan_id,(offer_deposit_,lender_address_)), asset_beacon_ )
+type RequiredCollateralOutput {
+  borrower_address: Address,
+  collateralization: List<(Asset,Fraction)>,
+  active_beacon_id: ActiveId,
+  loan_principle: Int,
+  loan_id: LoanId,
+  loan_asset: Asset,
+  asset_beacon: AssetBeacon,
+  borrower_id: BorrowerId,
+  req_datum: Datum
 }
 
-// Go through the inputs and build up a list of required beacons to burn as well as required
-// output information to expect.
-fn get_input_info(
-  negotiation_beacon_id: NegotiationID,
-  payment_observer_hash: Hash<Blake2b_224,Script>,
-  borrower_id: BorrowerID,
-  borrower_loan_address: Address,
-  validity_range: ValidityRange,
-  inputs: List<Input>
-) -> ( 
-  List<LoanDatum>, // A list of required collateral output information.
-  List<(LoanID,(Int,Address))>, // A list of required payment output information.
-  Int, // Total number of offers accepted.
-  Int, // Total number of asks closed.
-  Dict<AssetName,Int>, // Required active beacon tokens to mint.
-  Dict<AssetName,Int> // Required negotiation beacon tokens to burn.
-) {
-  let lower_bound = core.get_start_time(validity_range)
-  let upper_bound = core.get_end_time(validity_range)
-
-  // Helper functions declared only once.
-  let sum = fn (_k, a, b) { Some (a+b) }
-
-  // A function to map over the list of inputs.
-  let foo = fn(
-    input: Input,
-    acc: (
-      List<LoanDatum>, 
-      List<(LoanID,(Int,Address))>, 
-      Int, 
-      Int, 
-      Dict<AssetName,Int>, 
-      Dict<AssetName,Int>
-    )
-  ) {
-    let Input(out_ref,Output(address,val,d,_)) = input
-    let (req_collateral,req_payments,offers_accepted,asks_closed,req_mint,req_burn) = acc
-
-    // Only inputs with negotiation beacons need to be checked. Ask inputs have two beacons 
-    // (Ask, and Asset beacon) while Offers have three beacons (Offer, LenderID, and Asset beacon). 
-
-    // Get the negotiation beacons in this UTxO and pattern match on it.
-    when value.tokens(val,core.from_negotiation_id(negotiation_beacon_id)) |> dict.to_list() is {
-      // If beacons are not present, this input can be ignored.
-      [] -> acc
-
-      // If there are two beacons, this should be an Ask UTxO.
-      [(tn1,n1),(tn2,n2)] -> {
-        // All loan inputs must come from the borrower's loan address.
-        expect True = error_if_false(
-          @"Found loan input from different borrower",
-          address == borrower_loan_address
-        )
-
-        // Add the beacons to be burned.
-        let new_req_burn = req_burn |>
-          dict.insert_with(_,tn1,-n1,sum,byte.compare) |>
-          dict.insert_with(_,tn2,-n2,sum,byte.compare)
-
-        // Increment the number of asks closed.
-        ( req_collateral, req_payments, offers_accepted, asks_closed + 1, req_mint, new_req_burn )
-      }
-
-      // If there are three beacons, this is an Offer UTxO.
-      [(tn1,n1),(tn2,n2),(tn3,n3)] -> {
-        // All loan inputs must come from the borrower's loan address.
-        expect True = error_if_false(
-          @"Found loan input from different borrower",
-          address == borrower_loan_address
-        )
-
-        let loan_id = core.make_loan_id(out_ref)
-        let (req_datum,req_pay,asset_beacon) = extract_output_info(
-          lower_bound,
-          upper_bound,
-          borrower_id,
-          parse_datum(d),
-          payment_observer_hash,
-          loan_id
-        )
-
-        let new_req_collateral = list.push(req_collateral,req_datum)
-        let new_req_payments = list.push(req_payments,req_pay)
-        let new_req_burn = req_burn |>
-          dict.insert_with(_,tn1,-n1,sum,byte.compare) |>
-          dict.insert_with(_,tn2,-n2,sum,byte.compare) |>
-          dict.insert_with(_,tn3,-n3,sum,byte.compare)
-        let new_req_mint = req_mint |>
-          // Mint an Active beacon.
-          dict.insert_with(_,"Active",1,sum,byte.compare) |>
-          // Mint a BorrowerID.
-          dict.insert_with(_,core.get_borrower_id_name(borrower_id),1,sum,byte.compare) |>
-          // Mint two LoanIDs.
-          dict.insert_with(_,core.get_loan_id_name(loan_id),2,sum,byte.compare) |>
-          // Mint an Asset beacon.
-          dict.insert_with(_,core.get_asset_beacon_name(asset_beacon),1,sum,byte.compare)
-
-        ( new_req_collateral, 
-          new_req_payments, 
-          offers_accepted + 1, 
-          asks_closed, 
-          new_req_mint, 
-          new_req_burn
-        )
-      }
-
-      // This path can only be taken if the above matches failed which means the UTxO
-      // has the wrong number of beacons. This should never happen.
-      _ -> error @"The impossible happened"
-    }
-  }
-
-  list.foldl(inputs,([],[],0,0,dict.new(),dict.new()),foo)
+type RequiredLenderOutput {
+  active_beacon_id: ActiveId,
+  lender_address: Address,
+  offer_deposit: Int,
+  loan_id: LoanId
 }
 
 // Check if the newly accepted loan has enough collateral backing it. This also checks that
 // the output has the proper beacons and fails with an error if it does not.
 fn has_enough_collateral(
-  active_beacon_id: ActiveID,
-  borrower_id: BorrowerID,
+  active_beacon_id: ActiveId,
+  borrower_id: BorrowerId,
   asset_beacon: AssetBeacon,
-  loan_id: LoanID,
+  loan_id: LoanId,
   principle_taken: Int,
-  collateralization: List<(Asset,Rational)>,
+  collateralization: List<(Asset,Fraction)>,
   output_value: Value
 ) -> Bool {
 
@@ -256,10 +74,10 @@ fn has_enough_collateral(
           // There must only be one Asset beacon.
           (active_check, n == 1, borrower_id_check, loan_id_check)
         } else if tn == core.get_borrower_id_name(borrower_id) {
-          // There must only be one BorrowerID beacon.
+          // There must only be one BorrowerId beacon.
           (active_check, asset_check, n == 1, loan_id_check)
         } else if tn == core.get_loan_id_name(loan_id) {
-          // There must only be one LoanID beacon.
+          // There must only be one LoanId beacon.
           (active_check, asset_check, borrower_id_check, n == 1)
         } else {
           error @"UTxO has a beacon with the wrong name"
@@ -315,151 +133,211 @@ fn has_enough_collateral(
   }
 }
 
-// Go through the list of outputs and check that:
-// 1) All outputs with beacons are locked at the borrower's address.
-// 2) All outputs with beacons have 4 different beacons.
-// 3) The proper number of collateral outputs and payment outputs are satisfied. The uniqueness
-//    of the LoanIDs prevents double satisfaction.
-fn offer_inputs_all_satisfied(
-  active_beacon_id: ActiveID,
-  borrower_id: BorrowerID,
-  borrower_loan_address: Address,
-  req_collateral: List<LoanDatum>,
-  req_payments: List<(LoanID,(Int,Address))>,
-  offers_accepted: Int,
-  outputs: List<Output>
-) -> Bool {
-  // A function to map over the list of outputs. Returns the total number of payment outputs
-  // and collateral outputs satisfied.
-  let foo = fn (out: Output, acc: (Int,Int)) {
-    let (payments_satisfied,collateral_satisfied) = acc
+// Returns what information the collateral output and lender output should have based on the
+// offer. It will also check if the offer has expired. It returns the AssetBeacon so that it can
+// be marked for minting an active version.
+fn process_input(
+  lower_bound: PosixTime,
+  upper_bound: Option<PosixTime>,
+  borrower_id: BorrowerId,
+  offer_datum: LoanDatum,
+  borrower_address: Address,
+  payment_observer_hash: ScriptHash,
+  rollover_observer_hash: ScriptHash,
+  loan_id: LoanId // This is taken from the output reference for the Offer UTxO.
+) -> (RequiredCollateralOutput,RequiredLenderOutput,AssetName) {
+  expect OfferDatum{
+    active_beacon_id,
+    lender_address,
+    loan_asset,
+    asset_beacon,
+    loan_principle,
+    rollover_frequency,
+    loan_term,
+    loan_interest,
+    min_payment,
+    collateralization,
+    collateral_is_swappable,
+    claim_period,
+    offer_deposit,
+    offer_expiration,
+    ..
+  } = offer_datum
 
-    // Extract out the output's information.
-    let Output(address,val,d,_) = out
-
-    // Get the beacons in this UTxO and pattern match on it.
-    when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
-      // If beacons are not present, this output can be ignored.
-      [] -> acc
-
-      // This is a collateral UTxO and has four types of beacon. The exact beacons will be 
-      // checked later. 
-      [(_,_),(_,_),(_,_),(_,_)] -> {
-        // All outputs with beacons in this transaction must have ActiveDatums. 
-        let datum = when parse_datum(d) is {
-          ActiveDatum(..) as datum -> datum
-          _ -> error @"Loan address output does not have an ActiveDatum."
-        }
-
-        if list.has(req_collateral,datum) {
-          // If the datum is in the req_collateral list, this UTxO must be checked for the
-          // proper value and location.
-          expect ActiveDatum(
-            _,
-            _,
-            _,
-            _,
-            _,
-            asset_beacon,
-            principle_taken,
-            _,
-            _,
-            _,
-            _,
-            _,
-            collateralization,
-            _,
-            _,
-            _,
-            _,
-            loan_id
-          ) = datum
-
-          expect True = error_if_false(
-            @"Collateral output locked at wrong address",
-            address == borrower_loan_address
-          )
-
-          expect True = error_if_false(
-            @"Collateral output does not have enough collateral",
-            has_enough_collateral(
-              active_beacon_id,
-              borrower_id,
-              asset_beacon,
-              loan_id,
-              principle_taken,
-              collateralization,
-              val
-            )
-          )
-
-          // If the above checks passed, a collateral output is satisfied.
-          (payments_satisfied, collateral_satisfied + 1)
-        } else {
-          // If the datum is not in the req_collateral list, it won't satisfy the required
-          // count. This is okay as long as this output is not from a newly accepted loan.
-          acc
-        }
-      }
-
-      // This is a lender payment output and has one beacon which should be a LoanID.
-      // The only type of output that can have a single UTxO is a lender payment upon
-      // acceptance; the beacon must be a LoanID.
-      [(tn,n)] -> {
-        when utils.find_by_key(req_payments,core.asset_name_to_loan_id(tn)) is {
-          None -> error @"Beacon found in invalid UTxO"
-          Some((deposit,req_lender_address)) -> {
-            expect True = error_if_false(
-              @"Too many LoanIDs found in UTxO",
-              n == 1
-            )
-
-            expect True = error_if_false(
-              @"Lender deposit not returned",
-              value.lovelace_of(val) >= deposit
-            )
-
-            expect True = error_if_false(
-              @"LoanID sent to wrong lender address",
-              address == req_lender_address
-            )
-
-            expect True = error_if_false(
-              @"Lender output stored with wrong datum",
-              InlineDatum((active_beacon_id,"Accepted")) == d
-            )
-
-            // If the above checks passed, a payment output is satisfied.
-            (payments_satisfied + 1, collateral_satisfied)
-          }
-        }
-      }
-
-      // This path can only be taken if the above two matches failed which means the UTxO
-      // has the wrong number of beacons.
-      _ -> error @"UTxO output has the wrong number of beacons"
+  // The offer must not be expired.
+  expect True = error_if_false(
+    @"Offer has expired",
+    when (offer_expiration,upper_bound) is {
+      (None,_) -> True
+      (Some(_),None) -> error "invalid-hereafter not set"
+      (Some(expir),Some(after)) -> utils.expiration_has_not_passed(expir,after)
     }
+  )
+
+  // Produce the expected datum. Calculate the expiration times.
+  let req_datum = ActiveDatum{
+    active_beacon_id: active_beacon_id,
+    payment_observer_hash: payment_observer_hash,
+    rollover_observer_hash: rollover_observer_hash,
+    borrower_id: core.get_borrower_id_name(borrower_id),
+    lender_address: lender_address,
+    loan_asset: loan_asset,
+    asset_beacon: asset_beacon,
+    loan_principle: loan_principle,
+    rollover_frequency: rollover_frequency,
+    last_checkpoint: lower_bound,
+    loan_term: loan_term,
+    loan_interest: loan_interest,
+    min_payment: min_payment,
+    collateralization: collateralization,
+    collateral_is_swappable: collateral_is_swappable,
+    claim_expiration: loan_term + claim_period + lower_bound,
+    loan_expiration: loan_term + lower_bound,
+    loan_outstanding: // Must apply the first interest calculation.
+      utils.apply_interest((loan_principle,1),loan_interest),
+    loan_id: core.get_loan_id_name(loan_id)
+  } |> InlineDatum
+
+  let req_collateral = RequiredCollateralOutput{
+    borrower_address: borrower_address,
+    collateralization: collateralization,
+    active_beacon_id: core.to_active_id(active_beacon_id),
+    loan_principle: loan_principle,
+    loan_id: loan_id,
+    loan_asset: loan_asset,
+    asset_beacon: core.unsafe_to_asset_beacon(asset_beacon),
+    borrower_id: borrower_id,
+    req_datum: req_datum
   }
 
-  // Map over the list and return the total number of payment outputs and collateral outputs
-  // satisfied.
-  let (payments_satisfied,collateral_satisfied) = list.foldl(outputs,(0,0),foo)
-
-  and {
-    trace_if_false(
-      @"Not all lender outputs found", 
-      payments_satisfied == offers_accepted
-    ),
-    trace_if_false(
-      @"Not all collateral outputs found", 
-      collateral_satisfied == offers_accepted
-    )
+  let req_lender_output = RequiredLenderOutput{
+    active_beacon_id: core.to_active_id(active_beacon_id),
+    lender_address: lender_address,
+    offer_deposit: offer_deposit,
+    loan_id: loan_id
   }
+
+  (req_collateral, req_lender_output, asset_beacon)
 }
 
+// Go through the inputs and build up a list of required beacons to mint/burn as well as required
+// output information to expect.
+fn get_input_info(
+  negotiation_beacon_id: NegotiationId,
+  payment_observer_hash: ScriptHash,
+  rollover_observer_hash: ScriptHash,
+  borrower_id: BorrowerId,
+  borrower_loan_address: Address,
+  validity_range: ValidityRange,
+  inputs: List<Input>
+) -> ( 
+  List<(Option<RequiredCollateralOutput>,Option<RequiredLenderOutput>)>,
+  Int, // Total number of offers accepted.
+  Int, // Total number of asks closed.
+  Dict<AssetName,Int>, // Required active beacon tokens to mint.
+  Dict<AssetName,Int> // Required negotiation beacon tokens to burn.
+) {
+  let lower_bound = utils.get_lower_bound(validity_range)
+  let upper_bound = utils.get_upper_bound(validity_range)
+
+  // A function to map over the list of inputs.
+  let foo = fn(
+    input: Input,
+    acc: (
+      List<(Option<RequiredCollateralOutput>,Option<RequiredLenderOutput>)>,
+      Int, 
+      Int, 
+      Dict<AssetName,Int>, 
+      Dict<AssetName,Int>
+    )
+  ) {
+    let Input(out_ref,Output(address,val,d,_)) = input
+    let (req_outputs,offers_accepted,asks_closed,req_mint,req_burn) = acc
+
+    // Only inputs with negotiation beacons need to be checked. Ask inputs have two beacons 
+    // (Ask, and Asset beacon) while Offers have three beacons (Offer, LenderId, and Asset beacon). 
+
+    // Get the negotiation beacons in this UTxO and pattern match on it.
+    when value.tokens(val,core.from_negotiation_id(negotiation_beacon_id)) |> dict.to_list() is {
+      // If beacons are not present, this input can be ignored.
+      [] -> acc
+
+      // If there are two beacons, this should be an Ask UTxO.
+      [(tn1,n1),(tn2,n2)] -> {
+        // All loan inputs must come from the borrower's loan address.
+        expect True = error_if_false(
+          @"Found loan input from different borrower",
+          address == borrower_loan_address
+        )
+
+        // Add the beacons to be burned.
+        let new_req_burn = req_burn |>
+          dict.insert_with(_,tn1,-n1,utils.sum_token_values,byte.compare) |>
+          dict.insert_with(_,tn2,-n2,utils.sum_token_values,byte.compare)
+
+        // Increment the number of asks closed.
+        ( req_outputs, offers_accepted, asks_closed + 1, req_mint, new_req_burn )
+      }
+
+      // If there are three beacons, this is an Offer UTxO.
+      [(tn1,n1),(tn2,n2),(tn3,n3)] -> {
+        // All loan inputs must come from the borrower's loan address.
+        expect True = error_if_false(
+          @"Found loan input from different borrower",
+          address == borrower_loan_address
+        )
+
+        let loan_id = core.make_loan_id(out_ref)
+        let (req_collateral_out,req_lender_out,asset_beacon) = process_input(
+          lower_bound,
+          upper_bound,
+          borrower_id,
+          parse_datum(d),
+          address,
+          payment_observer_hash,
+          rollover_observer_hash,
+          loan_id
+        )
+
+        let new_req_burn = req_burn |>
+          dict.insert_with(_,tn1,-n1,utils.sum_token_values,byte.compare) |>
+          dict.insert_with(_,tn2,-n2,utils.sum_token_values,byte.compare) |>
+          dict.insert_with(_,tn3,-n3,utils.sum_token_values,byte.compare)
+
+        let new_req_mint = req_mint |>
+          // Mint an Active beacon.
+          dict.insert_with(_,"Active",1,utils.sum_token_values,byte.compare) |>
+          // Mint a BorrowerId.
+          dict.insert_with(_,core.get_borrower_id_name(borrower_id),1,utils.sum_token_values,byte.compare) |>
+          // Mint two LoanIds.
+          dict.insert_with(_,core.get_loan_id_name(loan_id),2,utils.sum_token_values,byte.compare) |>
+          // Mint an Asset beacon.
+          dict.insert_with(_,asset_beacon,1,utils.sum_token_values,byte.compare)
+
+        // Add the outputs to the end.
+        let new_outs = list.concat(req_outputs,[(Some(req_collateral_out),Some(req_lender_out))])
+
+        ( new_outs,
+          offers_accepted + 1, 
+          asks_closed, 
+          new_req_mint, 
+          new_req_burn
+        )
+      }
+
+      // This path can only be taken if the above matches failed which means the UTxO
+      // has the wrong number of beacons. This should never happen.
+      _ -> error @"The impossible happened"
+    }
+  }
+  
+  list.foldl(inputs,([],0,0,dict.new(),dict.new()),foo)
+}
+
+// Get the negotiation beacons burned and the active beacons minted.
 fn get_beacon_mint_and_burn(
-  negotiation_beacon_id: NegotiationID,
-  active_beacon_id: ActiveID,
+  negotiation_beacon_id: NegotiationId,
+  active_beacon_id: ActiveId,
   acc: (Option<Dict<AssetName,Int>>,Option<Dict<AssetName,Int>>),
   xs: List<(PolicyId,Dict<AssetName,Int>)>
 ) -> (Option<Dict<AssetName,Int>>,Option<Dict<AssetName,Int>>) {
@@ -485,22 +363,202 @@ fn get_beacon_mint_and_burn(
   }
 }
 
+// Check if the lender's output value is correct. It should have exactly 1 LoanId and the
+// offer deposit amount of ADA. No other assets should be present.
+fn lender_output_has_proper_value(
+  val: Value,
+  offer_deposit: Int,
+  loan_id: LoanId,
+  active_beacon_id: ActiveId
+) -> Bool {
+  when value.flatten(val) is {
+    [(cn1,tn1,n1),(cn2,tn2,n2)] -> {
+      // The empty bytestring (ADA's on-chain name) should always be first.
+      and {
+        error_if_false(
+          @"Lender's deposit not returned exactly",
+          cn1 == #"" && tn1 == #"" && n1 == offer_deposit
+        ),
+        error_if_false(
+          @"Lender payment must have exactly one LoanId",
+          cn2 == core.from_active_id(active_beacon_id) && 
+          tn2 == core.get_loan_id_name(loan_id) && 
+          n2 == 1
+        )
+      }
+    }
+    
+    _ -> error @"Lender output can/must only contain ADA and the LoanId"
+  }
+}
+
+// Go through the outputs and check that all required outputs are satisfied. The loan outputs are
+// assumed to be in the order of the inputs, and be paired up (collateral output and lender output
+// are next to each other). This function can never actually return False; it will crash with
+// an error at the first failure.
+fn check_outputs(
+  req_outputs: List<(Option<RequiredCollateralOutput>,Option<RequiredLenderOutput>)>,
+  outputs: List<Output>,
+  result: Bool
+) -> Bool {
+  when (req_outputs,outputs) is {
+    ( [ (Some(req_collateral_output),None), ..rest_req_outs ]
+    , [ Output(addr,val,d,_), ..rest_outs ]
+    ) -> {
+      let RequiredCollateralOutput{
+        borrower_address,
+        collateralization, 
+        active_beacon_id, 
+        loan_principle,
+        loan_id, 
+        loan_asset,
+        asset_beacon,
+        borrower_id, 
+        req_datum
+      } = req_collateral_output
+
+      if addr == borrower_address && d == req_datum {
+        // has_enough_collateral checks that the output contains the proper beacons.
+        check_outputs(
+          rest_req_outs, 
+          rest_outs, 
+          error_if_false(
+            @"Collateral output does not have enough collateral",
+            has_enough_collateral(
+              active_beacon_id,
+              borrower_id,
+              asset_beacon,
+              loan_id,
+              loan_principle,
+              collateralization,
+              val
+            )
+          )
+        )
+
+      // The next collateral output must be processed before moving on other required outputs.
+      // So move on to the next output until this required output is found.
+      } else {
+        check_outputs(req_outputs,rest_outs,result)
+      }
+    }
+
+    ( [ (None,Some(req_lender_output)), ..rest_req_outs ]
+    , [ Output(addr,val,d,_), ..rest_outs ]
+    ) -> {
+      let RequiredLenderOutput{
+        active_beacon_id,
+        lender_address,
+        offer_deposit,
+        loan_id
+      } = req_lender_output
+
+      // Check if the output is the next required lender output.
+      if addr == lender_address && d == InlineDatum((active_beacon_id,loan_id)) {
+        check_outputs(
+          rest_req_outs, 
+          rest_outs, 
+          // This will either crash or return true.
+          lender_output_has_proper_value(
+            val,
+            offer_deposit,
+            loan_id,
+            active_beacon_id
+          )
+        )
+
+      // The next lender output must be processed before moving on other required outputs.
+      // So move on to the next output until this required output is found.
+      } else {
+        check_outputs(req_outputs,rest_outs,result)
+      }
+    }
+
+    ( [ (Some(req_collateral_output) as col,Some(req_lender_output) as pay), ..rest_req_outs ]
+    , [ Output(addr,val,d,_), ..rest_outs ]
+    ) -> {
+      let RequiredCollateralOutput{
+        borrower_address,
+        collateralization, 
+        active_beacon_id, 
+        loan_principle,
+        loan_id, 
+        loan_asset,
+        asset_beacon,
+        borrower_id, 
+        req_datum
+      } = req_collateral_output
+
+      let RequiredLenderOutput{
+        lender_address,
+        offer_deposit,
+        ..
+      } = req_lender_output
+
+      // Check if it is the next required collateral output.
+      if addr == borrower_address && d == req_datum {
+        // has_enough_collateral checks that the output contains the proper beacons.
+        check_outputs(
+          [(None,pay), ..rest_req_outs], 
+          rest_outs, 
+          error_if_false(
+            @"Collateral output does not have enough collateral",
+            has_enough_collateral(
+              active_beacon_id,
+              borrower_id,
+              asset_beacon,
+              loan_id,
+              loan_principle,
+              collateralization,
+              val
+            )
+          )
+        )
+
+      // Check if it is the next required lender output.
+      } else if addr == lender_address && d == InlineDatum((active_beacon_id,loan_id)) {
+        check_outputs(
+          [(col,None), ..rest_req_outs], 
+          rest_outs, 
+          // This will either crash or return true.
+          lender_output_has_proper_value(
+            val,
+            offer_deposit,
+            loan_id,
+            active_beacon_id
+          )
+        )
+
+      // Move on to the next output in the transaction.
+      } else {
+        check_outputs(req_outputs,rest_outs,result)
+      }
+    }
+
+    ([], _) -> result
+
+    _ -> error "Not all required outputs found"
+  }
+}
+
 // Check that the new loans have the proper outputs and the proper beacons were minted/burned.
 pub fn valid_loan_acceptances(
-  negotiation_beacon_id: NegotiationID,
-  active_beacon_id: ActiveID,
-  payment_observer_hash: Hash<Blake2b_224,Script>,
-  borrower_id: BorrowerID,
+  negotiation_beacon_id: NegotiationId,
+  active_beacon_id: ActiveId,
+  payment_observer_hash: ScriptHash,
+  rollover_observer_hash: ScriptHash,
+  borrower_id: BorrowerId,
   borrower_loan_address: Address,
   validity_range: ValidityRange,
   inputs: List<Input>,
   outputs: List<Output>,
   minted: Value
 ) -> Bool {
-  let (req_collateral,req_payments,offers_accepted,asks_closed,req_mint,req_burn) =
+  let (req_outputs,offers_accepted,asks_closed,req_mint,req_burn) =
     get_input_info(
       negotiation_beacon_id,
       payment_observer_hash,
+      rollover_observer_hash,
       borrower_id,
       borrower_loan_address,
       validity_range,
@@ -515,14 +573,10 @@ pub fn valid_loan_acceptances(
   )
 
   and {
-    offer_inputs_all_satisfied(
-      active_beacon_id,
-      borrower_id,
-      borrower_loan_address,
-      req_collateral,
-      req_payments,
-      offers_accepted,
-      outputs
+    check_outputs(
+      req_outputs,
+      outputs,
+      True
     ),
     trace_if_false(
       @"The wrong negotiation beacons were burned",

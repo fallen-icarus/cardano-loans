@@ -26,6 +26,7 @@ module Test.Prelude
   , testTokenSymbol
 
     -- * Initialize Emulator
+  , References(..)
   , initializeReferenceScripts
   , mintTestTokens
 
@@ -46,6 +47,7 @@ module Test.Prelude
   , txOutRefWithValue
   , txOutRefsAndDatumsAtAddress
   , txOutRefsAndDatumsAtAddressWithBeacon
+  , txOutRefsAndDatumsWithBeacon
   , toVersioned
   , posixTimeToSlot
   , slotToPosixTime
@@ -325,7 +327,7 @@ transact mainAddress extraAddresses privKeys TransactionParams{..} = do
           , C.txValidityLowerBound = lowerBound
           , C.txValidityUpperBound = upperBound
           }
-  E.submitTxConfirmed utxos mainAddress privKeys tx
+  E.submitTxConfirmed utxos mainAddress (map L.toWitness privKeys) tx
 
 -------------------------------------------------
 -- Basic Configs
@@ -347,7 +349,15 @@ testTokenSymbol = CurrencySymbol
 -------------------------------------------------
 -- Initialize Emulator
 -------------------------------------------------
-initializeReferenceScripts :: E.MonadEmulator m => m (TxOutRef,TxOutRef,TxOutRef,TxOutRef,TxOutRef)
+data References = References
+  { negotiationRef :: TxOutRef
+  , activeRef :: TxOutRef
+  , loanRef :: TxOutRef
+  , proxyRef :: TxOutRef
+  , paymentObserverRef :: TxOutRef
+  } deriving (Show)
+
+initializeReferenceScripts :: E.MonadEmulator m => m References
 initializeReferenceScripts = do
   let w1 = Mock.knownMockWallet 1
   
@@ -356,9 +366,19 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 36_000_000
+              , outputValue = LV.lovelaceToValue 37_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just negotiationBeaconScript
+              }
+          ]
+      , certificates =
+          [ Certificate
+              { certificateCredential = PV2.ScriptCredential $ scriptHash negotiationBeaconScript
+              , certificateWitness = 
+                  StakeWithPlutusScript 
+                    (toVersioned $ toLedgerScript negotiationBeaconScript) 
+                    (toRedeemer RegisterNegotiationScript)
+              , certificateAction = Register
               }
           ]
       }
@@ -368,7 +388,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 43_000_000
+              , outputValue = LV.lovelaceToValue 48_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just activeBeaconScript
               }
@@ -409,15 +429,31 @@ initializeReferenceScripts = do
               , outputReferenceScript = toReferenceScript $ Just paymentObserverScript
               }
           ]
+      , certificates =
+          [ Certificate
+              { certificateCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , certificateWitness = 
+                  StakeWithPlutusScript 
+                    (toVersioned $ toLedgerScript paymentObserverScript) 
+                    (toRedeemer RegisterPaymentObserverScript)
+              , certificateAction = Register
+              }
+          ]
       }
 
-  (,,,,) <$> txOutRefWithReferenceScript (scriptHash negotiationBeaconScript)
-        <*> txOutRefWithReferenceScript (scriptHash activeBeaconScript)
-        <*> txOutRefWithReferenceScript (scriptHash loanScript)
-        <*> txOutRefWithReferenceScript (scriptHash proxyScript)
-        <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
+  References 
+    <$> txOutRefWithReferenceScript (scriptHash negotiationBeaconScript)
+    <*> txOutRefWithReferenceScript (scriptHash activeBeaconScript)
+    <*> txOutRefWithReferenceScript (scriptHash loanScript)
+    <*> txOutRefWithReferenceScript (scriptHash proxyScript)
+    <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
 
-mintTestTokens :: E.MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
+mintTestTokens 
+  :: E.MonadEmulator m 
+  => Mock.MockWallet 
+  -> LV.Lovelace 
+  -> [(TokenName,Integer)] 
+  -> m ()
 mintTestTokens w lovelace ts = do
   let walletAddress = Mock.mockWalletAddress w
   void $ transact walletAddress [refScriptAddress] [Mock.paymentPrivateKey w] $
@@ -555,8 +591,8 @@ toRedeemer = L.Redeemer . PV2.dataToBuiltinData . PV2.toData
 toDatum :: PV2.ToData a => a -> L.Datum
 toDatum = L.Datum . PV2.dataToBuiltinData . PV2.toData
 
-toCardanoValue :: PV2.Value -> C.Value
-toCardanoValue = unsafeFromRight . LV.toCardanoValue
+-- toCardanoValue :: PV2.Value -> C.Value
+-- toCardanoValue = unsafeFromRight . LV.toCardanoValue
 
 utxoValue :: L.Lovelace -> PV2.Value -> C.Value
 utxoValue lovelace v = LV.lovelaceToValue lovelace <> unsafeFromRight (LV.toCardanoValue v)
@@ -619,6 +655,23 @@ txOutRefsAndDatumsAtAddressWithBeacon addr (sym,tok) = do
            else findTxId ys
   return $ findTxId xs
 
+-- | Find all TxOutRefs, and their datums, that have a specific native token. The address does not
+-- matter.
+txOutRefsAndDatumsWithBeacon
+  :: forall a m. (E.MonadEmulator m, PV2.FromData a) 
+  => (PV2.CurrencySymbol,PV2.TokenName)
+  -> m [(TxOutRef,Maybe a)]
+txOutRefsAndDatumsWithBeacon (sym,tok) = do
+  state <- get
+  let xs = Map.toList $ C.unUTxO $ state ^. E.esChainState . E.index
+      findTxId [] = []
+      findTxId ((ref,o):ys) =
+        let out = LTx.fromCardanoTxOutToPV2TxInfoTxOut' o
+        in if valueOf (PV2.txOutValue out) sym tok > 0
+           then (LTx.fromCardanoTxIn ref, convertFromData @a $ PV2.txOutDatum out) : findTxId ys
+           else findTxId ys
+  return $ findTxId xs
+
 convertFromData :: forall d . PV2.FromData d => PV2.OutputDatum -> Maybe d
 convertFromData datum = case datum of
   PV2.NoOutputDatum -> Nothing
@@ -672,7 +725,11 @@ testTrace trace = do
 
     prettyBalances :: [(L.CardanoAddress,C.Value)] -> [Pretty.Doc ann]
     prettyBalances ys =
-      let go sc [] = []
+      let toName sh
+            | sh == scriptHash proxyScript = "ProxyAddress"
+            | sh == scriptHash loanScript = "LoanAddress"
+            | otherwise = "OtherScriptAddress"
+          go sc [] = []
           go sc ((addr,val):xs) = 
             if addr == refScriptAddress then 
               vsep [ "RefAddress"
@@ -682,8 +739,8 @@ testTrace trace = do
             else 
               case L.toPlutusAddress addr of
                 PV2.Address (PV2.PubKeyCredential _) _ -> go sc xs
-                PV2.Address (PV2.ScriptCredential _) _ ->
-                  vsep [ "LoanAddress" <> pretty @Int sc
+                PV2.Address (PV2.ScriptCredential sh) _ ->
+                  vsep [ toName sh <> pretty @Int sc
                        , Pretty.indent 4 $ Pretty.align $ vsep $ 
                           map prettyValue $ flattenValue $ LV.fromCardanoValue val
                        ] : go (sc + 1) xs

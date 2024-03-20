@@ -1,5 +1,5 @@
 use aiken/transaction/credential.{Address,Credential}
-use cardano_loans/data/core.{NegotiationID}
+use aiken/transaction/value.{PolicyId}
 
 pub type LoanRedeemer {
   // Close or update an Ask UTxO.
@@ -41,7 +41,7 @@ pub type NegotiationBeaconsRedeemer {
     lender_credential: Credential, // Lender's staking credential. Pubkey or script.
   }
 
-  // Burn any beacons.
+  // Burn any beacons. This is only used when accepting offers.
   BurnNegotiationBeacons
 
   // Register the negotiation beacon script as a staking script to allow it to be used
@@ -54,7 +54,7 @@ pub type ActiveBeaconsRedeemer {
   // the proper borrower_credential and negotiation_beacon_id.
   CreateActive { 
     borrower_credential: Credential, // Borrower's staking credential.
-    negotiation_beacon_id: NegotiationID // PolicyId for the negotiation_beacons_script.
+    negotiation_beacon_id: PolicyId // PolicyId for the negotiation_beacons_script.
   }
 
   // Burn the lock and key NFTs, and claim expired collateral.
@@ -72,7 +72,16 @@ pub type PaymentObserverRedeemer {
   // Observe a borrower's loan payment transaction.
   ObservePayment
 
-  // Register the negotiation beacon script as a staking script to allow it to be used
+  // Register the payment observer script as a staking script to allow it to be used
   // as a staking script.
   RegisterPaymentObserverScript
+}
+
+pub type RolloverObserverRedeemer {
+  // Observe a borrower's loan rollover transaction.
+  ObserveRollover
+
+  // Register the rollover observer script as a staking script to allow it to be used
+  // as a staking script.
+  RegisterRolloverObserverScript
 }

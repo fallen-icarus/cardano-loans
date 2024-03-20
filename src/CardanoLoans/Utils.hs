@@ -98,11 +98,9 @@ decodeDatum = either (const Nothing) (PV2.fromBuiltinData . fromCardanoScriptDat
 
 parseScriptFromCBOR :: String -> PV2.SerialisedScript
 parseScriptFromCBOR script =
-  case Base16.decode base16Bytes of
+  case Base16.decode $ encodeUtf8 script of
     Left e -> error $ "Failed to decode validator: " <> show e
     Right bytes' -> toShort bytes'
- where
-  base16Bytes = encodeUtf8 script
 
 dataFromCBOR :: String -> Either LedgerBytesError PV2.Data
 dataFromCBOR = fmap Serial.deserialise . decodeHex

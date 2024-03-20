@@ -1,113 +1,156 @@
 use aiken/bytearray as byte
 use aiken/list
 use aiken/dict.{Dict}
-use aiken/transaction.{
-    Output,
-    Input,
-  }
-use aiken/transaction/credential.{
-    Address,
-    Credential,
-  }
-use aiken/transaction/value.{
-    AssetName,
-  }
+use aiken/time.{PosixTime}
+use aiken/transaction.{Output, Input, Mint, Redeemer, ScriptPurpose, Spend}
+use aiken/transaction/credential.{Address, Credential}
+use aiken/transaction/value.{AssetName}
 
-use cardano_loans/data/core.{
-    StartTime,
-    ActiveID
-  }
-use cardano_loans/data/datums.{
-    ActiveDatum
-  }
-use cardano_loans/utils.{
-    trace_if_false,
-    error_if_false,
-    parse_datum,
-  }
+use cardano_loans/data/core.{ActiveId}
+use cardano_loans/data/datums.{ActiveDatum}
+use cardano_loans/data/redeemers.{LoanRedeemer,SpendWithKeyNFT}
+use cardano_loans/utils.{trace_if_false, error_if_false, parse_datum}
 
-// Go through the inputs and build up a list of required beacons to burn. All inputs are assumed
-// to be expired loans. If any are not, this will crash the script.
+// Go through the inputs and build up a list of required beacons to burn. Cross-reference
+// the redeemers map to only check inputs being spent with SpendWithKeyNFT.
 fn get_beacons_to_burn(
-  active_beacon_id: ActiveID,
+  active_beacon_id: ActiveId,
   loan_script_cred: Credential,
-  lower_bound: StartTime,
-  inputs: List<Input>
+  lower_bound: PosixTime,
+  inputs: List<Input>,
+  redeemers: List<(ScriptPurpose,Redeemer)>,
+  req_burn: Dict<AssetName,Int>
 ) -> Dict<AssetName,Int> {
-  // Helper functions declared only once.
-  let subtract = fn (_k, a, b) { Some (a-b) }
+  when (inputs,redeemers) is {
+    // No inputs are left, just return the result.
+    ( [] , _ ) -> req_burn
 
-  // A function to map over the list of inputs.
-  let foo = fn(input: Input, req_burn: Dict<AssetName,Int>) {
-    let Input(_,Output(Address(pay,_),val,d,_)) = input
+    // Mints appear first in the redeemer map so just skip them.
+    ( _ , [(Mint(_),_), ..rest_reds] ) -> 
+      get_beacons_to_burn(
+        active_beacon_id,
+        loan_script_cred,
+        lower_bound,
+        inputs,
+        rest_reds,
+        req_burn
+      )
 
-    // All expired loans will have 4 beacons and be located at a loan address. If an input
-    // has beacons but is not located at a loan address, it is not an expired loan. The
-    // required beacons to burn can come exclusively from expired loans so the outputs
-    // located outside of loan addresses can be ignored.
+    // Compare the next input to the next redeemer. They are both assumed to be in
+    // lexicographical order.
+    ( [Input(ref,Output(Address(pay_cred,_) as addr,val,datum,_)), ..rest_ins]
+    , [(purpose,used_redeemer), ..rest_reds]
+    ) -> {
+      // If the input is a loan script input, do all of the checks.
+      if pay_cred == loan_script_cred {
+        expect True = error_if_false(
+          @"Inputs are not in lexicographical order",
+          purpose == Spend(ref)
+        )
 
-    if pay == loan_script_cred {
-      // Get the beacons in this UTxO and pattern match on it.
-      when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
-        // If beacons are not present, this is an invalid loan UTxO and custody belongs
-        // to the borrower.
-        [] -> error @"Invalid loan UTxO among inputs"
+        expect used_redeemer_: LoanRedeemer = used_redeemer
 
-        // If there are four beacons, this should be an already active loan and other script will 
-        // check it.
-        [(_,_),(_,_),(_,_),(_,_)] -> {
-          // Get the ActiveDatum from the input. The only way to figure out which beacon is the
-          // LoanID is to check the datum. The LoanID requires two units to be burned.
-          expect ActiveDatum(
-            _,
-            _,
-            borrower_id,
-            _,
-            _,
-            asset_beacon,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            loan_expiration,
-            _,
-            loan_id
-          ) = parse_datum(d)
+        when used_redeemer_ is {
+          // This execution only cares about inputs using the SpendWithKeyNFT redeemer.
+          SpendWithKeyNFT -> {
+            // Get the beacons in this UTxO and pattern match on it.
+            when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
+              // If beacons are not present, this is an invalid loan UTxO and custody belongs
+              // to the borrower.
+              [] -> error @"Invalid loan UTxO among inputs"
 
-          expect True = error_if_false(
-            @"Loan is not expired",
-            core.expiration_time_has_passed(lower_bound,loan_expiration)
-          )
+              // If there are four beacons, this is an active UTxO.
+              [(_,_),(_,_),(_,_),(_,_)] -> {
+                // Get the ActiveDatum from the input. The only way to figure out which beacon is 
+                // the LoanId is to check the datum. The LoanId requires two units to be burned.
+                expect ActiveDatum{
+                  borrower_id,
+                  asset_beacon,
+                  loan_expiration,
+                  loan_id,
+                  ..
+                } = parse_datum(datum)
 
-          dict.insert_with(req_burn,"Active",1,subtract,byte.compare) |>
-          dict.insert_with(_,core.get_borrower_id_name(borrower_id),1,subtract,byte.compare) |>
-          dict.insert_with(_,core.get_asset_beacon_name(asset_beacon),1,subtract,byte.compare) |>
-          dict.insert_with(_,core.get_loan_id_name(loan_id),2,subtract,byte.compare)
+                expect True = error_if_false(
+                  @"Loan is not expired",
+                  !utils.expiration_has_not_passed(loan_expiration,lower_bound)
+                )
+
+                let new_req_burn = req_burn |>
+                  dict.insert_with(_,"Active",-1,utils.sum_token_values,byte.compare) |>
+                  dict.insert_with(_,borrower_id,-1,utils.sum_token_values,byte.compare) |>
+                  dict.insert_with(_,asset_beacon,-1,utils.sum_token_values,byte.compare) |>
+                  dict.insert_with(_,loan_id,-2,utils.sum_token_values,byte.compare)
+
+                get_beacons_to_burn(
+                  active_beacon_id,
+                  loan_script_cred,
+                  lower_bound,
+                  rest_ins, // Move on to the next input.
+                  rest_reds, // Move on to the next redeemer.
+                  new_req_burn
+                )
+              }
+
+              // This path can only be taken if the above two matches failed which means the UTxO
+              // has the wrong number of beacons. SpendWithKeyNFT can only be used on Active
+              // UTxOs.
+              _ -> error @"UTxO input is not an Active UTxO"
+            }
+          }
+
+          // If the input is using a different loan redeemer, it will be checked by the other
+          // redeemer's logic. It can be safely skipped in this execution.
+          _ ->
+            get_beacons_to_burn(
+              active_beacon_id,
+              loan_script_cred,
+              lower_bound,
+              rest_ins, // Move on to the next input.
+              rest_reds, // Move on to the next redeemer.
+              req_burn
+            )
         }
 
-        // This path can only be taken if the above two matches failed which means the UTxO
-        // has the wrong number of beacons.
-        _ -> error @"UTxO input is not an Active UTxO"
-      }
-    } else {
-      req_burn
-    }
-  }
+      // If it is not a loan script input, check if it is a pubkey input.
+      } else if utils.is_pub_key_credential(pay_cred) {
+        // If the input is a pubkey input, the current spend redeemer's input must still
+        // be found.
+        get_beacons_to_burn(
+          active_beacon_id,
+          loan_script_cred,
+          lower_bound,
+          rest_ins, // Move on for inputs.
+          redeemers, // Keep the current redeemer.
+          req_burn
+        )
 
-  list.foldl(inputs,dict.new(),foo)
+      // If none of the above branches matched, then this must be a input for another script.
+      } else {
+        // If the input is a script input that is not a loan's input, move on for both
+        // the inputs and the redeemers.
+        get_beacons_to_burn(
+          active_beacon_id,
+          loan_script_cred,
+          lower_bound,
+          rest_ins, // Move on for inputs.
+          rest_reds, // Move on for redeemers.
+          req_burn
+        )
+      }
+    }
+
+    _ -> error "Unmatched input"
+  }
 }
 
 // Check that the required beacons have been burned.
 pub fn valid_expired_claim(
-  active_beacon_id: ActiveID,
+  active_beacon_id: ActiveId,
   loan_script_cred: Credential,
-  lower_bound: StartTime,
+  lower_bound: PosixTime,
   inputs: List<Input>,
+  redeemers: Dict<ScriptPurpose,Redeemer>,
   beacons_minted: Dict<AssetName,Int>
 ) -> Bool {
   let req_burn =
@@ -115,7 +158,9 @@ pub fn valid_expired_claim(
       active_beacon_id,
       loan_script_cred,
       lower_bound,
-      inputs
+      inputs,
+      dict.to_list(redeemers),
+      dict.new()
     )
 
   trace_if_false(

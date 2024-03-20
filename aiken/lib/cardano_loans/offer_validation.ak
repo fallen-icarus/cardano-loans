@@ -1,57 +1,35 @@
 use aiken/dict.{Dict}
-use aiken/hash.{Hash,Blake2b_224}
-use aiken/option
 use aiken/list
-use aiken/string
-use aiken/transaction.{
-    Datum,
-    Output
-  }
-use aiken/transaction/credential.{
-    Address,
-    Script,
-    ScriptCredential,
-  }
-use aiken/transaction/value.{
-    AssetName,
-    PolicyId,
-    Value
-  }
+use aiken/option
+use aiken/transaction.{Datum,Output}
+use aiken/transaction/credential.{Address,ScriptCredential}
+use aiken/transaction/value.{AssetName,PolicyId,Value}
 
 use cardano_loans/data/core.{
+    ScriptHash,
+    NegotiationId,
+    ActiveId,
     Asset,
-    NegotiationID,
-    ActiveID,
     AssetBeacon,
-    LenderID,
+    LenderId
   }
-use cardano_loans/data/datums.{
-    OfferDatum
-  }
-use cardano_loans/utils.{
-    trace_if_false,
-    parse_datum,
-    valid_lender_address
-  }
+use cardano_loans/data/datums.{OfferDatum}
+use cardano_loans/utils.{trace_if_false,valid_lender_address,parse_datum}
 
 // This is used to check that the value of Offer UTxOs are correct. It returns the value of the
 // loan asset so that it can be checked against the principle in the datum. When ada is the
-// loan asset, the first Int should be loan_principle + offer_deposit.
+// loan asset, the first Int should be loan_principle + offer_deposit. Due to the way this
+// function is written, beacon tokens do not count towards the offer quantities even if they
+// are the loan asset. Therefore, beacon tokens cannot be used as the loan asset.
 fn extract_offer_quantity(
   val: Value,
-  negotiation_beacon_id: NegotiationID,
+  negotiation_beacon_id: NegotiationId,
   asset_beacon: AssetBeacon,
   loan_asset: Asset,
-  lender_id: LenderID
+  lender_id: LenderId
 ) -> (Int,Int) {
   // Extract out the loan asset info.
   let (loan_asset_id,loan_asset_name) = loan_asset
-
-  // Extract out the asset beacon name.
-  let asset_beacon_name = core.get_asset_beacon_name(asset_beacon)
-
-  // Extract out the lender_id's token name.
-  let lender_id_name = core.get_lender_id_name(lender_id)
 
   // A function to map over the value of this UTxO. It will return the total number of the loan
   // asset, the total amount of ada, and whether the UTxO has the proper beacons.
@@ -70,10 +48,10 @@ fn extract_offer_quantity(
         if tn == "Offer" {
           // There must only be one Offer beacon.
           (n == 1, asset_check, lender_check)
-        } else if tn == asset_beacon_name {
+        } else if tn == core.get_asset_beacon_name(asset_beacon) {
           // There must only be one Asset beacon.
           (offer_check, n == 1, lender_check)
-        } else if tn == lender_id_name {
+        } else if tn == core.get_lender_id_name(lender_id) {
           // There must only be one LenderID beacon.
           (offer_check, asset_check, n == 1)
         } else {
@@ -133,82 +111,82 @@ fn extract_offer_quantity(
 
 // This checks the datum and calls extract_offer_loan_quantity to check the value.
 fn valid_offer_output(
-  negotiation_beacon_id: NegotiationID,
-  active_beacon_id: ActiveID,
-  lender_id: LenderID,
-  proxy_hash: Hash<Blake2b_224, Script>,
+  negotiation_beacon_id_: NegotiationId,
+  active_beacon_id_: ActiveId,
+  lender_id_: LenderId,
+  proxy_hash: ScriptHash,
   output_value: Value,
   output_datum: Datum
 ) -> Bool {
   // Extract the info from the OfferDatum. Crash the script if it is not an OfferDatum.
-  expect OfferDatum(
-    negotiation_beacon_id_,
-    active_beacon_id_,
-    lender_id_,
-    lender_address_,
-    loan_asset_,
-    asset_beacon_,
-    loan_principle_,
-    rollover_frequency_,
-    loan_term_,
-    loan_interest_,
-    min_payment_,
-    collateralization_,
-    _, // Don't need to check a true/false field.
-    claim_period_,
-    offer_deposit_,
-    offer_expiration_
-  ) = when parse_datum(output_datum) is {
+  expect OfferDatum{
+    negotiation_beacon_id,
+    active_beacon_id,
+    lender_id,
+    lender_address,
+    loan_asset,
+    asset_beacon,
+    loan_principle,
+    rollover_frequency,
+    loan_term,
+    loan_interest,
+    min_payment,
+    collateralization,
+    claim_period,
+    offer_deposit,
+    offer_expiration,
+    .. // Don't need to check collateral_is_swappable
+  } = when parse_datum(output_datum) is {
     OfferDatum{..} as datum -> datum
     _ -> error @"UTxO not stored with an OfferDatum"
   }
 
-  let expected_asset_beacon = core.make_asset_beacon(loan_asset_)
+  let expected_asset_beacon = core.make_asset_beacon(loan_asset)
 
   let (loan_quantity,ada_quantity) = 
     extract_offer_quantity(
       output_value,
-      negotiation_beacon_id,
+      negotiation_beacon_id_,
       expected_asset_beacon,
-      loan_asset_,
-      lender_id
+      loan_asset,
+      lender_id_
     )
 
-  let (interest_num_,interest_den_) = loan_interest_
+  let (interest_num,interest_den) = loan_interest
 
   // All of the following must be true.
   and {
     // Datum checks:
     trace_if_false(@"Datum has wrong negotiation_beacon_id", 
-      negotiation_beacon_id_ == negotiation_beacon_id),
+      negotiation_beacon_id_ == core.to_negotiation_id(negotiation_beacon_id)),
     trace_if_false(@"Datum has wrong active_beacon_id", 
-      active_beacon_id_ == active_beacon_id),
+      active_beacon_id_ == core.to_active_id(active_beacon_id)),
     trace_if_false(@"Datum has wrong lender_id", 
-      lender_id_ == lender_id),
+      core.get_lender_id_name(lender_id_) == lender_id),
     trace_if_false(@"Datum has wrong lender_address", 
-      valid_lender_address(proxy_hash,lender_address_)),
+      valid_lender_address(proxy_hash,lender_address)),
     trace_if_false(@"Datum has wrong asset_beacon", 
-      asset_beacon_ == expected_asset_beacon),
+      asset_beacon == core.get_asset_beacon_name(expected_asset_beacon)),
     trace_if_false(@"Datum has wrong principle", 
-      loan_principle_ > 0),
+      loan_principle > 0),
     trace_if_false(@"Datum has wrong rollover_frequency", 
       // Set to 1 to ensure True when None.
-      option.or_else(rollover_frequency_,core.make_duration(1)) |> core.is_valid_duration), 
+      option.or_else(rollover_frequency,1) |> fn(x) { x > 0 }), 
     trace_if_false(@"Datum has wrong term", 
-      core.is_valid_duration(loan_term_)),
+      loan_term > 0),
     trace_if_false(@"Datum has wrong loan_interest", 
-      interest_den_ > 0 && interest_num_ >= 0),
+      interest_den > 0 && interest_num >= 0),
     trace_if_false(@"Datum has wrong min_payment", 
-      min_payment_ >= 0 ),
+      min_payment >= 0 ),
     trace_if_false(@"Datum has wrong collateralization",
       and {
         // List can't be empty.
-        !list.is_empty(collateralization_),
+        !list.is_empty(collateralization),
         // List must be sorted and not have duplicates.
-        collateralization_ == list.sort(collateralization_,core.compare_collateralization),
+        collateralization == list.sort(collateralization,utils.compare_collateralization_no_dups),
         // All prices must be > 0 and the denominators must be > 0.
         list.all(
-          collateralization_,
+          collateralization,
           fn(x) {
             let (_,(num,den)) = x
             num >= 0 && den > 0
@@ -217,35 +195,32 @@ fn valid_offer_output(
       }
     ),
     trace_if_false(@"Datum has wrong claim_period", 
-      core.is_valid_duration(claim_period_)),
+      claim_period > 0),
     trace_if_false(@"Datum has wrong offer_deposit", 
-      offer_deposit_ > 0),
+      offer_deposit > 0),
     trace_if_false(@"Datum has wrong offer_expiration", 
       // Set to 1 to ensure True when None.
-      option.or_else(offer_expiration_,core.make_expiration_time(1)) 
-      |> core.is_valid_expiration_time), 
+      option.or_else(offer_expiration,1) |> fn(x) { x > 0 }), 
 
     // Value checks:
     trace_if_false(@"UTxO has wrong value",
-      if loan_asset_ == (#"",#"") { 
-        loan_quantity == loan_principle_ + offer_deposit_ 
+      if loan_asset == (#"",#"") { 
+        loan_quantity == loan_principle + offer_deposit
       } else { 
-        ada_quantity == offer_deposit_ && loan_quantity == loan_principle_
+        ada_quantity == offer_deposit && loan_quantity == loan_principle
       }
     )
   }
-
 }
 
 // Check if the beacons are locked at the proper address and the Offer UTxO is configured properly.
-// This function will return `True` or `False`. It uses `app_name` in the error message to generate
-// a unique beacon policy for testing. 
+// This function will return `True` or `False`.  
 pub fn offer_beacon_destination_check(
-  loan_script_hash: Hash<Blake2b_224, Script>,
-  lender_id: LenderID,
-  negotiation_beacon_id: NegotiationID,
-  active_beacon_id: ActiveID,
-  proxy_hash: Hash<Blake2b_224, Script>,
+  loan_script_hash: ScriptHash,
+  lender_id: LenderId,
+  negotiation_beacon_id: NegotiationId,
+  active_beacon_id: ActiveId,
+  proxy_hash: ScriptHash,
   outputs: List<Output>
 ) -> Bool {
 
@@ -267,8 +242,7 @@ pub fn offer_beacon_destination_check(
         // The output must be at a DApp address with the borrower's credential as the
         // stake credential. Uses `app_name` in the error message.
         trace_if_false( 
-          string.concat(@"Beacon must go to a ", core.app_name) 
-            |> string.concat(_,@" DApp address with a valid staking credential"),
+          @"Beacon must go to a DApp address with a valid staking credential",
           pay == ScriptCredential(loan_script_hash) && option.is_some(stake)
         ) &&
 
