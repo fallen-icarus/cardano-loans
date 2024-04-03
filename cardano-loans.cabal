@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               cardano-loans
-version:            0.2.0.0
+version:            1.0.0.0
 
 synopsis: A distributed Cardano P2P Lending/Borrowering protocol.
 license: Apache-2.0
@@ -66,6 +66,63 @@ test-suite cardano-loans-tests
     -threaded -rtsopts -with-rtsopts=-N
     -Wno-unused-matches -Wno-unused-local-binds 
   other-modules:
+    Test.ActiveUTxOs,
+    Test.ActiveUTxOs.AcceptOffer,
+    Test.ActiveUTxOs.AcceptOffer.Benchmarks,
+    Test.ActiveUTxOs.AcceptOffer.Failures,
+    Test.ActiveUTxOs.AcceptOffer.Regressions,
+    Test.ActiveUTxOs.ApplyInterest,
+    Test.ActiveUTxOs.ApplyInterest.Benchmarks,
+    Test.ActiveUTxOs.ApplyInterest.Failures,
+    Test.ActiveUTxOs.ApplyInterest.Regressions,
+    Test.ActiveUTxOs.ClaimExpiredCollateral,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Benchmarks,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Failures,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Regressions,
+    Test.ActiveUTxOs.MakePayment,
+    Test.ActiveUTxOs.MakePayment.Benchmarks,
+    Test.ActiveUTxOs.MakePayment.Failures,
+    Test.ActiveUTxOs.MakePayment.Regressions,
+    Test.ActiveUTxOs.Misc,
+    Test.ActiveUTxOs.Unlock,
+    Test.ActiveUTxOs.Unlock.Benchmarks,
+    Test.ActiveUTxOs.Unlock.Failures,
+    Test.ActiveUTxOs.Unlock.Regressions,
+    Test.ActiveUTxOs.UpdateLenderAddress,
+    Test.ActiveUTxOs.UpdateLenderAddress.Benchmarks,
+    Test.ActiveUTxOs.UpdateLenderAddress.Failures,
+    Test.ActiveUTxOs.UpdateLenderAddress.Regressions,
+    Test.AskUTxOs,
+    Test.AskUTxOs.CloseAsk,
+    Test.AskUTxOs.CloseAsk.Benchmarks,
+    Test.AskUTxOs.CloseAsk.Failures,
+    Test.AskUTxOs.CloseAsk.Regressions,
+    Test.AskUTxOs.CreateAsk,
+    Test.AskUTxOs.CreateAsk.Benchmarks,
+    Test.AskUTxOs.CreateAsk.Failures,
+    Test.AskUTxOs.CreateAsk.Regressions,
+    Test.AskUTxOs.Misc,
+    Test.AskUTxOs.UpdateAsk,
+    Test.AskUTxOs.UpdateAsk.Benchmarks,
+    Test.AskUTxOs.UpdateAsk.Failures,
+    Test.AskUTxOs.UpdateAsk.Regressions,
+    Test.Beacons
+    Test.OfferUTxOs,
+    Test.OfferUTxOs.CloseOffer,
+    Test.OfferUTxOs.CloseOffer.Benchmarks,
+    Test.OfferUTxOs.CloseOffer.Failures,
+    Test.OfferUTxOs.CloseOffer.Regressions,
+    Test.OfferUTxOs.CreateOffer,
+    Test.OfferUTxOs.CreateOffer.Benchmarks,
+    Test.OfferUTxOs.CreateOffer.Failures,
+    Test.OfferUTxOs.CreateOffer.Regressions,
+    Test.OfferUTxOs.Misc,
+    Test.OfferUTxOs.UpdateOffer,
+    Test.OfferUTxOs.UpdateOffer.Benchmarks,
+    Test.OfferUTxOs.UpdateOffer.Failures,
+    Test.OfferUTxOs.UpdateOffer.Regressions,
+    Test.Prelude,
+    Test.Proxy
   build-depends:
       cardano-loans
     , data-default

@@ -1,11 +1,14 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module CardanoLoans.Types
   ( NegotiationBeaconId(..)
   , ActiveBeaconId(..)
   , Fraction(..)
+  , Penalty(..)
   , Asset(..)
   , LenderId(..)
   , BorrowerId(..)
@@ -18,6 +21,7 @@ module CardanoLoans.Types
 import Data.Bifunctor (bimap)
 
 import qualified PlutusLedgerApi.V2 as PV2
+import qualified PlutusTx
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -52,6 +56,13 @@ instance PV2.UnsafeFromData Fraction where
   unsafeFromBuiltinData (PV2.BuiltinData (PV2.List [num,den])) = 
     Fraction (unsafeFromData num, unsafeFromData den)
   unsafeFromBuiltinData _ = error "Could not convert Data to Fraction"
+
+-- | The penalty to apply whenever the minimum payment is not met.
+data Penalty
+  = NoPenalty
+  | FixedFee Integer
+  | PercentFee Fraction
+  deriving (Show,Eq)
 
 -- | A wrapper around an asset's full name (policy id, token name). It uses
 -- a custom data encoding since Aiken uses a different encoding for it.
@@ -143,3 +154,8 @@ instance PV2.UnsafeFromData Collateral where
 -------------------------------------------------
 unsafeFromData :: (PV2.UnsafeFromData a) => PV2.Data -> a
 unsafeFromData = PV2.unsafeFromBuiltinData . PV2.dataToBuiltinData
+
+-------------------------------------------------
+-- TemplateHaskell
+-------------------------------------------------
+PlutusTx.unstableMakeIsData ''Penalty

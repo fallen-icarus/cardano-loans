@@ -12,10 +12,10 @@ use cardano_loans/data/core.{
     BorrowerId
   }
 use cardano_loans/data/datums.{AskDatum}
-use cardano_loans/utils.{trace_if_false,error_if_false,parse_datum}
+use cardano_loans/utils.{error_if_false,trace_if_false,parse_datum}
 
-// This is used to check that the value of Ask UTxOs have the correct value. It can only return 
-// false if it is missing required collateral. All other failures will result in error crashing
+// This is used to check that the Ask UTxOs have the correct value. It can only return 
+// false if it is missing required collateral. All other failures will result in an error crashing
 // the script. Due to the way this function is written, beacon tokens do not count towards the 
 // collateral quantities even if they are the loan asset. Therefore, beacon tokens cannot be used 
 // as one of the collateral assets.
@@ -25,35 +25,39 @@ fn check_ask_value(
   asset_beacon: AssetBeacon,
   collateral: List<Asset>,
 ) -> Bool {
-
   // A function to map over the value of this UTxO. It will return the total number of collateral
-  // with at least one unit present and whether the UTxO has the proper beacons.
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Bool)) {
+  // with at least one unit present. While checking for collateral, it will also check that the
+  // UTxO has the proper beacons.
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), collateral_units_met: Int) {
     let (cn,tns_dict) = x
-    let (collateral_units_met,valid_beacons) = acc
 
     // Check the beacons.
     if cn == core.from_negotiation_id(negotiation_beacon_id) {
       let tns_list = dict.to_list(tns_dict)
 
       // A function to check each beacon.
-      let beacon_check = fn(y: (AssetName,Int), inner_acc: (Bool,Bool)) {
+      let check_beacons = fn(y: (AssetName,Int), inner_acc: (Bool,Bool)) {
         let (tn,n) = y
         let (ask_check,asset_check) = inner_acc
         if tn == "Ask" {
-          // There must only be one Ask beacon.
-          (n == 1, asset_check)
+          // There must only be one Ask beacon. If n was zero, tn could not have matched "Ask".
+          (error_if_false(@"Too many Ask beacons in UTxO", n == 1), asset_check)
         } else if tn == core.get_asset_beacon_name(asset_beacon) {
-          // There must only be one Asset beacon.
-          (ask_check, n == 1)
+          // There must only be one Asset beacon. If n was zero, tn could not have matched the
+          // asset beacon.
+          (ask_check, error_if_false(@"Too many asset beacons in UTxO", n == 1))
         } else {
           error @"UTxO has a beacon with the wrong name"
         }
       }
 
-      when list.foldl(tns_list,(False,False),beacon_check) is {
-        (True,True) -> (collateral_units_met,True)
-        _ -> (collateral_units_met,False) // The UTxO does not have exactly one of each beacon.
+      when list.foldl(tns_list,(False,False),check_beacons) is {
+        (True,True) -> collateral_units_met
+
+        // This path can be taken if the UTxO has either an Ask beacon or an asset beacon, but not
+        // both. It should not actually possible to take this path since the script will crash at
+        // an earlier point if it has too few or too many kinds of beacons.
+        _ -> error @"UTxO does not have the right beacons"
       }
     } 
 
@@ -61,12 +65,10 @@ fn check_ask_value(
     // is possible that collateral can share a policy id so this check must account for that.
     // Ada is the only asset that can be present without being in the collateral list.
     else {
-      let non_beacon_toks = dict.to_list(tns_dict)
-
       // For each token in the list, it must be found in the collateral list and there must
       // be at least one unit of each. Ada must be allowed even if it is not used as collateral.
-      let collat_check = fn(token_info: (AssetName,Int), inner_acc: Int) {
-        let (tn,n) = token_info
+      let check_collateral = fn(token_info: (AssetName,Int), inner_acc: Int) {
+        let (tn,_) = token_info
         if list.has(collateral,(cn,tn)) {
           // If the asset is present, it has at least one unit. Zero values are never present
           // in UTxO values.
@@ -82,27 +84,15 @@ fn check_ask_value(
       }
 
       // The starting accumulator should be the current count of satisfied collateral.
-      ( list.foldl( non_beacon_toks, collateral_units_met, collat_check), valid_beacons )
+      list.foldl(dict.to_list(tns_dict), collateral_units_met, check_collateral)
     }
   }
 
-  let (collateral_units_met,valid_beacons) = list.foldl(
-    value.to_dict(val) |> dict.to_list(_),
-    (0,False),
-    foo
-  )
-
-  if valid_beacons {
-    // The collateral_units_met must match the size of the collateral list. 
-    collateral_units_met == list.length(collateral)
-  } else {
-    // If the recursive function returned false instead of crashing, it is because the UTxO
-    // has the right beacons but the wrong quantity of each beacon.
-    error @"UTxO does not have exactly one of each beacon"
-  }
+  // The collateral_units_met must match the size of the collateral list. 
+  list.foldl(value.to_dict(val) |> dict.to_list(_), 0, foo) == list.length(collateral)
 }
 
-// This checks the datum and calls extract_ask_loan_and_collateral_quantity to check the value.
+// This checks the datum and calls check_ask_value to check the value.
 fn valid_ask_output(
   negotiation_beacon_id_: NegotiationId,
   active_beacon_id_: ActiveId,
@@ -130,24 +120,32 @@ fn valid_ask_output(
 
   // All of the following must be true.
   and {
-    trace_if_false(@"Datum has wrong negotiation_beacon_id", 
+    trace_if_false(
+      @"Datum has wrong negotiation beacon id", 
       negotiation_beacon_id_ == core.to_negotiation_id(negotiation_beacon_id)),
-    trace_if_false(@"Datum has wrong active_beacon_id", 
+    trace_if_false(
+      @"Datum has wrong active beacon id", 
       active_beacon_id_ == core.to_active_id(active_beacon_id)),
-    trace_if_false(@"Datum has wrong borrower_id", 
+    trace_if_false(
+      @"Datum has wrong borrower id", 
       core.get_borrower_id_name(borrower_id_) == borrower_id),
-    trace_if_false(@"Datum has wrong asset_beacon", asset_beacon ==
-      core.get_asset_beacon_name(expected_asset_beacon)),
-    trace_if_false(@"Datum has wrong principle", 
+    trace_if_false(
+      @"Datum has wrong asset beacon", 
+      asset_beacon == core.get_asset_beacon_name(expected_asset_beacon)),
+    trace_if_false(
+      @"Datum has wrong principle", 
       loan_principle > 0),
-    trace_if_false(@"Datum has wrong term", 
+    trace_if_false(
+      @"Datum has wrong term", 
       loan_term > 0),
-    trace_if_false(@"Datum has wrong collateral", 
+    trace_if_false(
+      @"Datum has wrong collateral", 
       and {
+        // It must not be empty.
         !list.is_empty(collateral),
+        // It must be sorted and not have any duplicates.
         collateral == list.sort(collateral,utils.compare_collateral_asset_no_dups)
-      }
-    ),
+      }),
     trace_if_false(
       @"Ask UTxO is missing required collateral",
       check_ask_value(
@@ -161,9 +159,8 @@ fn valid_ask_output(
 }
 
 // Check if the beacons are locked at the proper address and the Ask UTxO is configured properly.
-// This function will return `True` or `False`. Since the negotiation beacon script can only be
-// executed once in a given transaction, all outputs with negotiation beacons are assumed to be Ask
-// UTxOs.
+// All outputs with negotiation beacons are assumed to be Ask UTxOs. This function can return False
+// if the Ask UTxO is stored at the wrong address.
 pub fn ask_beacon_destination_check(
   borrower_loan_address: Address,
   borrower_id: BorrowerId,
@@ -203,6 +200,6 @@ pub fn ask_beacon_destination_check(
     }
   }
 
-  // Map over the list. This will only return True if all the outputs are valid.
-  list.foldl( outputs, True, foo )
+  // Map over the list. This will only return True if all of the outputs are valid.
+  list.foldl(outputs, True, foo)
 }

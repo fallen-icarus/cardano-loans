@@ -355,6 +355,8 @@ data References = References
   , loanRef :: TxOutRef
   , proxyRef :: TxOutRef
   , paymentObserverRef :: TxOutRef
+  , interestObserverRef :: TxOutRef
+  , addressUpdateObserverRef :: TxOutRef
   } deriving (Show)
 
 initializeReferenceScripts :: E.MonadEmulator m => m References
@@ -388,7 +390,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 48_000_000
+              , outputValue = LV.lovelaceToValue 51_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just activeBeaconScript
               }
@@ -441,12 +443,58 @@ initializeReferenceScripts = do
           ]
       }
 
+  void $ transact (Mock.mockWalletAddress w1) [refScriptAddress] [Mock.paymentPrivateKey w1] $
+    emptyTxParams
+      { outputs =
+          [ Output
+              { outputAddress = refScriptAddress
+              , outputValue = LV.lovelaceToValue 24_000_000
+              , outputDatum = PV2.NoOutputDatum
+              , outputReferenceScript = toReferenceScript $ Just interestObserverScript
+              }
+          ]
+      , certificates =
+          [ Certificate
+              { certificateCredential = PV2.ScriptCredential $ scriptHash interestObserverScript
+              , certificateWitness = 
+                  StakeWithPlutusScript 
+                    (toVersioned $ toLedgerScript interestObserverScript) 
+                    (toRedeemer RegisterInterestObserverScript)
+              , certificateAction = Register
+              }
+          ]
+      }
+
+  void $ transact (Mock.mockWalletAddress w1) [refScriptAddress] [Mock.paymentPrivateKey w1] $
+    emptyTxParams
+      { outputs =
+          [ Output
+              { outputAddress = refScriptAddress
+              , outputValue = LV.lovelaceToValue 24_000_000
+              , outputDatum = PV2.NoOutputDatum
+              , outputReferenceScript = toReferenceScript $ Just addressUpdateObserverScript
+              }
+          ]
+      , certificates =
+          [ Certificate
+              { certificateCredential = PV2.ScriptCredential $ scriptHash addressUpdateObserverScript
+              , certificateWitness = 
+                  StakeWithPlutusScript 
+                    (toVersioned $ toLedgerScript addressUpdateObserverScript) 
+                    (toRedeemer RegisterAddressUpdateObserverScript)
+              , certificateAction = Register
+              }
+          ]
+      }
+
   References 
     <$> txOutRefWithReferenceScript (scriptHash negotiationBeaconScript)
     <*> txOutRefWithReferenceScript (scriptHash activeBeaconScript)
     <*> txOutRefWithReferenceScript (scriptHash loanScript)
     <*> txOutRefWithReferenceScript (scriptHash proxyScript)
     <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
+    <*> txOutRefWithReferenceScript (scriptHash interestObserverScript)
+    <*> txOutRefWithReferenceScript (scriptHash addressUpdateObserverScript)
 
 mintTestTokens 
   :: E.MonadEmulator m 

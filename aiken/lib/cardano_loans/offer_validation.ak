@@ -11,10 +11,13 @@ use cardano_loans/data/core.{
     ActiveId,
     Asset,
     AssetBeacon,
-    LenderId
+    LenderId,
+    NoPenalty,
+    FixedFee,
+    PercentFee
   }
 use cardano_loans/data/datums.{OfferDatum}
-use cardano_loans/utils.{trace_if_false,valid_lender_address,parse_datum}
+use cardano_loans/utils.{error_if_false,trace_if_false,valid_lender_address,parse_datum}
 
 // This is used to check that the value of Offer UTxOs are correct. It returns the value of the
 // loan asset so that it can be checked against the principle in the datum. When ada is the
@@ -32,10 +35,10 @@ fn extract_offer_quantity(
   let (loan_asset_id,loan_asset_name) = loan_asset
 
   // A function to map over the value of this UTxO. It will return the total number of the loan
-  // asset, the total amount of ada, and whether the UTxO has the proper beacons.
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Int,Bool)) {
+  // asset and the total amount of ada.
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Int)) {
     let (cn,tns_dict) = x
-    let (loan_quantity,ada_quantity,valid_beacons) = acc
+    let (loan_quantity,ada_quantity) = acc
 
     // Check the beacons.
     if cn == core.from_negotiation_id(negotiation_beacon_id) {
@@ -46,22 +49,28 @@ fn extract_offer_quantity(
         let (tn,n) = y
         let (offer_check,asset_check,lender_check) = inner_acc
         if tn == "Offer" {
-          // There must only be one Offer beacon.
-          (n == 1, asset_check, lender_check)
+          // There must only be one Offer beacon. If n was zero, tn could not have matched "Offer".
+          (error_if_false(@"UTxO has too many Offer beacons", n == 1), asset_check, lender_check)
         } else if tn == core.get_asset_beacon_name(asset_beacon) {
-          // There must only be one Asset beacon.
-          (offer_check, n == 1, lender_check)
+          // There must only be one Asset beacon. If n was zero, tn could not have matched the
+          // asset beacon.
+          (offer_check, error_if_false(@"UTxO has too many asset beacons", n == 1), lender_check)
         } else if tn == core.get_lender_id_name(lender_id) {
-          // There must only be one LenderID beacon.
-          (offer_check, asset_check, n == 1)
+          // There must only be one LenderID beacon. If n was zero, tn could not have matched the
+          // lender_id.
+          (offer_check, asset_check, error_if_false(@"UTxO has too many lender ids", n == 1))
         } else {
           error @"UTxO has a beacon with the wrong name"
         }
       }
 
       when list.foldl(tns_list,(False,False,False),beacon_check) is {
-        (True,True,True) -> (loan_quantity,ada_quantity,True)
-        _ -> (loan_quantity,ada_quantity,False) // The UTxO does not have exactly one of each beacon.
+        (True,True,True) -> (loan_quantity,ada_quantity)
+
+        // This path can be taken if the UTxO has only some of the required beacons. This path
+        // should never be taken since the script should fail earlier if the UTxO has too few
+        // or too many types of beacons.
+        _ -> error @"UTxO does not have the right beacons"
       }
     } 
 
@@ -74,7 +83,7 @@ fn extract_offer_quantity(
         // ada_quantity field in the accumulator will not be used.
         [(tn,n)] -> {
           if tn == loan_asset_name {
-            (loan_quantity+n,ada_quantity,valid_beacons)
+            (loan_quantity+n,ada_quantity)
           } else {
             error @"No extraneous assets allowed in the UTxO"
           }
@@ -84,32 +93,21 @@ fn extract_offer_quantity(
     }
 
     // Check that the asset is ada. If this branch is taken, then ada is not the loan asset.
+    // Ada must be explicitly allowed to satisfy the minUTxOValue requirement.
     else if cn == #"" {
       expect Some(n) = dict.get(tns_dict,#"")
 
-      (loan_quantity,ada_quantity+n,valid_beacons)
+      (loan_quantity,ada_quantity+n)
     }
 
     else { error @"No extraneous assets allowed in the UTxO" }
   }
 
-  let (loan_quantity,ada_quantity,valid_beacons) = list.foldl(
-    value.to_dict(val) |> dict.to_list(_),
-    (0,0,False),
-    foo
-  )
-
-  if valid_beacons {
-    // ada_quantity will be 0 when ada is the loan asset.
-    (loan_quantity,ada_quantity)
-  } else {
-    // If the recursive function returned false instead of crashing, it is because the UTxO
-    // has the right beacons but the wrong quantity of each beacon.
-    error @"UTxO does not have exactly one of each beacon"
-  }
+  // ada_quantity will be 0 when ada is the loan asset.
+  list.foldl(value.to_dict(val) |> dict.to_list(_), (0,0), foo)
 }
 
-// This checks the datum and calls extract_offer_loan_quantity to check the value.
+// This checks the datum and calls extract_offer_quantity to check the value.
 fn valid_offer_output(
   negotiation_beacon_id_: NegotiationId,
   active_beacon_id_: ActiveId,
@@ -127,10 +125,11 @@ fn valid_offer_output(
     loan_asset,
     asset_beacon,
     loan_principle,
-    rollover_frequency,
+    compound_frequency,
     loan_term,
     loan_interest,
     min_payment,
+    penalty,
     collateralization,
     claim_period,
     offer_deposit,
@@ -141,8 +140,11 @@ fn valid_offer_output(
     _ -> error @"UTxO not stored with an OfferDatum"
   }
 
+  // Generate the required asset beacon name based on the loan asset.
   let expected_asset_beacon = core.make_asset_beacon(loan_asset)
 
+  // Get the amount of the loan asset and the amount of ada in the UTxO. When ada is the loan,
+  // the ada_quantity will be unused.
   let (loan_quantity,ada_quantity) = 
     extract_offer_quantity(
       output_value,
@@ -152,33 +154,46 @@ fn valid_offer_output(
       lender_id_
     )
 
+  // Pattern match out the numerator and denominator for the interest so that they can be
+  // checked.
   let (interest_num,interest_den) = loan_interest
 
   // All of the following must be true.
   and {
     // Datum checks:
-    trace_if_false(@"Datum has wrong negotiation_beacon_id", 
+    trace_if_false(
+      @"Datum has wrong negotiation beacon id", 
       negotiation_beacon_id_ == core.to_negotiation_id(negotiation_beacon_id)),
-    trace_if_false(@"Datum has wrong active_beacon_id", 
+    trace_if_false(
+      @"Datum has wrong active beacon id", 
       active_beacon_id_ == core.to_active_id(active_beacon_id)),
-    trace_if_false(@"Datum has wrong lender_id", 
+    trace_if_false(
+      @"Datum has wrong lender id", 
       core.get_lender_id_name(lender_id_) == lender_id),
-    trace_if_false(@"Datum has wrong lender_address", 
+    trace_if_false(
+      @"Datum has wrong lender address", 
       valid_lender_address(proxy_hash,lender_address)),
-    trace_if_false(@"Datum has wrong asset_beacon", 
+    trace_if_false(
+      @"Datum has wrong asset beacon", 
       asset_beacon == core.get_asset_beacon_name(expected_asset_beacon)),
-    trace_if_false(@"Datum has wrong principle", 
+    trace_if_false(
+      @"Datum has wrong principle", 
       loan_principle > 0),
-    trace_if_false(@"Datum has wrong rollover_frequency", 
+    trace_if_false(
+      @"Datum has wrong compound frequency", 
       // Set to 1 to ensure True when None.
-      option.or_else(rollover_frequency,1) |> fn(x) { x > 0 }), 
-    trace_if_false(@"Datum has wrong term", 
+      option.or_else(compound_frequency,1) |> fn(x) { x > 0 }), 
+    trace_if_false(
+      @"Datum has wrong term", 
       loan_term > 0),
-    trace_if_false(@"Datum has wrong loan_interest", 
+    trace_if_false(
+      @"Datum has wrong loan interest", 
       interest_den > 0 && interest_num >= 0),
-    trace_if_false(@"Datum has wrong min_payment", 
-      min_payment >= 0 ),
-    trace_if_false(@"Datum has wrong collateralization",
+    trace_if_false(
+      @"Datum has wrong min payment", 
+      min_payment >= 0),
+    trace_if_false(
+      @"Datum has wrong collateralization",
       and {
         // List can't be empty.
         !list.is_empty(collateralization),
@@ -194,16 +209,28 @@ fn valid_offer_output(
         )
       }
     ),
-    trace_if_false(@"Datum has wrong claim_period", 
+    trace_if_false(
+      @"Datum has wrong claim period", 
       claim_period > 0),
-    trace_if_false(@"Datum has wrong offer_deposit", 
+    trace_if_false(
+      @"Datum has wrong offer deposit", 
       offer_deposit > 0),
-    trace_if_false(@"Datum has wrong offer_expiration", 
+    trace_if_false(
+      @"Datum has wrong offer expiration", 
       // Set to 1 to ensure True when None.
       option.or_else(offer_expiration,1) |> fn(x) { x > 0 }), 
+    trace_if_false(
+      @"Datum has wrong penalty",
+      when penalty is {
+        NoPenalty -> True
+        FixedFee(fee) -> fee > 0
+        PercentFee((fee_num,fee_den)) -> fee_num > 0 && fee_den > 0
+      }
+    ),
 
     // Value checks:
-    trace_if_false(@"UTxO has wrong value",
+    trace_if_false(
+      @"UTxO has wrong value",
       if loan_asset == (#"",#"") { 
         loan_quantity == loan_principle + offer_deposit
       } else { 
@@ -214,7 +241,7 @@ fn valid_offer_output(
 }
 
 // Check if the beacons are locked at the proper address and the Offer UTxO is configured properly.
-// This function will return `True` or `False`.  
+// This function can return False.
 pub fn offer_beacon_destination_check(
   loan_script_hash: ScriptHash,
   lender_id: LenderId,
@@ -223,7 +250,6 @@ pub fn offer_beacon_destination_check(
   proxy_hash: ScriptHash,
   outputs: List<Output>
 ) -> Bool {
-
   // A function to map over the list of outputs.
   let foo = fn (out: Output, acc: Bool) {
     // Extract out the output's information.
@@ -240,7 +266,7 @@ pub fn offer_beacon_destination_check(
         acc &&
 
         // The output must be at a DApp address with the borrower's credential as the
-        // stake credential. Uses `app_name` in the error message.
+        // stake credential.
         trace_if_false( 
           @"Beacon must go to a DApp address with a valid staking credential",
           pay == ScriptCredential(loan_script_hash) && option.is_some(stake)
@@ -257,5 +283,5 @@ pub fn offer_beacon_destination_check(
   }
 
   // Map over the list. This will only return True if all the outputs are valid.
-  list.foldl( outputs, True, foo )
+  list.foldl(outputs, True, foo)
 }

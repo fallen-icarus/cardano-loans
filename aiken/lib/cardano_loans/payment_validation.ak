@@ -1,6 +1,5 @@
 use aiken/dict.{Dict}
 use aiken/list
-use aiken/option
 use aiken/time.{PosixTime}
 use aiken/transaction.{
     Datum,
@@ -9,7 +8,6 @@ use aiken/transaction.{
     Input,
     ScriptPurpose,
     Redeemer,
-    Mint,
     Spend
   }
 use aiken/transaction/credential.{Address, ScriptCredential}
@@ -22,14 +20,14 @@ use cardano_loans/data/core.{
     AssetBeacon,
     Asset,
     Fraction,
-    ScriptHash
+    ScriptHash,
+    NoPenalty
   }
 use cardano_loans/data/datums.{ActiveDatum}
 use cardano_loans/data/redeemers.{LoanRedeemer, MakePayment}
 use cardano_loans/utils.{error_if_false}
 
 type RequiredCollateralOutput {
-  borrower_address: Address,
   collateralization: List<(Asset,Fraction)>,
   collateral_is_swappable: Bool,
   active_beacon_id: ActiveId,
@@ -46,8 +44,6 @@ type RequiredCollateralOutput {
 type RequiredPaymentOutput {
   active_beacon_id: ActiveId,
   lender_address: Address,
-  borrower_address: Address,
-  borrower_id: BorrowerId,
   loan_asset: Asset,
   loan_id: LoanId,
   payment_amount: Int
@@ -164,7 +160,7 @@ fn get_relative_collateral_values(
   // should_have_borrower_id is False, the UTxO should NOT have a BorrowerId.
   let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc:(List<(Asset,Int)>,Bool)) {
     let (cn,tns_dict) = x
-    let (relative_collateral,valid_beacons) = acc
+    let (relative_collateral,has_beacons) = acc
 
     // Check the beacons.
     if cn == core.from_active_id(active_beacon_id) {
@@ -176,16 +172,25 @@ fn get_relative_collateral_values(
         let (active_check,asset_check,borrower_id_check,loan_id_check) = inner_acc
         if tn == "Active" {
           // There must only be one Active beacon.
-          (n == 1, asset_check, borrower_id_check, loan_id_check)
+          ( error_if_false(@"UTxO has too many Active beacons",n == 1)
+          , asset_check
+          , borrower_id_check
+          , loan_id_check)
         } else if tn == core.get_asset_beacon_name(asset_beacon) {
           // There must only be one Asset beacon.
-          (active_check, n == 1, borrower_id_check, loan_id_check)
+          ( active_check
+          , error_if_false(@"UTxO has too many Asset beacons", n == 1)
+          , borrower_id_check
+          , loan_id_check)
         } else if tn == core.get_borrower_id_name(borrower_id) {
           // There must only be one BorrowerId beacon.
           (active_check, asset_check, n == 1, loan_id_check)
         } else if tn == core.get_loan_id_name(loan_id) {
           // There must only be one LoanId beacon.
-          (active_check, asset_check, borrower_id_check, n == 1)
+          ( active_check
+          , asset_check
+          , borrower_id_check
+          , error_if_false(@"UTxO has too many LoanIds", n == 1))
         } else {
           error @"UTxO has a beacon with the wrong name"
         }
@@ -208,7 +213,7 @@ fn get_relative_collateral_values(
           }
         }
 
-        _ -> (relative_collateral,False) // The UTxO does not have exactly one of each beacon.
+        _ -> error @"UTxO does not have the right beacons"
       }
     } 
 
@@ -237,27 +242,23 @@ fn get_relative_collateral_values(
       }
 
       // The starting accumulator should be the current count of relative collateral.
-      ( list.foldl( non_beacon_toks, relative_collateral, collat_check), valid_beacons )
+      (list.foldl(non_beacon_toks, relative_collateral, collat_check), has_beacons)
     }
   }
 
-  let (relative_collateral,valid_beacons) = list.foldl(
-    value.to_dict(utxo_value) |> dict.to_list(_),
-    ([],False),
-    foo
+  let (relative_collateral,has_beacons) = 
+    list.foldl( value.to_dict(utxo_value) |> dict.to_list(_),([],False),foo)
+
+  expect True = error_if_false(
+    @"Payment UTxO missing beacons",
+    has_beacons
   )
 
-  if valid_beacons {
-    relative_collateral
-  } else {
-    // If the recursive function returned false instead of crashing, it is because the UTxO
-    // has the right beacons but the wrong quantity of each beacon.
-    error @"UTxO does not have the proper beacons"
-  }
+  relative_collateral
 }
 
+// Determine what outputs are required based on the input.
 fn process_input(
-  borrower_address: Address,
   old_datum: Datum, 
   payment_amount: Int, 
   upper_bound: Option<PosixTime>,
@@ -267,22 +268,25 @@ fn process_input(
     ActiveDatum{
       active_beacon_id,
       payment_observer_hash,
-      rollover_observer_hash,
+      interest_observer_hash,
+      address_update_observer_hash,
       borrower_id,
       lender_address,
       loan_asset,
       asset_beacon,
       loan_principle,
-      rollover_frequency,
-      last_checkpoint,
+      compound_frequency,
+      last_compounding,
       loan_term,
-      loan_interest,
+      loan_interest: (interest_num,_) as loan_interest,
       min_payment,
+      penalty,
       collateralization,
       collateral_is_swappable,
       claim_expiration,
       loan_expiration,
       loan_outstanding: (outstanding_num,outstanding_den) as loan_outstanding,
+      total_epoch_payments,
       loan_id
     } -> {
       let upper = when upper_bound is {
@@ -299,23 +303,18 @@ fn process_input(
       )
 
       expect True = error_if_false(
-        @"Next rollover required",
-        when rollover_frequency is {
+        @"Next interest and/or penalty application required",
+        // If the interest is set to zero and penalty is NoPenalty, the compound_frequency is irrelevant.
+        (interest_num == 0 && penalty == NoPenalty) || when compound_frequency is {
           None -> True
-          Some(freq) -> upper <= last_checkpoint + freq
+          Some(freq) -> upper <= last_compounding + freq
         }
       )
 
       let is_full_payment = (payment_amount * outstanding_den) >= outstanding_num
 
-      expect True = error_if_false(
-        @"Minimum payment not met",
-        payment_amount >= min_payment || is_full_payment
-      )
-
       // Determine the required collateral datum given the payment amount.
       let req_collateral_output = RequiredCollateralOutput ( 
-        borrower_address,
         collateralization, 
         collateral_is_swappable,
         core.to_active_id(active_beacon_id), 
@@ -337,22 +336,25 @@ fn process_input(
         ActiveDatum{
           active_beacon_id: active_beacon_id,
           payment_observer_hash: payment_observer_hash,
-          rollover_observer_hash: rollover_observer_hash,
+          interest_observer_hash: interest_observer_hash,
+          address_update_observer_hash: address_update_observer_hash,
           borrower_id: borrower_id,
           lender_address: lender_address,
           loan_asset: loan_asset,
           asset_beacon: asset_beacon,
           loan_principle: loan_principle,
-          rollover_frequency: rollover_frequency,
-          last_checkpoint: last_checkpoint,
+          compound_frequency: compound_frequency,
+          last_compounding: last_compounding,
           loan_term: loan_term,
           loan_interest: loan_interest,
           min_payment: min_payment,
+          penalty: penalty,
           collateralization: collateralization,
           collateral_is_swappable: collateral_is_swappable,
           claim_expiration: claim_expiration,
           loan_expiration: loan_expiration,
           loan_outstanding: utils.subtract_payment(outstanding_num,outstanding_den,payment_amount),
+          total_epoch_payments: total_epoch_payments + payment_amount,
           loan_id: loan_id
         } |> InlineDatum
       )
@@ -360,8 +362,6 @@ fn process_input(
       let req_payment_output = RequiredPaymentOutput(
         core.to_active_id(active_beacon_id),
         lender_address,
-        borrower_address,
-        core.unsafe_to_borrower_id(borrower_id),
         loan_asset,
         core.unsafe_to_loan_id(loan_id),
         payment_amount
@@ -383,9 +383,9 @@ fn get_input_info(
   upper_bound: Option<PosixTime>,
   inputs: List<Input>,
   redeemers: List<(ScriptPurpose,Redeemer)>,
-  result: (Option<Address>,List<(Option<RequiredCollateralOutput>,Option<RequiredPaymentOutput>)>)
-) -> (Option<Address>,List<(Option<RequiredCollateralOutput>,Option<RequiredPaymentOutput>)>) {
-  let (target_borrower,req_outputs) = result
+  result: (Option<Address>,List<RequiredCollateralOutput>,List<RequiredPaymentOutput>)
+) -> (Option<Address>,List<RequiredCollateralOutput>,List<RequiredPaymentOutput>) {
+  let (target_borrower,req_col_outputs,req_pay_outputs) = result
 
   when (inputs,redeemers) is {
     // Compare the next input to the next redeemer. They are both assumed to be in
@@ -396,7 +396,7 @@ fn get_input_info(
       // If the input is a loan script input, do all of the checks.
       if pay_cred == ScriptCredential(loan_script_hash) {
         expect True = error_if_false(
-          @"All payment inputs must be for the same borrower",
+          @"All loan inputs must be for the same borrower",
           when target_borrower is {
             None -> True
             Some(x) -> addr == x
@@ -413,7 +413,6 @@ fn get_input_info(
           // This execution only cares about inputs using the MakePayment redeemer.
           MakePayment(payment_amount) -> {
             let (req_collateral_output,req_payment_output) = process_input(
-              addr,
               datum,
               payment_amount,
               upper_bound,
@@ -426,7 +425,8 @@ fn get_input_info(
               rest_ins,
               rest_reds,
               ( Some(addr),
-                list.concat(req_outputs,[(Some(req_collateral_output),Some(req_payment_output))])
+                list.concat(req_col_outputs,[req_collateral_output]),
+                list.concat(req_pay_outputs,[req_payment_output])
               )
             )
           }
@@ -484,27 +484,29 @@ fn get_input_info(
   }
 }
 
-// Required outputs for a given input are assumed to be next to each other (ie, no other loan
-// outputs are in between them). The outputs are also assumed to be in the same order as the
-// inputs (ie, the outputs for loan input 1 are before the outputs for loan input 2). The
-// script will fail if either of these two assumptions are not true. These assumptions dramatically
-// improve performance.
+// The collateral outputs are assumed to be in the same order as the inputs. The same is true
+// for the payment outputs. The collateral output and corresponding payment output do not need
+// to be next to each other. For example, it is possible to have all collateral outputs first,
+// followed by the payment outputs.
 //
 // This function will crash with an error if any checks fail. The returned value is None if
-// there were no full payments and Some() if there was at least one full payment. This function
+// there were no full payments and Some(x,_,_) if there was at least one full payment, where x 
+// is the number of full payments (and therefore BorrowerIds that must be burned. This function
 // will crash if there are any full payments for a different borrower.
 fn get_output_info(
-  req_outputs: List<(Option<RequiredCollateralOutput>,Option<RequiredPaymentOutput>)>,
+  borrower_address: Address,
+  req_col_outputs: List<RequiredCollateralOutput>,
+  req_pay_outputs: List<RequiredPaymentOutput>,
   outputs: List<Output>,
-  has_full_payment: Option<(ActiveId,BorrowerId)>
-) -> Option<(ActiveId,BorrowerId)> {
-  when (req_outputs,outputs) is {
-    // Only the collateral output still needs to be found for this loan input.
-    ( [(Some(req_collateral_output),None), ..rest_req_outs]
+  req_burn: Option<(Int,ActiveId,BorrowerId)>
+) -> Option<(Int,ActiveId,BorrowerId)> {
+  when (req_col_outputs,req_pay_outputs,outputs) is {
+    // Only collateral outputs still need to be found.
+    ( [req_collateral_output, ..rest_req_col_outs]
+    , []
     , [Output(addr,val,d,_), ..rest_outs]
     ) -> {
       let RequiredCollateralOutput{
-        borrower_address,
         collateralization, 
         collateral_is_swappable,
         active_beacon_id, 
@@ -540,25 +542,28 @@ fn get_output_info(
 
         // If this is a full payment, the target borrower id must be burned.
         if is_full_payment {
-          when has_full_payment is {
+          when req_burn is {
             None -> 
-              // Move on to the required outputs for the next loan input.
               get_output_info(
-                rest_req_outs,
+                borrower_address,
+                rest_req_col_outs, // Move on to the next req. collateral output.
+                [],
                 rest_outs,
-                Some((active_beacon_id,borrower_id))
+                Some((1,active_beacon_id,borrower_id))
               )
-            x -> {
+            Some((num,pol,name)) -> {
               // All loans in this transaction must be for the same borrower.
               expect True = error_if_false(
                 @"Full payment found for a different borrower",
-                x == Some((active_beacon_id,borrower_id))
+                pol == active_beacon_id && name == borrower_id
               )
 
               get_output_info(
-                rest_req_outs,
+                borrower_address,
+                rest_req_col_outs, // Move on to the next req. collateral output.
+                [],
                 rest_outs,
-                has_full_payment
+                Some((num+1,pol,name))
               )
             }
           }
@@ -566,91 +571,42 @@ fn get_output_info(
         // If this is not a full payment, the collateral taken must be checked.
         } else {
           // The proportion of the collateral taken must be <= the proportion of the loan repaid.
-          // Formula using only Int and no division (division is more expensive): 
+          // Formula using only Int and no division (division is more expensive).
           expect True = error_if_false(
             @"Too much collateral taken",
             outstanding_num * (old_collateral_relative_value - new_collateral_relative_value) <=
               old_collateral_relative_value * payment_amount * outstanding_den
           )
 
-          // Move on to the required outputs for the next loan input.
           get_output_info(
-            rest_req_outs,
+            borrower_address,
+            rest_req_col_outs, // Move on to the next req. collateral output.
+            [],
             rest_outs,
-            has_full_payment
+            req_burn
           )
         }
 
-      // If this is not the next required collateral output, the output still needs to be checked
-      // for BorrowerIds so that free BorrowerIds must be burned. This is the cheapest method for 
-      // the spending script to ensure all BorrowerIds are properly burned instead of withdrawn.
+      // This output can be ignored.
       } else {
-        when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
-          // This output can be ignored since there are no beacons.
-          [] -> get_output_info(
-            req_outputs,
-            rest_outs,
-            has_full_payment
-          )
-
-          // Any output with a BorrowerId must also have an Active beacon, and be located at
-          // the borrower's address.
-          xs -> {
-            expect True = error_if_false(
-              @"Beacon tokens cannot be withdrawn",
-              addr == borrower_address
-            )
-
-            let inner_foo = fn(t: (AssetName,Int), inner_acc:(Bool,Bool)) {
-              let (valid_borrower,valid_active) = inner_acc
-              let (name,num) = t
-
-              if name == core.get_borrower_id_name(borrower_id) {
-                expect True = error_if_false(
-                  @"One BorrowerId per UTxO",
-                  num == 1
-                )
-
-                (True,valid_active)
-              } else if name == "Active" {
-                (valid_borrower,num == 1)
-              } else {
-                inner_acc
-              }
-            }
-            
-            when list.foldl(xs,(False,False),inner_foo) is {
-              // No BorrowerIds were present. It would have crashed if more than 1 was present.
-              (False,_) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              ) 
-
-              // BorrowerId is present without exactly 1 Active beacon.
-              (True,False) -> error @"BorrowerId not stored with exactly 1 Active beacon"
-
-              // The BorrowerId is properly stored.
-              (True,True) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              )
-            }
-          }
-        }
+        get_output_info(
+          borrower_address,
+          req_col_outputs, // Keep the current req. collateral output.
+          [],
+          rest_outs,
+          req_burn
+        )
       }
     }
 
     // Only the payment output still needs to be found for this loan input.
-    ( [ (None,Some(req_payment_output)), ..rest_req_outs ]
+    ( []
+    , [ req_payment_output, ..rest_req_pay_outs ]
     , [ Output(addr,val,d,_), ..rest_outs ]
     ) -> {
       let RequiredPaymentOutput{
         active_beacon_id,
         lender_address,
-        borrower_address,
-        borrower_id,
         loan_asset: (loan_asset_id,loan_asset_name),
         loan_id,
         payment_amount
@@ -665,86 +621,38 @@ fn get_output_info(
 
         // Move on to the required outputs for the next loan input.
         get_output_info(
-          rest_req_outs,
+          borrower_address,
+          [],
+          rest_req_pay_outs, // Move on to the next req. payment output.
           rest_outs,
-          has_full_payment
+          req_burn
         )
 
-      // If this is not the next required collateral output, the output still needs to be checked
-      // for BorrowerIds so that free BorrowerIds must be burned. This is the cheapest method for 
-      // the spending script to ensure all BorrowerIds are properly burned instead of withdrawn.
       } else {
-        when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
-          // This output can be ignored since there are no beacons.
-          [] -> get_output_info(
-            req_outputs,
-            rest_outs,
-            has_full_payment
-          )
-
-          // Any output with a BorrowerId must also have an Active beacon, and be located at
-          // the borrower's address.
-          xs -> {
-            expect True = error_if_false(
-              @"Beacon tokens cannot be withdrawn",
-              addr == borrower_address
-            )
-
-            let inner_foo = fn(t: (AssetName,Int), inner_acc:(Bool,Bool)) {
-              let (valid_borrower,valid_active) = inner_acc
-              let (name,num) = t
-
-              if name == core.get_borrower_id_name(borrower_id) {
-                expect True = error_if_false(
-                  @"One BorrowerId per UTxO",
-                  num == 1
-                )
-
-                (True,valid_active)
-              } else if name == "Active" {
-                (valid_borrower,num == 1)
-              } else {
-                inner_acc
-              }
-            }
-            
-            when list.foldl(xs,(False,False),inner_foo) is {
-              // No BorrowerIds were present. It would have crashed if more than 1 was present.
-              (False,_) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              ) 
-
-              // BorrowerId is present without exactly 1 Active beacon.
-              (True,False) -> error @"BorrowerId not stored with exactly 1 Active beacon"
-
-              // The BorrowerId is properly stored.
-              (True,True) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              )
-            }
-          }
-        }
+        get_output_info(
+          borrower_address,
+          [], 
+          req_pay_outputs, // Keep the current req. payment output.
+          rest_outs,
+          req_burn
+        )
       }
     }
 
     // Both of the required outputs still need to be found for this loan input.
-    ( [(Some(req_collateral_output) as col,Some(req_payment_output) as pay), ..rest_req_outs]
+    ( [req_collateral_output, ..rest_req_col_outs]
+    , [req_payment_output, ..rest_req_pay_outs]
     , [Output(addr,val,d,_), ..rest_outs]
     ) -> {
       let RequiredCollateralOutput{
-        borrower_address,
         collateralization, 
         collateral_is_swappable,
-        active_beacon_id, 
-        loan_id, 
+        active_beacon_id,
+        loan_id: col_loan_id, // This may be a different one than the next req. payment.
         asset_beacon,
         borrower_id, 
         is_full_payment,
-        payment_amount,
+        payment_amount: col_payment_amount, // This may be different, too.
         relative_collteral_value: old_collateral_relative_values,
         loan_outstanding: (outstanding_num,outstanding_den),
         req_datum: req_collat_datum
@@ -753,6 +661,8 @@ fn get_output_info(
       let RequiredPaymentOutput{
         lender_address,
         loan_asset: (loan_asset_id,loan_asset_name),
+        loan_id: pay_loan_id, // This may be a different one than the next req. collateral.
+        payment_amount: pay_payment_amount, // This may be different, too.
         ..
       } = req_payment_output
 
@@ -762,7 +672,7 @@ fn get_output_info(
           val,
           collateralization,
           active_beacon_id,
-          loan_id,
+          col_loan_id,
           asset_beacon,
           borrower_id,
           !is_full_payment // If it is a full payment, the output should not have a BorrowerId.
@@ -778,26 +688,28 @@ fn get_output_info(
 
         // If this is a full payment, the target borrower id must be burned.
         if is_full_payment {
-          when has_full_payment is {
+          when req_burn is {
             None -> 
-              // The required payment output still needs to be found.
               get_output_info(
-                [(None,pay),..rest_req_outs],
+                borrower_address,
+                rest_req_col_outs, // Move on to the next req. collateral output.
+                req_pay_outputs,
                 rest_outs,
-                Some((active_beacon_id,borrower_id))
+                Some((1,active_beacon_id,borrower_id))
               )
-            x -> {
+            Some((num,pol,name)) -> {
               // All loans in this transaction must be for the same borrower.
               expect True = error_if_false(
                 @"Full payment found for a different borrower",
-                x == Some((active_beacon_id,borrower_id))
+                pol == active_beacon_id && name == borrower_id
               )
 
               get_output_info(
-                // The required payment output still needs to be found.
-                [(None,pay),..rest_req_outs],
+                borrower_address,
+                rest_req_col_outs, // Move on to the next req. collateral output.
+                req_pay_outputs,
                 rest_outs,
-                has_full_payment
+                Some((num+1,pol,name))
               )
             }
           }
@@ -809,97 +721,48 @@ fn get_output_info(
           expect True = error_if_false(
             @"Too much collateral taken",
             outstanding_num * (old_collateral_relative_value - new_collateral_relative_value) <=
-              old_collateral_relative_value * payment_amount * outstanding_den
+              old_collateral_relative_value * col_payment_amount * outstanding_den
           )
 
           // The required payment output must still be found for this input.
           get_output_info(
-            [(None,pay),..rest_req_outs],
+            borrower_address,
+            rest_req_col_outs, // Move on to the next req. collateral output.
+            req_pay_outputs, // Keep the current req. payment output.
             rest_outs,
-            has_full_payment
+            req_burn
           )
         }
 
       // Check if this output is the next required payment output.
-      } else if addr == lender_address && d == InlineDatum((active_beacon_id,loan_id)) {
+      } else if addr == lender_address && d == InlineDatum((active_beacon_id,pay_loan_id)) {
         expect True = error_if_false(
           @"Lender payment amount does not match redeemer",
-          value.quantity_of(val,loan_asset_id,loan_asset_name) >= payment_amount
+          value.quantity_of(val,loan_asset_id,loan_asset_name) >= pay_payment_amount
         )
 
-        // The required collateral output must still be found for this input.
         get_output_info(
-          [(col,None),..rest_req_outs],
+          borrower_address,
+          req_col_outputs, // Keep the current req. collateral output.
+          rest_req_pay_outs, // Move on to the next req. payment output.
           rest_outs,
-          has_full_payment
+          req_burn
         )
 
-      // If this is neither of the required outputs, the output still needs to be checked
-      // for BorrowerIds so that free BorrowerIds must be burned. This is the cheapest method for 
-      // the spending script to ensure all BorrowerIds are properly burned instead of withdrawn.
+      // This output can be ignored.
       } else {
-        // If neither of the above to branches passed, then the output still needs to check
-        // that BorrowerIds are used properly. This is the cheapest method for the spending
-        // script to ensure all BorrowerIds are properly burned instead of withdrawn.
-        when value.tokens(val,core.from_active_id(active_beacon_id)) |> dict.to_list() is {
-          // This output can be ignored since there are no beacons.
-          [] -> get_output_info(
-            req_outputs,
-            rest_outs,
-            has_full_payment
-          )
-
-          // Any output with a BorrowerId must also have an Active beacon, and be located at
-          // the borrower's address.
-          xs -> {
-            expect True = error_if_false(
-              @"Beacon tokens cannot be withdrawn",
-              addr == borrower_address
-            )
-
-            let inner_foo = fn(t: (AssetName,Int), inner_acc:(Bool,Bool)) {
-              let (valid_borrower,valid_active) = inner_acc
-              let (name,num) = t
-
-              if name == core.get_borrower_id_name(borrower_id) {
-                expect True = error_if_false(
-                  @"One BorrowerId per UTxO",
-                  num == 1
-                )
-
-                (True,valid_active)
-              } else if name == "Active" {
-                (valid_borrower,num == 1)
-              } else {
-                inner_acc
-              }
-            }
-            
-            when list.foldl(xs,(False,False),inner_foo) is {
-              // No BorrowerIds were present. It would have crashed if more than 1 was present.
-              (False,_) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              ) 
-
-              // BorrowerId is present without exactly 1 Active beacon.
-              (True,False) -> error @"BorrowerId not stored with exactly 1 Active beacon"
-
-              // The BorrowerId is properly stored.
-              (True,True) -> get_output_info(
-                req_outputs,
-                rest_outs,
-                has_full_payment
-              )
-            }
-          }
-        }
+        get_output_info(
+          borrower_address,
+          req_col_outputs, // Keep the current req. collateral output.
+          req_pay_outputs, // Keep the current req. payment output.
+          rest_outs,
+          req_burn
+        )
       }
     }
 
     // All required outputs have been found.
-    ([], _) -> has_full_payment
+    ([], [], _) -> req_burn
 
     _ -> error "Not all required outputs found"
   }
@@ -915,41 +778,43 @@ pub fn valid_payment(
   loan_script_hash: ScriptHash,
   upper_bound: Option<PosixTime>
 ) -> Address {
-  let (target_borrower,req_outputs) = get_input_info(
+  let (target_borrower,req_col_outputs,req_pay_outputs) = get_input_info(
     loan_script_hash,
     upper_bound,
     inputs,
     dict.to_list(redeemers),
-    (None,[])
+    (None,[],[])
   )
-
-  // If there were any full payments, the BorrowerIds must be burned in isolation.
-  expect True = when get_output_info(req_outputs, outputs, None) is {
-    // All required outputs were found and there were no full payments.
-    None -> True
-
-    // All required outputs were found and there was at least one full payment.
-    Some((active_beacon_id,borrower_id)) -> {
-      when value.tokens(mint,core.from_active_id(active_beacon_id)) |> dict.to_list(_) is {
-          [] -> error @"BorrowerId(s) not burned"
-
-          [(tn,n)] -> {
-            error_if_false(
-              @"BorrowerId(s) not burned",
-              and {
-                tn == core.get_borrower_id_name(borrower_id),
-                n < 0
-              }
-            )
-          }
-
-          _ -> error @"BorrowerId(s) not burned in isolation"
-        }
-    }
-  }
 
   when target_borrower is {
     None -> error @"No payment inputs found"
-    Some(x) -> x
+    Some(addr) -> {
+      // If there were any full payments, the BorrowerIds must be burned in isolation.
+      when get_output_info(addr,req_col_outputs,req_pay_outputs,outputs,None) is {
+        // All required outputs were found and there were no full payments.
+        None -> addr // Return the borrower's address so approval can be checked.
+
+        // All required outputs were found and there was at least one full payment.
+        Some((num,active_beacon_id,borrower_id)) -> {
+          when value.tokens(mint,core.from_active_id(active_beacon_id)) |> dict.to_list(_) is {
+            [] -> error @"BorrowerId(s) not burned"
+
+            [(tn,n)] -> {
+              expect True = error_if_false(
+                @"BorrowerId(s) not burned",
+                and {
+                  tn == core.get_borrower_id_name(borrower_id),
+                  n == -num
+                }
+              )
+
+              addr // Return the borrower's address so approval can be checked.
+            }
+
+            _ -> error @"BorrowerId(s) not burned in isolation"
+          }
+        }
+      }
+    }
   }
 }
