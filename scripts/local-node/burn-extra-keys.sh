@@ -8,7 +8,7 @@ tmpDir="${mainDir}tmp/"
 
 activeRedeemerFile="${loanDir}burnAll.json"
 
-loanIdTokenName='4fe883a427bd96128e0fcfdbe94865c41ce92187d252f0ec45f261255f693c8f'
+loanIdTokenName='0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced'
 
 ## Create the required redeemers.
 echo "Creating the active redeemer..."
@@ -25,7 +25,7 @@ extraKey="${activePolicyId}.${loanIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#0 \
+  --tx-in a4afa3648bf273c563c6b66c51110f7bfdfbe761d53a7a8e1961d79e3d53b0cd#0 \
   --mint "-1 ${extraKey}" \
   --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
   --mint-plutus-script-v2 \

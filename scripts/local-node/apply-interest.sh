@@ -22,9 +22,9 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 numberOfApplications=1
-loanUTxO='ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#1'
-expirationTime=$((1712768154000)) # The loan expiration.
-loanIdTokenName='4fe883a427bd96128e0fcfdbe94865c41ce92187d252f0ec45f261255f693c8f'
+loanUTxO='27fedf54ffd8c907fb5e5231a4933a5fa84ae0585097478c5dbb7fbbfcb1578d#1'
+expirationTime=$((1712854602000)) # The loan expiration.
+loanIdTokenName='0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced'
 
 ## Convert the posix time to a slot number for invalid-hereafter.
 echo "Calculating the required slot number..."
@@ -118,8 +118,8 @@ cardano-cli transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 933a3df06ce0d7863185b798e9c982355102d19be016b849994b6e66c13487fd#1 \
-  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
+  --tx-in 27fedf54ffd8c907fb5e5231a4933a5fa84ae0585097478c5dbb7fbbfcb1578d#4 \
+  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 5 ${collateral1} + 3 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
   --withdrawal "${observerAddress}+0" \
   --withdrawal-tx-in-reference 97a8f2492c058e3a95191628ba1584227d751c84db6b30ea056edf7142724ba8#0 \

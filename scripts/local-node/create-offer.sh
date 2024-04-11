@@ -26,7 +26,7 @@ echo "Calculating the staking pubkey hash for the lender..."
 lenderStakePubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $lenderStakePubKeyFile)
 
-## Create the Offer datum.
+## Create the Offer datum. The collateral must be sorted lexicographically.
 echo "Creating the offer datum..."
 cardano-loans datums offer \
   --payment-address $paymentAddress \
@@ -75,11 +75,9 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in 377977775949c122198248178ee13cec092497bb6a85fb6e81f9aa928943c909#0 \
+  --tx-in fde2b2d830ce58e43eb2e32f7b0e111df707632757e7230b89ff79f88b3d0984#3 \
   --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrinciple} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --tx-out-inline-datum-file $offerDatumFile \
-  --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 4 ${collateral2}" \
-  --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 8 ${collateral1}" \
   --mint "1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
   --mint-plutus-script-v2 \

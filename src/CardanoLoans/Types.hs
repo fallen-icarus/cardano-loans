@@ -77,7 +77,7 @@ instance ToJSON Fraction where
 instance Pretty Fraction where
   pretty (Fraction (num,den)) = 
     pretty num <+> "/" <+> pretty den <+> 
-      tupled [pretty @Double (fromIntegral num / fromIntegral den) <> "%"]
+      tupled [pretty @Double (fromIntegral num / fromIntegral den)]
 
 -- | The penalty to apply whenever the minimum payment is not met.
 data Penalty

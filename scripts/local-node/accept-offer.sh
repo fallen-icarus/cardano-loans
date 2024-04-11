@@ -23,7 +23,7 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-offerUTxO='fde2b2d830ce58e43eb2e32f7b0e111df707632757e7230b89ff79f88b3d0984#0'
+offerUTxO='667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0'
 
 ## Get the latest slot number.
 echo "Querying the latest slot..."
@@ -135,22 +135,20 @@ cardano-cli transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in c12e8af7abda1bdee8bda2c278f902edc0fb327ebc3b4eb9c19d2c1fc3724ec9#1 \
+  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#2 \
   --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in a1395baad0b4a1786bc62a7315c8debe2f7f89a78817e575fd9bd80d16c8032f#4 \
-  --tx-in a1395baad0b4a1786bc62a7315c8debe2f7f89a78817e575fd9bd80d16c8032f#2 \
-  --tx-in a1395baad0b4a1786bc62a7315c8debe2f7f89a78817e575fd9bd80d16c8032f#3 \
-  --tx-in 5befc3f68d6ff1f8f7842bf27163a415cefd7f3dfca1c1f47b7668937307cca1#0 \
-  --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#1 \
+  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#3 \
+  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#1 \
+  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#0 \
   --tx-out "${lenderAddress} + ${offerDeposit} lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 5 ${collateral2}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 3 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 4 ${collateral2}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 11 ${collateral1}" \
   --mint "-1 ${askBeacon} + -2 ${negotiationAssetBeacon} + -1 ${offerBeacon} + -1 ${lenderIdBeacon} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 1 ${borrowerId} + 2 ${loanId}" \
   --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
   --mint-plutus-script-v2 \

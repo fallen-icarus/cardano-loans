@@ -35,7 +35,7 @@ borrowerLoanAddr=$(cardano-cli address build \
   --stake-verification-key-file $borrowerStakePubKeyFile \
   --testnet-magic 1)
 
-## Create the Ask datum.
+## Create the Ask datum. The collateral must be sorted lexicographically.
 echo "Creating the ask datum..."
 cardano-loans datums ask \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
@@ -71,11 +71,11 @@ assetBeacon="${beaconPolicyId}.${assetTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in f742df8cd087774c796aeeed0aaa3b0220d0c667bcc115e1aea984bc6b3c8509#0 \
-  --tx-in f742df8cd087774c796aeeed0aaa3b0220d0c667bcc115e1aea984bc6b3c8509#1 \
-  --tx-in c12e8af7abda1bdee8bda2c278f902edc0fb327ebc3b4eb9c19d2c1fc3724ec9#0 \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 3 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 3 ${collateral2}" \
+  --tx-in 25762e065cb4a6e07124e36fddc54b31b874565a445965042914265922cac677#1 \
+  --tx-in 25762e065cb4a6e07124e36fddc54b31b874565a445965042914265922cac677#0 \
+  --tx-in 1f4b5eaf864f57ad3ee4e58edd5bc955fa1315752b663f80719a67a5900f1b99#1 \
+  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 19 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 8 ${collateral2}" \
   --tx-out "${borrowerLoanAddr} + 3000000 lovelace + 1 ${askBeacon} + 1 ${assetBeacon} + 1 ${collateral1} + 1 ${collateral2}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon} + 1 ${assetBeacon}" \

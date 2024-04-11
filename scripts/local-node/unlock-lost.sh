@@ -66,7 +66,8 @@ cardano-cli transaction build \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
   --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#4 \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 11 ${collateral1} + 9 ${collateral2}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 11 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 9 ${collateral2}" \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -1 ${loanId}" \
   --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
   --mint-plutus-script-v2 \

@@ -51,12 +51,12 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in 11f9d37454331e58a765fc0f6f8d0852284ad915f9c15ceb4e3ca4b15e7f8a54#1 \
+  --tx-in 667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0 \
   --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 11f9d37454331e58a765fc0f6f8d0852284ad915f9c15ceb4e3ca4b15e7f8a54#2 \
+  --tx-in 667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#1 \
   --mint "-1 ${offerBeacon} + -1 ${assetBeacon} + -1 ${lenderId}" \
   --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
   --mint-plutus-script-v2 \
