@@ -525,7 +525,7 @@ failureTest3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Try to accept the offer.

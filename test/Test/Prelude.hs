@@ -105,7 +105,7 @@ import Control.Monad.RWS.Strict (runRWS)
 import qualified Ledger.CardanoWallet as Mock 
 import Data.Default (def)
 
-import CardanoLoans
+import CardanoLoans hiding (posixTimeToSlot)
 
 -------------------------------------------------
 -- Core Test Framework

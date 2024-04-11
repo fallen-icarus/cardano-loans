@@ -1,291 +1,692 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module CLI.Parsers
 (
   parseCommand
 ) where
 
 import Options.Applicative
-import Data.Text (pack)
+import Relude
+import qualified Data.String as String
 
-import CardanoLoans hiding ((-),(+),(*))
-import CLI.Types
+import CardanoLoans
+
+import CLI.Data.Commands
+import CLI.Data.Bech32Address
+import CLI.Data.Network
+import CLI.Data.ApiService
+import CLI.Data.Output
 
 -------------------------------------------------
 -- Main Parsers
 -------------------------------------------------
 parseCommand :: Parser Command
 parseCommand = hsubparser $ mconcat
-  [ command "export-script"
-      (info parseExportScript $ progDesc "Export a dApp plutus script.")
-  , command "datum"
-      (info parseCreateLoanDatum $ progDesc "Create a datum for the dApp.")
-  , command "loan-redeemer"
-      (info  pCreateLoanRedeemer $ progDesc "Create a redeemer for the loan validator.")
-  , command "beacon-redeemer"
-      (info parseCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
-  , command "convert-address"
-      (info pConvertAddress $ progDesc "Convert plutus address <--> Bech32 address.")
-  , command "convert-time"
-      (info pConvertTime $ progDesc "Convert POSIXTime <--> Slot.")
-  , command "query"
-      (info parseQuery $ progDesc "Query the dApp's beacon tokens.")
+  [ command "scripts" $
+      info parseExportScript $ progDesc "Export a protocol plutus script."
+  , command "datums" $
+      info parseCreateDatum $ progDesc "Create a datum for the protocol."
+  , command "redeemers" $
+      info parseCreateRedeemer $ progDesc "Create a redeemer for the protocol."
+  , command "beacon-name" $
+      info parseBeaconName $ progDesc "Calculate a beacon policy id or asset name."
+  , command "convert-time" $
+      info pConvertTime $ progDesc "Convert POSIXTime <--> Slot."
+  , command "query" $
+      info parseQuery $ progDesc "Query the blockchain."
   ]
 
 -------------------------------------------------
 -- Scripts Parser
 -------------------------------------------------
 parseExportScript :: Parser Command
-parseExportScript = hsubparser $ mconcat
-    [ command "beacon-policy"
-        (info pExportPolicy $ progDesc "Export the beacon policy.")
-    , command "loan-script"
-        (info pExportLoan $ progDesc "Export the loan validator script.")
+parseExportScript = 
+    ExportScript
+      <$> pScript
+      <*> pOutputFile
+  where
+    pScript :: Parser Script
+    pScript = pNegotiationScript
+          <|> pActiveScript
+          <|> pPaymentScript
+          <|> pInterestScript
+          <|> pAddressUpdateScript
+          <|> pLoanScript
+          <|> pProxyScript
+
+    pNegotiationScript :: Parser Script
+    pNegotiationScript = flag' NegotiationBeaconScript
+      (  long "negotiation-script"
+      <> help "Export the negotiation beacon script."
+      )
+
+    pActiveScript :: Parser Script
+    pActiveScript = flag' ActiveBeaconScript
+      (  long "active-script"
+      <> help "Export the active beacon script."
+      )
+
+    pPaymentScript :: Parser Script
+    pPaymentScript = flag' PaymentObserverScript
+      (  long "payment-script"
+      <> help "Export the payment observer script."
+      )
+
+    pInterestScript :: Parser Script
+    pInterestScript = flag' InterestObserverScript
+      (  long "interest-script"
+      <> help "Export the interest observer script."
+      )
+
+    pAddressUpdateScript :: Parser Script
+    pAddressUpdateScript = flag' AddressUpdateObserverScript
+      (  long "address-update-script"
+      <> help "Export the address update observer script."
+      )
+
+    pLoanScript :: Parser Script
+    pLoanScript = flag' LoanScript
+      (  long "loan-script"
+      <> help "Export the loan spending script."
+      )
+
+    pProxyScript :: Parser Script
+    pProxyScript = flag' ProxyScript
+      (  long "proxy-script"
+      <> help "Export the proxy script."
+      )
+
+-------------------------------------------------
+-- CreateDatum Parser
+-------------------------------------------------
+parseCreateDatum :: Parser Command
+parseCreateDatum = hsubparser $ mconcat
+    [ command "ask" $
+        info pCreateNewAskInfo $ progDesc "Create an AskDatum."
+    , command "offer" $
+        info pCreateNewOfferInfo $ progDesc "Create an OfferDatum."
+    , command "active" $
+        info pCreateActiveDatum $ progDesc "Create an ActiveDatum."
+    , command "payment" $
+        info pCreatePaymentDatum $ progDesc "Create a PaymentDatum."
+    ]
+
+pCreatePaymentDatum :: Parser Command
+pCreatePaymentDatum = 
+  CreateDatum 
+    <$> (NewPayment <$> pLoanId)
+    <*> pOutputFile
+
+pCreateNewAskInfo :: Parser Command
+pCreateNewAskInfo =
+    CreateDatum
+      <$> pNewAskInfo
+      <*> pOutputFile
+  where
+    pNewAskInfo :: Parser NewDatum
+    pNewAskInfo =
+      fmap NewAsk $ NewAskInfo
+        <$> pUserCredential "borrower"
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> pLoanTerm
+        <*> some (pAsset "collateral")
+
+pCreateNewOfferInfo :: Parser Command
+pCreateNewOfferInfo =
+    CreateDatum
+      <$> pNewOfferInfo
+      <*> pOutputFile
+  where
+    pNewOfferInfo :: Parser NewDatum
+    pNewOfferInfo =
+      fmap NewOffer $ NewOfferInfo
+        <$> pUserCredential "lender"
+        <*> pPaymentAddress
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> pLoanTerm
+        <*> pInterest
+        <*> pMinPayment
+        <*> pPenalty
+        <*> pCollateralization
+        <*> pIsSwappable
+        <*> pClaimPeriod
+        <*> pOfferDeposit
+        <*> (pOfferExpiration <|> pure Nothing)
+
+pCreateActiveDatum :: Parser Command
+pCreateActiveDatum = hsubparser $ mconcat
+  [ command "new" $
+      info pCreateNewActiveInfo $ progDesc "Create a new ActiveDatum."
+  , command "post-payment" $
+      info pCreatePostPaymentActive $ progDesc "Create a post-payment ActiveDatum."
+  , command "post-interest" $
+      info pCreatePostInterestActive $ progDesc "Create a post-interest ActiveDatum."
+  , command "post-address-update" $
+      info pCreatePostAddressUpdateActive $ progDesc "Create a post-address-update ActiveDatum."
+  ]
+
+pCreateNewActiveInfo :: Parser Command
+pCreateNewActiveInfo = hsubparser $ mconcat
+    [ command "manual" $
+        info pCreateNewActiveInfoManual $ progDesc "Create a new ActiveDatum manually."
+    , command "auto" $
+        info pCreateNewActiveInfoAuto $ progDesc "Create a new ActiveDatum by looking up the offer UTxO."
+    ]
+
+pCreateNewActiveInfoManual :: Parser Command
+pCreateNewActiveInfoManual =
+    CreateDatum
+      <$> pNewActiveInfo
+      <*> pOutputFile
+  where
+    pNewActiveInfo :: Parser NewDatum
+    pNewActiveInfo =
+      fmap NewActiveManual $ NewActiveInfo
+        <$> pPaymentAddress
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> pLoanTerm
+        <*> pInterest
+        <*> pMinPayment
+        <*> pPenalty
+        <*> pCollateralization
+        <*> pIsSwappable
+        <*> pClaimPeriod
+        <*> pStartTime
+        <*> pUserCredential "borrower"
+        <*> pOfferId
+
+pCreateNewActiveInfoAuto :: Parser Command
+pCreateNewActiveInfoAuto =
+    CreateDatum
+      <$> pNewActive
+      <*> pOutputFile
+  where
+    pNewActive :: Parser NewDatum
+    pNewActive =
+      NewActiveAuto
+        <$> pNetwork
+        <*> pApiService
+        <*> pOfferId
+        <*> pStartTime
+        <*> pUserCredential "borrower"
+
+pCreatePostPaymentActive :: Parser Command
+pCreatePostPaymentActive = hsubparser $ mconcat
+    [ command "manual" $
+        info pCreatePostPaymentActiveManual $ 
+          progDesc "Create a post-payment ActiveDatum manually."
+    , command "auto" $
+        info pCreatePostPaymentActiveAuto $ 
+          progDesc "Create a post-payment ActiveDatum by looking up the loan UTxO."
+    ]
+
+pCreatePostPaymentActiveManual :: Parser Command
+pCreatePostPaymentActiveManual =
+    CreateDatum
+      <$> pNewPaymentInfo
+      <*> pOutputFile
+  where
+    pNewPaymentInfo :: Parser NewDatum
+    pNewPaymentInfo =
+      fmap NewPostPaymentActiveManual $ NewPaymentInfo
+        <$> pUserCredential "borrower"
+        <*> pPaymentAddress
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> pLastCompounding
+        <*> pLoanTerm
+        <*> pInterest
+        <*> pMinPayment
+        <*> pPenalty
+        <*> pCollateralization
+        <*> pIsSwappable
+        <*> pClaimExpiration
+        <*> pLoanExpiration
+        <*> pLoanOutstanding
+        <*> pTotalEpochPayments
+        <*> pLoanId
+        <*> pPaymentAmount
+
+pCreatePostPaymentActiveAuto :: Parser Command
+pCreatePostPaymentActiveAuto =
+    CreateDatum
+      <$> pNewPayment
+      <*> pOutputFile
+  where
+    pNewPayment :: Parser NewDatum
+    pNewPayment =
+      NewPostPaymentActiveAuto
+        <$> pNetwork
+        <*> pApiService
+        <*> pLoanRef
+        <*> pPaymentAmount
+
+pCreatePostInterestActive :: Parser Command
+pCreatePostInterestActive = hsubparser $ mconcat
+    [ command "manual" $
+        info pCreatePostInterestActiveManual $ 
+          progDesc "Create a post-interest ActiveDatum manually."
+    , command "auto" $
+        info pCreatePostInterestActiveAuto $ 
+          progDesc "Create a post-interest ActiveDatum by looking up the loan UTxO."
+    ]
+
+pCreatePostInterestActiveManual :: Parser Command
+pCreatePostInterestActiveManual =
+    CreateDatum
+      <$> pNewInterestInfo
+      <*> pOutputFile
+  where
+    pNewInterestInfo :: Parser NewDatum
+    pNewInterestInfo =
+      fmap NewPostInterestActiveManual $ NewInterestInfo
+        <$> pUserCredential "borrower"
+        <*> pPaymentAddress
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> pLastCompounding
+        <*> pLoanTerm
+        <*> pInterest
+        <*> pMinPayment
+        <*> pPenalty
+        <*> pCollateralization
+        <*> pIsSwappable
+        <*> pClaimExpiration
+        <*> pLoanExpiration
+        <*> pLoanOutstanding
+        <*> pTotalEpochPayments
+        <*> pLoanId
+        <*> pNumberOfInterestApplications
+
+pCreatePostInterestActiveAuto :: Parser Command
+pCreatePostInterestActiveAuto =
+    CreateDatum
+      <$> pNewInterest
+      <*> pOutputFile
+  where
+    pNewInterest :: Parser NewDatum
+    pNewInterest =
+      NewPostInterestActiveAuto
+        <$> pNetwork
+        <*> pApiService
+        <*> pLoanRef
+        <*> pNumberOfInterestApplications
+
+pCreatePostAddressUpdateActive :: Parser Command
+pCreatePostAddressUpdateActive = hsubparser $ mconcat
+    [ command "manual" $
+        info pCreatePostAddressUpdateActiveManual $ 
+          progDesc "Create a post-address-update ActiveDatum manually."
+    , command "auto" $
+        info pCreatePostAddressUpdateActiveAuto $ 
+          progDesc "Create a post-address-update ActiveDatum by looking up the loan UTxO."
+    ]
+
+pCreatePostAddressUpdateActiveManual :: Parser Command
+pCreatePostAddressUpdateActiveManual =
+    CreateDatum
+      <$> pNewAddressUpdateInfo
+      <*> pOutputFile
+  where
+    pNewAddressUpdateInfo :: Parser NewDatum
+    pNewAddressUpdateInfo =
+      fmap NewPostAddressUpdateActiveManual $ NewAddressInfo
+        <$> pUserCredential "borrower"
+        <*> pPaymentAddress
+        <*> pAsset "loan"
+        <*> pPrinciple
+        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> pLastCompounding
+        <*> pLoanTerm
+        <*> pInterest
+        <*> pMinPayment
+        <*> pPenalty
+        <*> pCollateralization
+        <*> pIsSwappable
+        <*> pClaimExpiration
+        <*> pLoanExpiration
+        <*> pLoanOutstanding
+        <*> pTotalEpochPayments
+        <*> pLoanId
+
+pCreatePostAddressUpdateActiveAuto :: Parser Command
+pCreatePostAddressUpdateActiveAuto =
+    CreateDatum
+      <$> pNewAddressUpdate
+      <*> pOutputFile
+  where
+    pNewAddressUpdate :: Parser NewDatum
+    pNewAddressUpdate =
+      NewPostAddressUpdateActiveAuto
+        <$> pNetwork
+        <*> pApiService
+        <*> pLoanRef
+        <*> pPaymentAddress
+
+-------------------------------------------------
+-- CreateRedeemer Parser
+-------------------------------------------------
+parseCreateRedeemer :: Parser Command
+parseCreateRedeemer = hsubparser $ mconcat
+    [ command "negotiation-script" $
+        info pNegotiationRedeemer $ progDesc "Create a redeemer for the negotiation script."
+    , command "loan-script" $
+        info pLoanRedeemer $ progDesc "Create a redeemer for the loan script."
+    , command "active-script" $
+        info pActiveRedeemer $ progDesc "Create a redeemer for the active script."
+    , command "payment-script" $
+        info pPaymentObserverRedeemer $ progDesc "Create a redeemer for the payment observer script."
+    , command "interest-script" $
+        info pInterestObserverRedeemer $ progDesc "Create a redeemer for the interest observer script."
+    , command "address-update-script" $
+        info pAddressUpdateObserverRedeemer $ 
+          progDesc "Create a redeemer for the address update observer script."
+    ]
+
+pNegotiationRedeemer :: Parser Command
+pNegotiationRedeemer = hsubparser $ mconcat
+    [ command "manage-asks" $
+        info pCreateCloseOrUpdateAsk $ 
+          progDesc "Create the redeemer for creating/updating/closing Ask UTxOs."
+    , command "manage-offers" $
+        info pCreateCloseOrUpdateOffer $ 
+          progDesc "Create the redeemer for creating/updating/closing Offer UTxOs."
+    , command "burn-all" $
+        info pBurnNegotiationBeacons $ progDesc "Create the redeemer for burning all beacons."
+    , command "register" $
+        info pRegisterNegotiationScript $ progDesc "Create the redeemer for registering the script."
     ]
   where
-    pExportLoan :: Parser Command
-    pExportLoan = ExportScript <$> pure LoanScript <*> pOutputFile
+    pCreateCloseOrUpdateAsk :: Parser Command
+    pCreateCloseOrUpdateAsk = 
+      CreateRedeemer
+        <$> (NewNegotiation . CreateCloseOrUpdateAsk <$> pUserCredential "borrower")
+        <*> pOutputFile
 
-    pExportPolicy :: Parser Command
-    pExportPolicy = ExportScript <$> pure BeaconPolicy <*> pOutputFile
+    pCreateCloseOrUpdateOffer :: Parser Command
+    pCreateCloseOrUpdateOffer = 
+      CreateRedeemer
+        <$> (NewNegotiation . CreateCloseOrUpdateOffer <$> pUserCredential "lender")
+        <*> pOutputFile
 
--------------------------------------------------
--- CreateLoanDatum Parser
--------------------------------------------------
-parseCreateLoanDatum :: Parser Command
-parseCreateLoanDatum = hsubparser $ mconcat
-    [ command "ask-datum"
-        (info pAsk $ progDesc "Create the datum for asking for a loan.")
-    , command "offer-datum"
-        (info pOffer $ progDesc "Create the datum for offering a loan.")
-    , command "accept-datum"
-        (info pAccept $ progDesc "Create the datum for accepting a loan.")
-    , command "collateral-payment-datum"
-        (info pCollateralPayment $ progDesc "Create the collateral datum for a loan payment.")
-    , command "lender-payment-datum"
-        (info pLenderPayment $ progDesc "Create the lender payment datum for a loan payment.")
-    , command "rollover-datum"
-        (info pRollover $ progDesc "Create the datum for rolling over a loan.")
-    , command "update-address-datum"
-        (info pUpdate $ progDesc "Create the datum for updating the lender's address.")
+    pBurnNegotiationBeacons :: Parser Command
+    pBurnNegotiationBeacons = 
+      CreateRedeemer 
+        <$> pure (NewNegotiation BurnNegotiationBeacons)
+        <*> pOutputFile
+
+    pRegisterNegotiationScript :: Parser Command
+    pRegisterNegotiationScript =
+      CreateRedeemer 
+        <$> pure (NewNegotiation RegisterNegotiationScript)
+        <*> pOutputFile
+
+pActiveRedeemer :: Parser Command
+pActiveRedeemer = hsubparser $ mconcat
+    [ command "accept-offers" $
+        info pAcceptOffers $ 
+          progDesc "Create the redeemer for accepting loan offers."
+    , command "claim-expired" $
+        info pBurnKeyAndClaimExpired $ 
+          progDesc "Create the redeemer for claiming expired collateral."
+    , command "unlock" $
+        info pBurnRemainderOrUnlockLost $ 
+          progDesc "Create the redeemer for unlocking Active UTxOs."
+    , command "burn-all" $
+        info pBurnActiveBeacons $ 
+          progDesc "Create the redeemer for burning active beacons."
     ]
   where
-    pAsk :: Parser Command
-    pAsk = CreateLoanDatum <$> pAskDatum <*> pOutputFile
+    pAcceptOffers :: Parser Command
+    pAcceptOffers = 
+      CreateRedeemer
+        <$> pure (NewActive $ CreateActive negotiationBeaconCurrencySymbol)
+        <*> pOutputFile
 
-    pOffer :: Parser Command
-    pOffer = CreateLoanDatum <$> pOfferDatum <*> pOutputFile
+    pBurnKeyAndClaimExpired :: Parser Command
+    pBurnKeyAndClaimExpired = 
+      CreateRedeemer
+        <$> pure (NewActive BurnKeyAndClaimExpired)
+        <*> pOutputFile
 
-    pAccept :: Parser Command
-    pAccept = CreateLoanDatum <$> pAcceptDatum <*> pOutputFile
-    
-    pCollateralPayment :: Parser Command
-    pCollateralPayment = CreateLoanDatum <$> pCollateralPaymentDatum <*> pOutputFile
+    pBurnRemainderOrUnlockLost :: Parser Command
+    pBurnRemainderOrUnlockLost = 
+      CreateRedeemer
+        <$> pure (NewActive BurnRemainderOrUnlockLost)
+        <*> pOutputFile
 
-    pLenderPayment :: Parser Command
-    pLenderPayment = CreateLoanDatum <$> (LenderDatum <$> pLoanId) <*> pOutputFile
+    pBurnActiveBeacons :: Parser Command
+    pBurnActiveBeacons = 
+      CreateRedeemer
+        <$> pure (NewActive BurnActiveBeacons)
+        <*> pOutputFile
 
-    pRollover :: Parser Command
-    pRollover = CreateLoanDatum <$> pRolloverDatum <*> pOutputFile
-
-    pUpdate :: Parser Command
-    pUpdate = CreateLoanDatum <$> pUpdateDatum <*> pOutputFile
-
-pAskDatum :: Parser LoanDatum'
-pAskDatum =
-  fmap CollateralDatum $ AskDatum
-    <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pTerm
-    <*> some pCollateralAsset
-
-pOfferDatum :: Parser LoanDatum'
-pOfferDatum =
-  fmap CollateralDatum $ OfferDatum
-    <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pLenderCredential)
-    <*> pLenderAddress
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pCheckpoints
-    <*> pTerm
-    <*> pInterest
-    <*> pCollateralization
-    <*> pClaimPeriod
-
-pAcceptDatum :: Parser LoanDatum'
-pAcceptDatum = fmap (CollateralDatum . convertToLoanDatum) $
-  AcceptDatum'
-    <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pLenderAddress
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pCheckpoints
-    <*> pTerm
-    <*> pInterest
-    <*> pCollateralization
-    <*> pClaimPeriod
-    <*> pLoanId
-    <*> pStart
-
-pCollateralPaymentDatum :: Parser LoanDatum'
-pCollateralPaymentDatum = fmap (CollateralDatum . convertToLoanDatum) $
-  CollateralPaymentDatum'
-    <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pLenderAddress
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pNextCheckpoints
-    <*> pPastCheckpoints
-    <*> pTerm
-    <*> pInterest
-    <*> pCollateralization
-    <*> pClaimExpiration
-    <*> pLoanExpiration
-    <*> pCurrentBalance
-    <*> pPaymentAmount
-    <*> pLoanId
-
--- | This will automatically update the information for the user. All fields should be the current
--- datum; it will produce the updated datum from the supplied information.
-pRolloverDatum :: Parser LoanDatum'
-pRolloverDatum = fmap (CollateralDatum . convertToLoanDatum) $
-  RolloverDatum'
-    <$> pBeaconPolicy
-    <*> (credentialAsToken <$> pBorrowerCredential)
-    <*> pLenderAddress
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pNextCheckpoints
-    <*> pPastCheckpoints
-    <*> pTerm
-    <*> pInterest
-    <*> pCollateralization
-    <*> pClaimExpiration
-    <*> pLoanExpiration
-    <*> pCurrentBalance
-    <*> pLoanId
-
--- | This is used when the only field being updated is the lender's address.
-pUpdateDatum :: Parser LoanDatum'
-pUpdateDatum =
-  fmap CollateralDatum $ ActiveDatum
-    <$> pBeaconPolicy
-    <*> pBorrowerIdAsToken
-    <*> pLenderAddress
-    <*> pLoanAsset
-    <*> pPrinciple
-    <*> pNextCheckpoints
-    <*> pPastCheckpoints
-    <*> pTerm
-    <*> pInterest
-    <*> pCollateralization
-    <*> pClaimExpiration
-    <*> pLoanExpiration
-    <*> pCurrentBalance
-    <*> pLoanId
-    
--------------------------------------------------
--- CreateLoanRedeemer Parsers
--------------------------------------------------
-pCreateLoanRedeemer :: Parser Command
-pCreateLoanRedeemer = hsubparser $ mconcat
-    [ command "close-ask"
-        (info pCloseAsk $ progDesc "Close a loan ask.")
-    , command "close-offer"
-        (info pCloseOffer $ progDesc "Close a loan offer.")
-    , command "accept-offer"
-        (info pAcceptOffer $ progDesc "Accept a loan offer.")
-    , command "make-payment"
-        (info pMakePayment $ progDesc "Make a loan payment")
-    , command "claim-expired"
-        (info pClaimExpired $ progDesc "Spend a UTxO of a finished or expired loan.")
-    , command "unlock"
-        (info pUnlockLostCollateral $ progDesc "Spend a UTxO of a finished or lost loan.")
-    , command "rollover"
-        (info pRollover $ progDesc "Rollover a loan.")
-    , command "update-address"
-        (info pUpdateLenderAddress $ progDesc "Update an active datum's lender address.")
+pLoanRedeemer :: Parser Command
+pLoanRedeemer = hsubparser $ mconcat
+    [ command "manage-ask" $
+        info pCloseOrUpdateAsk $ 
+          progDesc "Create the redeemer for updating/closing Ask UTxOs."
+    , command "manage-offer" $
+        info pCloseOrUpdateOffer $ 
+          progDesc "Create the redeemer for updating/closing Offer UTxOs."
+    , command "accept-offer" $
+        info pAcceptOffer $ 
+          progDesc "Create the redeemer for accepting a lender's offer."
+    , command "make-payment" $
+        info pMakePayment $ 
+          progDesc "Create the redeemer for making a loan payment."
+    , command "apply-interest" $
+        info pApplyInterest $ 
+          progDesc "Create the redeemer for applying interest to a loan."
+    , command "claim-expired-collateral" $
+        info pSpendWithKeyNFT $ 
+          progDesc "Create the redeemer for claiming an expired loan's collateral."
+    , command "update-lender-address" $
+        info pUpdateLenderAddress $ 
+          progDesc "Create the redeemer for changing the lender address."
+    , command "unlock-active" $
+        info pUnlock $ 
+          progDesc "Create the redeemer for unlocking lost/finished/invalid Active UTxOs."
     ]
   where
-    pCloseAsk :: Parser Command
-    pCloseAsk = CreateLoanRedeemer CloseAsk <$> pOutputFile
+    pCloseOrUpdateAsk :: Parser Command
+    pCloseOrUpdateAsk = 
+      CreateRedeemer
+        <$> pure (NewLoan CloseOrUpdateAsk)
+        <*> pOutputFile
 
-    pCloseOffer :: Parser Command
-    pCloseOffer = CreateLoanRedeemer CloseOffer <$> pOutputFile
+    pCloseOrUpdateOffer :: Parser Command
+    pCloseOrUpdateOffer = 
+      CreateRedeemer 
+        <$> pure (NewLoan CloseOrUpdateOffer) 
+        <*> pOutputFile
 
     pAcceptOffer :: Parser Command
-    pAcceptOffer = CreateLoanRedeemer AcceptOffer <$> pOutputFile
-    
-    pMakePayment :: Parser Command
-    pMakePayment = CreateLoanRedeemer MakePayment <$> pOutputFile
-    
-    pClaimExpired :: Parser Command
-    pClaimExpired = CreateLoanRedeemer ClaimExpired <$> pOutputFile
+    pAcceptOffer = 
+      CreateRedeemer 
+        <$> pure (NewLoan AcceptOffer) 
+        <*> pOutputFile
 
-    pUnlockLostCollateral :: Parser Command
-    pUnlockLostCollateral = CreateLoanRedeemer UnlockLostCollateral <$> pOutputFile
-    
-    pRollover :: Parser Command
-    pRollover = CreateLoanRedeemer Rollover <$> pOutputFile
+    pMakePayment :: Parser Command
+    pMakePayment = 
+      CreateRedeemer
+        <$> (NewLoan . MakePayment <$> pPaymentAmount)
+        <*> pOutputFile
+
+    pApplyInterest :: Parser Command
+    pApplyInterest = 
+      CreateRedeemer
+        <$> (fmap NewLoan . ApplyInterest <$> pDepositIncrease <*> pNumberOfInterestApplications)
+        <*> pOutputFile
 
     pUpdateLenderAddress :: Parser Command
     pUpdateLenderAddress = 
-      CreateLoanRedeemer 
-        <$> (UpdateLenderAddress <$> pLenderAddress) 
+      CreateRedeemer
+        <$> (fmap NewLoan . UpdateLenderAddress <$> pPaymentAddress <*> pDepositIncrease)
         <*> pOutputFile
 
--------------------------------------------------
--- CreateBeaconRedeemer Parser
--------------------------------------------------
-parseCreateBeaconRedeemer :: Parser Command
-parseCreateBeaconRedeemer = hsubparser $ mconcat
-    [ command "mint-ask"
-        (info pMintAsk $ progDesc "Create the redeemer for minting an Ask beacon.")
-    , command "mint-offer"
-        (info pMintOffer $ progDesc "Create the redeemer for minting an Offer beacon.")
-    , command "mint-active"
-        (info pMintActive $ progDesc "Create the redeemer for minting an Active beacon.")
-    , command "burn-beacons"
-        (info pBurnBeacons $ progDesc "Create the redeemer for burning beacons.")
+    pSpendWithKeyNFT :: Parser Command
+    pSpendWithKeyNFT = 
+      CreateRedeemer 
+        <$> pure (NewLoan SpendWithKeyNFT) 
+        <*> pOutputFile
+
+    pUnlock :: Parser Command
+    pUnlock =
+      CreateRedeemer
+        <$> pure (NewLoan Unlock)
+        <*> pOutputFile
+
+pPaymentObserverRedeemer :: Parser Command
+pPaymentObserverRedeemer = hsubparser $ mconcat
+    [ command "observe-payment" $
+        info pObservePayment $ 
+          progDesc "Create the redeemer for observing loan payments."
+    , command "register" $
+        info pRegisterPaymentObserverScript $ 
+          progDesc "Create the redeemer for registering the script."
     ]
   where
-    pMintAsk :: Parser Command
-    pMintAsk = 
-      CreateBeaconRedeemer 
-        <$> (MintAskBeacon <$> pBorrowerCredential)
+    pObservePayment :: Parser Command
+    pObservePayment = 
+      CreateRedeemer 
+        <$> pure (NewPaymentObserver ObservePayment)
         <*> pOutputFile
 
-    pMintOffer :: Parser Command
-    pMintOffer = 
-      CreateBeaconRedeemer 
-        <$> (MintOfferBeacon <$> pLenderCredential)
+    pRegisterPaymentObserverScript :: Parser Command
+    pRegisterPaymentObserverScript =
+      CreateRedeemer 
+        <$> pure (NewPaymentObserver RegisterPaymentObserverScript)
         <*> pOutputFile
 
-    pMintActive :: Parser Command
-    pMintActive = 
-      CreateBeaconRedeemer 
-        <$> (MintActiveBeacon <$> pBorrowerCredential <*> pPairings)
+pInterestObserverRedeemer :: Parser Command
+pInterestObserverRedeemer = hsubparser $ mconcat
+    [ command "observe-interest" $
+        info pObserveInterest $ 
+          progDesc "Create the redeemer for observing loan interest applications."
+    , command "register" $
+        info pRegisterInterestObserverScript $ 
+          progDesc "Create the redeemer for registering the script."
+    ]
+  where
+    pObserveInterest :: Parser Command
+    pObserveInterest = 
+      CreateRedeemer 
+        <$> pure (NewInterestObserver ObserveInterest)
         <*> pOutputFile
-    
-    pBurnBeacons :: Parser Command
-    pBurnBeacons = CreateBeaconRedeemer BurnBeacons <$> pOutputFile
+
+    pRegisterInterestObserverScript :: Parser Command
+    pRegisterInterestObserverScript =
+      CreateRedeemer 
+        <$> pure (NewInterestObserver RegisterInterestObserverScript)
+        <*> pOutputFile
+
+pAddressUpdateObserverRedeemer :: Parser Command
+pAddressUpdateObserverRedeemer = hsubparser $ mconcat
+    [ command "observe-address-update" $
+        info pObserveAddressUpdate $ 
+          progDesc "Create the redeemer for observing a lender address update."
+    , command "register" $
+        info pRegisterAddressUpdateObserverScript $ 
+          progDesc "Create the redeemer for registering the script."
+    ]
+  where
+    pObserveAddressUpdate :: Parser Command
+    pObserveAddressUpdate = 
+      CreateRedeemer 
+        <$> pure (NewAddressUpdateObserver ObserveAddressUpdate)
+        <*> pOutputFile
+
+    pRegisterAddressUpdateObserverScript :: Parser Command
+    pRegisterAddressUpdateObserverScript =
+      CreateRedeemer 
+        <$> pure (NewAddressUpdateObserver RegisterAddressUpdateObserverScript)
+        <*> pOutputFile
+
+-------------------------------------------------
+-- Beacon Name Parsers
+-------------------------------------------------
+parseBeaconName :: Parser Command
+parseBeaconName = hsubparser $ mconcat
+    [ command "policy-id" $
+        info pPolicyId $ progDesc "Calculate a beacon policy id."
+    , command "asset-name" $
+        info pAssetName $ progDesc "Calculate a beacon asset name."
+    ]
+  where
+    pNegotiationId :: Parser BeaconName
+    pNegotiationId = flag' NegotiationPolicyId
+      (  long "negotiation-beacons"
+      <> help "Calculate the policy id for the negotiation beacons."
+      )
+
+    pActiveId :: Parser BeaconName
+    pActiveId = flag' ActivePolicyId
+      (  long "active-beacons"
+      <> help "Calculate the policy id for the active beacons."
+      )
+
+    pAssetBeaconName :: Parser BeaconName
+    pAssetBeaconName = AssetBeaconName <$> pAsset "loan"
+
+    pAskBeaconName :: Parser BeaconName
+    pAskBeaconName = flag' AskBeaconName
+      (  long "ask-beacon"
+      <> help "Calculate the asset name for the Ask beacon."
+      )
+
+    pOfferBeaconName :: Parser BeaconName
+    pOfferBeaconName = flag' OfferBeaconName
+      (  long "offer-beacon"
+      <> help "Calculate the asset name for the Offer beacon."
+      )
+
+    pActiveBeaconName :: Parser BeaconName
+    pActiveBeaconName = flag' ActiveBeaconName
+      (  long "active-beacon"
+      <> help "Calculate the asset name for the Active beacon."
+      )
+
+    pLenderIdName :: Parser BeaconName
+    pLenderIdName = LenderIdName <$> pUserCredential "lender"
+
+    pLoanIdName :: Parser BeaconName
+    pLoanIdName = LoanIdName <$> pOfferId
+
+    pAssetName :: Parser Command
+    pAssetName = 
+      BeaconName
+        <$> (  pAssetBeaconName 
+           <|> pAskBeaconName 
+           <|> pOfferBeaconName 
+           <|> pLenderIdName 
+           <|> pActiveBeaconName
+           <|> pLoanIdName
+           )
+        <*> pOutput
+
+    pPolicyId :: Parser Command
+    pPolicyId = 
+      BeaconName
+        <$> (pNegotiationId <|> pActiveId)
+        <*> pOutput
 
 -------------------------------------------------
 -- ConvertTime Parser
 -------------------------------------------------
 pConvertTime :: Parser Command
-pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot)
+pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
   where
     pPOSIXTime :: Parser ConvertTime
     pPOSIXTime = POSIXTimeToSlot . POSIXTime <$> option auto
       (  long "posix-time"
       <> metavar "INT"
-      <> help "Convert POSIX time to slot number."
+      <> help "Convert POSIX time (in milliseconds) to slot number."
       )
 
     pSlot :: Parser ConvertTime
@@ -296,115 +697,98 @@ pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot)
       )
 
 -------------------------------------------------
--- ConvertAddress Parser
--------------------------------------------------
-pConvertAddress :: Parser Command
-pConvertAddress = 
-    ConvertAddress <$> (pBech <|> pPlutus) <*> pOutput
-  where
-    pBech :: Parser ConvertAddress
-    pBech = Bech32ToPlutus . pack <$> pBech32Address
-
-    pPlutus :: Parser ConvertAddress
-    pPlutus = PlutusToBech32 <$> pAddress
-
--------------------------------------------------
 -- Query Parser
 -------------------------------------------------
 parseQuery :: Parser Command
 parseQuery = fmap Query . hsubparser $ mconcat
-    [ command "all-asks"
-        (info pAllAsks $ progDesc "Query all open Asks.")
-    , command "own-asks"
-        (info pOwnAsks $ progDesc "Query all Asks for a specific borrower.")
-    , command "all-offers"
-        (info pAllOffers $ progDesc "Query all Offers to a specific borrower.")
-    , command "own-offers"
-        (info pOwnOffers $ progDesc "Query all Offers from a specific lender.")
-    , command "borrowers-active-loans"
-        (info pBorrowersActiveLoans $ progDesc "Query all the borrower's Active loans.")
-    , command "borrowers-finished-loans"
-        (info pBorrowersFinishedLoans $ progDesc "Query all finished loan's at the borrower's address.")
-    , command "specific-loan"
-        (info pSpecificLoan $ progDesc "Query a specific loan by its LoanID.")
-    , command "own-key-nfts"
-        (info pOwnKeys $ progDesc "Query all Key NFTs at a specific address.")
-    , command "borrower-credit-history"
-        (info pBorrowersHistory $ progDesc "Query a borrower's credit history.")
-    ]
+  [ command "personal-address" $
+      info pQueryPersonal $ progDesc "Query your personal address." 
+  , command "asks" $
+      info pQueryAsks $ progDesc "Query open Asks for the protocol." 
+  , command "offers" $
+      info pQueryOffers $ progDesc "Query open Offers for the protocol." 
+  , command "actives" $
+      info pQueryActives $ progDesc "Query open Actives for the protocol." 
+  , command "current-slot" $
+      info pQueryCurrentSlot $ progDesc "Query the current slot number."
+  , command "borrower-history" $
+      info pQueryBorrowerCreditHistory $ progDesc "Query the borrower's credit history."
+  , command "loan-history" $
+      info pQueryLoanHistory $ progDesc "Query the loan's event history."
+  ]
+
+pQueryPersonal :: Parser Query
+pQueryPersonal =
+  QueryPersonal
+    <$> pNetwork
+    <*> pApiService
+    <*> pBech32Address
+    <*> pKeysOnly
+    <*> pFormat
+    <*> pOutput
   where
-    pAllAsks :: Parser Query
-    pAllAsks = 
-      QueryAllAsks 
-        <$> pNetwork 
-        <*> pApiEndpoint
-        <*> pOutput
-    
-    pOwnAsks :: Parser Query
-    pOwnAsks =
-      QueryOwnAsks
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBech32Address
-        <*> pOutput
+    pKeysOnly :: Parser Bool
+    pKeysOnly = flag False True
+      (  long "keys"
+      <> help "Show only UTxOs with loan key NFTs."
+      )
 
-    pAllOffers :: Parser Query
-    pAllOffers =
-      QueryAllOffers
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBech32Address
-        <*> pOutput
-    
-    pOwnOffers :: Parser Query
-    pOwnOffers =
-      QueryOwnOffers
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pLenderId
-        <*> pOutput
-    
-    pBorrowersActiveLoans :: Parser Query
-    pBorrowersActiveLoans =
-      QueryAllBorrowersActiveLoans
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBorrowerId
-        <*> pBech32Address
-        <*> pOutput
+pQueryAsks :: Parser Query
+pQueryAsks =
+  QueryAsks
+    <$> pNetwork
+    <*> pApiService
+    <*> ((Just <$> pAsset "loan") <|> pure Nothing)
+    <*> (Collateral <$> many (pAsset "collateral"))
+    <*> ((Just <$> pUserCredential "borrower") <|> pure Nothing)
+    <*> pFormat
+    <*> pOutput
 
-    pBorrowersFinishedLoans :: Parser Query
-    pBorrowersFinishedLoans =
-      QueryAllBorrowersFinishedLoans
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBorrowerId
-        <*> pBech32Address
-        <*> pOutput
+pQueryOffers :: Parser Query
+pQueryOffers =
+  QueryOffers
+    <$> pNetwork
+    <*> pApiService
+    <*> ((Just <$> pAsset "loan") <|> pure Nothing)
+    <*> ((Just <$> pUserCredential "borrower") <|> pure Nothing)
+    <*> ((Just <$> pUserCredential "lender") <|> pure Nothing)
+    <*> pFormat
+    <*> pOutput
 
-    pSpecificLoan :: Parser Query
-    pSpecificLoan =
-      QuerySpecificLoan
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> (idToString <$> pLoanId)
-        <*> pOutput
-    
-    pOwnKeys :: Parser Query
-    pOwnKeys =
-      QueryOwnKeys
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBech32Address
-        <*> pOutput
+pQueryActives :: Parser Query
+pQueryActives =
+  QueryActives
+    <$> pNetwork
+    <*> pApiService
+    <*> ((Just <$> pAsset "loan") <|> pure Nothing)
+    <*> ((Just <$> pUserCredential "borrower") <|> pure Nothing)
+    <*> ((Just <$> pLoanId) <|> pure Nothing)
+    <*> pFormat
+    <*> pOutput
 
-    pBorrowersHistory :: Parser Query
-    pBorrowersHistory =
-      QueryBorrowersHistory
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pBorrowerId
-        <*> pOutput
+pQueryCurrentSlot :: Parser Query
+pQueryCurrentSlot =
+  QueryCurrentSlot
+    <$> pNetwork
+    <*> pApiService
+
+pQueryBorrowerCreditHistory :: Parser Query
+pQueryBorrowerCreditHistory =
+  QueryBorrowerCreditHistory
+    <$> pNetwork
+    <*> pApiService
+    <*> pBorrowerId
+    <*> pFormat
+    <*> pOutput
+
+pQueryLoanHistory :: Parser Query
+pQueryLoanHistory =
+  QueryLoanHistory
+    <$> pNetwork
+    <*> pApiService
+    <*> pLoanId
+    <*> pFormat
+    <*> pOutput
 
 -------------------------------------------------
 -- Basic Helper Parsers
@@ -413,301 +797,205 @@ pOutputFile :: Parser FilePath
 pOutputFile = strOption
   (  long "out-file"
   <> metavar "FILE"
-  <> help "The output file."
+  <> help "Save to file."
   <> completer (bashCompleter "file")
   )
 
-pBeaconPolicy :: Parser CurrencySymbol
-pBeaconPolicy = option (eitherReader readCurrencySymbol)
-  (  long "beacon-policy-id"
-  <> metavar "STRING"
-  <> help "Policy id for the dApp's beacon policy.")
+readDuration :: String -> Maybe POSIXTime
+readDuration s = case String.words s of
+  [n,"days"] -> POSIXTime . (\d -> d * 24 * 3600 * 1000) <$> readMaybe n
+  [n,"slots"] -> POSIXTime . (*1000) <$> readMaybe n
+  _ -> Nothing
 
-pBorrowerCredential :: Parser Credential
-pBorrowerCredential = pStakingPubKeyCredential <|> pStakingScriptCredential
+pAsset :: String -> Parser Asset
+pAsset prefix = option (eitherReader readAsset)
+  (  long (prefix <> "-asset")
+  <> metavar "STRING"
+  <> help ("The " <> prefix <> " asset (lovelace or policy_id.asset_name).")
+  )
+
+pUserCredential :: String -> Parser Credential
+pUserCredential s = pStakingPubKeyCredential <|> pStakingScriptCredential
   where
     pStakingScriptCredential :: Parser Credential
-    pStakingScriptCredential = ScriptCredential <$> option (eitherReader readValidatorHash)
-      (  long "borrower-staking-script-hash"
+    pStakingScriptCredential = ScriptCredential <$> option (eitherReader readScriptHash)
+      (  long (s <> "-staking-script-hash")
       <> metavar "STRING"
-      <> help "The hash of the borrower's staking script used in the loan address."
+      <> help ("The hash of the " <> s <> "'s staking script.")
       )
 
     pStakingPubKeyCredential :: Parser Credential
     pStakingPubKeyCredential = PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      (  long "borrower-staking-pubkey-hash"
+      (  long (s <> "-staking-pubkey-hash")
       <> metavar "STRING"
-      <> help "The hash of the staking pubkey used in the loan address."
-      )
-
-pLoanAsset :: Parser (CurrencySymbol,TokenName)
-pLoanAsset = pLoanAssetLovelace <|> ((,) <$> pLoanAssetCurrencySymbol <*> pLoanAssetTokenName)
-  where
-    pLoanAssetLovelace :: Parser (CurrencySymbol,TokenName)
-    pLoanAssetLovelace = flag' (adaSymbol,adaToken)
-      (  long "loan-asset-is-lovelace"
-      <> help "The asset loaned is lovelace"
-      )
-
-    pLoanAssetCurrencySymbol :: Parser CurrencySymbol
-    pLoanAssetCurrencySymbol = option (eitherReader readCurrencySymbol)
-      (  long "loan-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the loaned asset."
-      )
-
-    pLoanAssetTokenName :: Parser TokenName
-    pLoanAssetTokenName = option (eitherReader readTokenName)
-      (  long "loan-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the loaned asset."
-      )
-
-pCollateralAsset :: Parser (CurrencySymbol,TokenName)
-pCollateralAsset = pCollateralAssetLovelace <|> ((,) <$> pCollateralAssetCurrencySymbol <*> pCollateralAssetTokenName)
-  where
-    pCollateralAssetLovelace :: Parser (CurrencySymbol,TokenName)
-    pCollateralAssetLovelace = flag' (adaSymbol,adaToken)
-      (  long "collateral-asset-is-lovelace"
-      <> help "The collateral asset is lovelace."
-      )
-
-    pCollateralAssetCurrencySymbol :: Parser CurrencySymbol
-    pCollateralAssetCurrencySymbol = option (eitherReader readCurrencySymbol)
-      (  long "collateral-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the collateral asset."
-      )
-
-    pCollateralAssetTokenName :: Parser TokenName
-    pCollateralAssetTokenName = option (eitherReader readTokenName)
-      (  long "collateral-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the collateral asset."
+      <> help ("The hash of the " <> s <> "'s staking pubkey.")
       )
 
 pPrinciple :: Parser Integer
 pPrinciple = option auto
   (  long "principle"
   <> metavar "INT"
-  <> help "The loan amount in units of the loan asset."
+  <> help "The size of the loan."
   )
 
--- | This gets the desired number of slots for the loan to be valid. It is then converted to
--- POSIXTime.
-pTerm :: Parser POSIXTime
-pTerm = POSIXTime . (* 1000) <$> option auto
+pLoanTerm :: Parser POSIXTime
+pLoanTerm = option (maybeReader readDuration)
   (  long "loan-term"
-  <> metavar "INT"
-  <> help "The number of slots for the loan to be valid."
+  <> metavar "DURATION"
+  <> help "The length of the loan. '# days' or '# slots'"
   )
 
-pLenderCredential :: Parser Credential
-pLenderCredential = pPubKeyCredential <|> pStakingScriptCredential
-  where
-    pStakingScriptCredential :: Parser Credential
-    pStakingScriptCredential = ScriptCredential <$> option (eitherReader readValidatorHash)
-      (  long "lender-staking-script-hash"
-      <> metavar "STRING"
-      <> help "The hash of the lender's staking script to be used as the LenderID."
-      )
+pBech32Address :: Parser PaymentAddress
+pBech32Address = PaymentAddress <$> strOption
+    (  long "address"
+    <> metavar "BECH32"
+    <> help "The target address."
+    )
 
-    pPubKeyCredential :: Parser Credential
-    pPubKeyCredential = PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      (  long "lender-pubkey-hash"
-      <> metavar "STRING"
-      <> help "The hash of the lender's pubkey to be used as the LenderID."
-      )
+pPaymentAddress :: Parser Address
+pPaymentAddress = 
+  option (maybeReader $ rightToMaybe . paymentAddressToPlutusAddress . PaymentAddress . toText)
+    (  long "payment-address"
+    <> metavar "BECH32"
+    <> help "The address where loan payments must go."
+    )
 
-pInterest :: Parser PlutusRational
-pInterest = unsafeRatio <$> pInterestNum <*> pInterestDen
-  where
-    pInterestNum :: Parser Integer
-    pInterestNum = option auto
-      ( long "interest-numerator"
-      <> metavar "INT"
-      <> help "The numerator of the loan interest rate."
-      )
-
-    pInterestDen :: Parser Integer
-    pInterestDen = option auto
-      ( long "interest-denominator"
-      <> metavar "INT"
-      <> help "The denominator of the loan interest rate."
-      )
-
-pCollateralization :: Parser [((CurrencySymbol,TokenName),PlutusRational)]
-pCollateralization = some ((,) <$> pCollateralAsset <*> pRate)
-  where
-    pRate :: Parser PlutusRational
-    pRate = unsafeRatio <$> pRateNum <*> pRateDen
-  
-    pRateNum :: Parser Integer
-    pRateNum = option auto
-      ( long "rate-numerator"
-      <> metavar "INT"
-      <> help "The numerator of the collateral rate."
-      )
-
-    pRateDen :: Parser Integer
-    pRateDen = option auto
-      ( long "rate-denominator"
-      <> metavar "INT"
-      <> help "The denominator of the collateral rate."
-      )
-
-pAddress :: Parser Address
-pAddress = 
-    Address
-      <$> pPaymentCredential
-      <*> (pStakingCredential <|> pure Nothing)
-  where
-    pPaymentScriptCredential :: Parser Credential
-    pPaymentScriptCredential = ScriptCredential <$> option (eitherReader readValidatorHash)
-      (  long "payment-script-hash"
-      <> metavar "STRING"
-      <> help "The hash of the payment script used in the address."
-      )
-
-    pPaymentPubKeyCredential :: Parser Credential
-    pPaymentPubKeyCredential = PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      ( long "payment-pubkey-hash"
-      <> metavar "STRING"
-      <> help "The hash of the payment pubkey used in the address."
-      )
-
-    pPaymentCredential :: Parser Credential
-    pPaymentCredential = pPaymentPubKeyCredential <|> pPaymentScriptCredential
-
-    pStakingScriptCredential :: Parser StakingCredential
-    pStakingScriptCredential = StakingHash . ScriptCredential <$> option (eitherReader readValidatorHash)
-      (  long "staking-script-hash"
-      <> metavar "STRING"
-      <> help "The hash of the staking script used in the address."
-      )
-
-    pStakingPubKeyCredential :: Parser StakingCredential
-    pStakingPubKeyCredential = StakingHash . PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      (  long "staking-pubkey-hash"
-      <> metavar "STRING"
-      <> help "The hash of the staking pubkey used in the address."
-      )
-
-    pStakingCredential :: Parser (Maybe StakingCredential)
-    pStakingCredential = Just <$> (pStakingPubKeyCredential <|> pStakingScriptCredential)
-
--- | This gets the number of slots the lender will be able to claim the collateral for when there
--- is a default. It is then converted to POSIXTime.
 pClaimPeriod :: Parser POSIXTime
-pClaimPeriod = POSIXTime . (* 1000) <$> option auto
-  (  long "claim-period"
+pClaimPeriod = option (maybeReader readDuration)
+    (  long "claim-period"
+    <> metavar "DURATION"
+    <> help "The time needed to claim expired collateral. '# days' or '# slots'"
+    )
+
+pOfferExpiration :: Parser (Maybe POSIXTime)
+pOfferExpiration = Just . POSIXTime <$> option auto
+    (  long "offer-expiration"
+    <> metavar "TIME"
+    <> help "The time when this offer expires in posix time (in milliseconds)."
+    )
+
+pCompoundFrequency :: Parser (Maybe POSIXTime)
+pCompoundFrequency = Just <$> option (maybeReader readDuration)
+    (  long "compound-frequency"
+    <> metavar "DURATION"
+    <> help "The length of a compound period. '# days' or '# slots'"
+    )
+
+pOfferDeposit :: Parser Integer
+pOfferDeposit = option auto
+  (  long "offer-deposit"
   <> metavar "INT"
-  <> help "The number of slots for the lender to claim the collateral of a defaulted loan."
+  <> help "The ada amount used for the minUTxOValue of the Offer UTxO."
   )
 
--- | The slots where the loan must be rolled over and the interest must accrue.
-pCheckpoints :: Parser [POSIXTime]
-pCheckpoints = many $ POSIXTime . (* 1000) <$> option auto
-  (  long "checkpoint"
-  <> metavar "INT"
-  <> help "The number of slots until the loan must be rolled over."
+pIsSwappable :: Parser Bool
+pIsSwappable = flag False True
+  (  long "collateral-is-swappable"
+  <> help "Collateral can be swapped out during payments."
   )
 
-pLoanId :: Parser TokenName
-pLoanId = option (eitherReader readTokenName)
-  (  long "loan-id"
-  <> metavar "STRING"
-  <> help "The LoanID for this loan."
-  )
+pCollateralization :: Parser [(Asset,Fraction)]
+pCollateralization = some ((,) <$> pAsset "collateral" <*> pRelativeRate)
+  where 
+    pRelativeRate :: Parser Fraction
+    pRelativeRate = option (eitherReader readFraction)
+      (  long "relative-rate"
+      <> metavar "PERCENT"
+      <> help "The relative value for this collateral."
+      )
 
--- | The slot at which the loan will start. It will be converted to POSIXTime. slotToPOSIXTime
--- is hardcoded for the PreprodTestnet.
-pStart :: Parser POSIXTime
-pStart = slotToPOSIXTime . Slot <$> option auto
-  (  long "starting-slot"
-  <> metavar "INT"
-  <> help "The slot where the loan starts."
-  )
-
-pLoanExpiration :: Parser POSIXTime
-pLoanExpiration = slotToPOSIXTime . Slot <$> option auto
-  (  long "loan-expiration"
-  <> metavar "INT"
-  <> help "The slot at which the loan expires."
-  )
-
-pClaimExpiration :: Parser POSIXTime
-pClaimExpiration = slotToPOSIXTime . Slot <$> option auto
-  (  long "claim-expiration"
-  <> metavar "INT"
-  <> help "The slot at which the lender's claim period expires."
-  )
-
-pCurrentBalance :: Parser PlutusRational
-pCurrentBalance = unsafeRatio <$> pNum <*> pDen
+pPenalty :: Parser Penalty
+pPenalty = pNoPenalty <|> pFixedPenalty <|> pPercentPenalty
   where
-    pNum :: Parser Integer
-    pNum = option auto
-      (  long "balance-numerator"
-      <> metavar "INT"
-      <> help "The numerator for the loan's current balance."
+    pNoPenalty :: Parser Penalty
+    pNoPenalty = flag' NoPenalty
+      (  long "no-penalty"
+      <> help "No penalty for missing minimum payments."
       )
-    
-    pDen :: Parser Integer
-    pDen = option auto
-      (  long "balance-denominator"
+
+    pFixedPenalty :: Parser Penalty
+    pFixedPenalty = FixedFee <$> option auto
+      (  long "fixed-penalty"
       <> metavar "INT"
-      <> help "The denominator for the loan's current balance."
+      <> help "A fixed fee penalty for missing minimum payments."
       )
+
+    pPercentPenalty :: Parser Penalty
+    pPercentPenalty = PercentFee <$> option (eitherReader readFraction)
+      (  long "percent-penalty"
+      <> metavar "PERCENT"
+      <> help "A percent fee penalty for missing minimum payments."
+      )
+
+pMinPayment :: Parser Integer
+pMinPayment = option auto
+  (  long "minimum-payment"
+  <> metavar "INT"
+  <> help "The minimum amount that must be paid each compound period."
+  )
+
+pInterest :: Parser Fraction
+pInterest = option (eitherReader readFraction)
+  (  long "interest"
+  <> metavar "PERCENT"
+  <> help "The interest rate for the loan."
+  )
+
+pNetwork :: Parser Network
+pNetwork = pPreProdTestnet <|> pMainnet
+  where
+    pPreProdTestnet :: Parser Network
+    pPreProdTestnet = flag' PreProdTestnet
+      (  long "testnet"
+      <> help "For the preproduction testnet.")
+
+    pMainnet :: Parser Network
+    pMainnet = flag' Mainnet
+      (  long "mainnet"
+      <> help "For the mainnet.")
+
+pApiService :: Parser ApiService
+pApiService = pure Koios
+  -- where
+  --   pKoios :: Parser Endpoint
+  --   pKoios = flag' Koios
+  --     (  long "koios"
+  --     <> help "Use Koios."
+  --     )
+
+pOfferId :: Parser TxOutRef
+pOfferId = option (eitherReader readTxOutRef)
+  (  long "offer-id"
+  <> metavar "STRING"
+  <> help "The output reference for the corresponding offer input 'tx_hash#index'."
+  )
+
+pStartTime :: Parser POSIXTime
+pStartTime = POSIXTime <$> option auto
+  (  long "start-time"
+  <> metavar "TIME"
+  <> help "The start time for the loan in POSIX time (milliseconds)."
+  )
+
+pDepositIncrease :: Parser Integer
+pDepositIncrease = option auto
+  (  long "deposit-increase"
+  <> metavar "INT"
+  <> help "The ada added for the minUTxOValue increase."
+  )
 
 pPaymentAmount :: Parser Integer
 pPaymentAmount = option auto
   (  long "payment-amount"
   <> metavar "INT"
-  <> help "The number of units of the loan asset being repaid this tx."
+  <> help "The amount of the loan asset repaid."
   )
 
--- | The next times where the loan must be rolled over and the interest must accrue.
-pNextCheckpoints :: Parser [POSIXTime]
-pNextCheckpoints = many $ slotToPOSIXTime . Slot  <$> option auto
-  (  long "next-checkpoint"
+pNumberOfInterestApplications :: Parser Integer
+pNumberOfInterestApplications = option auto
+  (  long "times-applied"
   <> metavar "INT"
-  <> help "An upcoming time the loan must be rolled over (POSIX time)."
-  )
-
--- | The next times where the loan must be rolled over and the interest must accrue.
-pPastCheckpoints :: Parser [POSIXTime]
-pPastCheckpoints = many $ slotToPOSIXTime . Slot  <$> option auto
-  (  long "past-checkpoint"
-  <> metavar "INT"
-  <> help "A previous time the loan was rolled over (POSIX time)."
-  )
-
-pPairings :: Parser [(TxOutRef,TxOutRef)]
-pPairings = some ((,) <$> pInput <*> pInput)
-  where
-    pInput :: Parser TxOutRef
-    pInput = TxOutRef <$> pTxId <*> pOutputIndex
-
-    pTxId :: Parser TxId
-    pTxId = option (eitherReader readTxId)
-      (  long "tx-hash"
-      <> metavar "STRING"
-      <> help "The tx hash for this input."
-      )
-
-    pOutputIndex :: Parser Integer
-    pOutputIndex = option auto
-      (  long "output-index"
-      <> metavar "INT"
-      <> help "The output index for this input."
-      )
-
-pBech32Address :: Parser String
-pBech32Address = strOption
-  (  long "address"
-  <> metavar "STRING"
-  <> help "Address in bech32 format."
+  <> help "The number of times to apply the interest."
   )
 
 pOutput :: Parser Output
@@ -719,80 +1007,80 @@ pOutput = pStdOut <|> File <$> pOutputFile
       <> help "Display to stdout."
       )
 
-pNetwork :: Parser Network
-pNetwork = pPreProdTestnet
+pFormat :: Parser Format
+pFormat = pJSON <|> pPretty <|> pPlain
   where
-    pPreProdTestnet :: Parser Network
-    pPreProdTestnet = flag' PreProdTestnet
-      (  long "testnet"
-      <> help "Query the preproduction testnet.")
-
-pApiEndpoint :: Parser ApiEndpoint
-pApiEndpoint = {- pKoios <|> -} pBlockfrost
-  where
-    -- pKoios :: Parser ApiEndpoint
-    -- pKoios = flag' Koios
-    --   (  long "koios"
-    --   <> help "Query using Koios."
-    --   )
-
-    pBlockfrost :: Parser ApiEndpoint
-    pBlockfrost = Blockfrost <$> strOption
-      (  long "blockfrost"
-      <> metavar "STRING"
-      <> help "Query using Blockfrost with the supplied api key."
+    pJSON :: Parser Format
+    pJSON = flag' JSON
+      (  long "json"
+      <> help "Format as JSON."
       )
 
-pLenderId :: Parser String
-pLenderId = strOption
-  (  long "lender-id"
+    pPretty :: Parser Format
+    pPretty = flag' Pretty
+      (  long "pretty"
+      <> help "Format for pretty-printing."
+      )
+
+    pPlain :: Parser Format
+    pPlain = flag' Plain
+      (  long "plain"
+      <> help "Format for pretty-printing without colors."
+      )
+
+pLoanId :: Parser LoanId
+pLoanId = LoanId <$> option (eitherReader readTokenName)
+  (  long "loan-id"
   <> metavar "STRING"
-  <> help "LenderID for the lender."
+  <> help "The loan id for this loan."
   )
 
-pBorrowerId :: Parser String
-pBorrowerId = strOption
+pTotalEpochPayments :: Parser Integer
+pTotalEpochPayments = option auto
+  (  long "total-epoch-payments"
+  <> metavar "INT"
+  <> help "The total payments made this compound period so far."
+  )
+
+pLoanOutstanding :: Parser Fraction
+pLoanOutstanding = option (eitherReader readFraction)
+  (  long "outstanding-balance"
+  <> metavar "FRACTION"
+  <> help "The loan's current outstanding balance."
+  )
+
+pLoanExpiration :: Parser POSIXTime
+pLoanExpiration = POSIXTime <$> option auto
+  (  long "loan-expiration"
+  <> metavar "TIME"
+  <> help "The expiration time for the loan in POSIX time (milliseconds)."
+  )
+
+pClaimExpiration :: Parser POSIXTime
+pClaimExpiration = POSIXTime <$> option auto
+  (  long "claim-expiration"
+  <> metavar "TIME"
+  <> help "The expiration time for the lender claim period in POSIX time (milliseconds)."
+  )
+
+pLastCompounding :: Parser POSIXTime
+pLastCompounding = POSIXTime <$> option auto
+  (  long "last-compounding"
+  <> metavar "TIME"
+  <> help "The last time the interest was applied. In POSIX time (milliseconds)."
+  )
+
+pLoanRef :: Parser TxOutRef
+pLoanRef = option (eitherReader readTxOutRef)
+  (  long "loan-ref"
+  <> metavar "STRING"
+  <> help "The output reference for the target active loan 'tx_hash#index'."
+  )
+
+pBorrowerId :: Parser BorrowerId
+pBorrowerId = BorrowerId <$> option (eitherReader readTokenName)
   (  long "borrower-id"
   <> metavar "STRING"
-  <> help "BorrowerID for the borrower."
+  <> help "The target borrower's id."
   )
 
-pBorrowerIdAsToken :: Parser TokenName
-pBorrowerIdAsToken = option (eitherReader readTokenName)
-  (  long "borrower-id"
-  <> metavar "STRING"
-  <> help "BorrowerID for the borrower."
-  )
-
-pLenderAddress :: Parser Address
-pLenderAddress = 
-    Address
-      <$> pPaymentCredential
-      <*> (pStakingCredential <|> pure Nothing)
-  where
-    pPaymentPubKeyCredential :: Parser Credential
-    pPaymentPubKeyCredential = PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      ( long "payment-pubkey-hash"
-      <> metavar "STRING"
-      <> help "The hash of the payment pubkey used in the address."
-      )
-
-    pPaymentCredential :: Parser Credential
-    pPaymentCredential = pPaymentPubKeyCredential
-
-    pStakingScriptCredential :: Parser StakingCredential
-    pStakingScriptCredential = StakingHash . ScriptCredential <$> option (eitherReader readValidatorHash)
-      (  long "staking-script-hash"
-      <> metavar "STRING"
-      <> help "The hash of the staking script used in the address."
-      )
-
-    pStakingPubKeyCredential :: Parser StakingCredential
-    pStakingPubKeyCredential = StakingHash . PubKeyCredential <$> option (eitherReader readPubKeyHash)
-      (  long "staking-pubkey-hash"
-      <> metavar "STRING"
-      <> help "The hash of the staking pubkey used in the address."
-      )
-
-    pStakingCredential :: Parser (Maybe StakingCredential)
-    pStakingCredential = Just <$> (pStakingPubKeyCredential <|> pStakingScriptCredential)

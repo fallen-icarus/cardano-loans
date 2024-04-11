@@ -159,7 +159,7 @@ regressionTest1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -445,7 +445,7 @@ regressionTest2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -746,7 +746,7 @@ regressionTest3 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -757,7 +757,7 @@ regressionTest3 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -1043,7 +1043,7 @@ regressionTest4 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1054,7 +1054,7 @@ regressionTest4 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -1380,7 +1380,7 @@ regressionTest5 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1391,7 +1391,7 @@ regressionTest5 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -1694,7 +1694,7 @@ regressionTest6 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1705,7 +1705,7 @@ regressionTest6 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -2107,7 +2107,7 @@ regressionTest7 = do
       sampleOutputs borrowerCred loanAddress start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_borrowerId} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -2118,7 +2118,7 @@ regressionTest7 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -2504,7 +2504,7 @@ regressionTest8 = do
       sampleOutputs borrowerCred loanAddress start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_borrowerId} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -2515,7 +2515,7 @@ regressionTest8 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -2849,7 +2849,7 @@ regressionTest9 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3150,7 +3150,7 @@ regressionTest10 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -3161,7 +3161,7 @@ regressionTest10 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -3451,7 +3451,7 @@ regressionTest11 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -3462,7 +3462,7 @@ regressionTest11 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -3752,7 +3752,7 @@ regressionTest12 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -3763,7 +3763,7 @@ regressionTest12 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -4054,7 +4054,7 @@ regressionTest13 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -4065,7 +4065,7 @@ regressionTest13 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output

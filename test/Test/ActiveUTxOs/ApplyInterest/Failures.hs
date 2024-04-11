@@ -159,7 +159,7 @@ beaconFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -478,7 +478,7 @@ beaconFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -735,7 +735,7 @@ beaconFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -992,7 +992,7 @@ beaconFailure4 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -1249,7 +1249,7 @@ beaconFailure5 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -1579,7 +1579,7 @@ beaconFailure6 = do
   let sampleMints ds = flip concatMap offers $ 
         \(offerRef,Just offerDatum@OfferDatum{_lenderId}) ->
           let ActiveDatum{_loanId,_assetBeacon} = 
-                createAcceptanceDatum borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ TokenMint
                 { mintTokens = 
                     [ ("Offer",-1)
@@ -1608,7 +1608,7 @@ beaconFailure6 = do
       sampleOutputs ds = flip concatMap offers $ 
         \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
-                createAcceptanceDatum borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
                   { outputAddress = loanAddress1
                   , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1928,7 +1928,7 @@ beaconFailure7 = do
   let sampleMints ds = flip concatMap offers $ 
         \(offerRef,Just offerDatum@OfferDatum{_lenderId}) ->
           let ActiveDatum{_loanId,_assetBeacon} = 
-                createAcceptanceDatum borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ TokenMint
                 { mintTokens = 
                     [ ("Offer",-1)
@@ -1957,7 +1957,7 @@ beaconFailure7 = do
       sampleOutputs ds = flip concatMap offers $ 
         \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
-                createAcceptanceDatum borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
                   { outputAddress = loanAddress1
                   , outputValue = utxoValue 4_000_000 $ mconcat
@@ -2204,7 +2204,7 @@ beaconFailure8 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2399,7 +2399,7 @@ collateralFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2659,7 +2659,7 @@ depositFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2918,7 +2918,7 @@ depositFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3177,7 +3177,7 @@ depositFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3442,7 +3442,7 @@ addressFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3703,7 +3703,7 @@ addressFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -4052,7 +4052,7 @@ addressFailure3 = do
       sampleOutputs start borrowerCred loanAddress os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_borrowerId} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -4330,7 +4330,7 @@ approvalFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -4610,7 +4610,7 @@ orderFailure1 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -4621,7 +4621,7 @@ orderFailure1 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -4883,7 +4883,7 @@ orderFailure2 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -4894,7 +4894,7 @@ orderFailure2 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -5170,7 +5170,7 @@ orderFailure3 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -5181,7 +5181,7 @@ orderFailure3 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -5440,7 +5440,7 @@ interestFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -5697,7 +5697,7 @@ interestFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -5955,7 +5955,7 @@ interestFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -6216,7 +6216,7 @@ interestFailure4 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -6477,7 +6477,7 @@ interestFailure5 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -6742,7 +6742,7 @@ datumFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -7001,7 +7001,7 @@ datumFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -7260,7 +7260,7 @@ datumFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -7520,7 +7520,7 @@ datumFailure4 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -7779,7 +7779,7 @@ datumFailure5 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -8038,7 +8038,7 @@ datumFailure6 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -8297,7 +8297,7 @@ datumFailure7 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -8556,7 +8556,7 @@ datumFailure8 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -8815,7 +8815,7 @@ datumFailure9 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -9074,7 +9074,7 @@ datumFailure10 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -9333,7 +9333,7 @@ datumFailure11 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -9592,7 +9592,7 @@ datumFailure12 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -9851,7 +9851,7 @@ datumFailure13 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -10110,7 +10110,7 @@ datumFailure14 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -10369,7 +10369,7 @@ datumFailure15 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -10628,7 +10628,7 @@ datumFailure16 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -10887,7 +10887,7 @@ datumFailure17 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -11146,7 +11146,7 @@ datumFailure18 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -11405,7 +11405,7 @@ datumFailure19 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -11664,7 +11664,7 @@ datumFailure20 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -11923,7 +11923,7 @@ datumFailure21 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -12180,7 +12180,7 @@ datumFailure22 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -12525,7 +12525,7 @@ datumFailure24 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -12787,7 +12787,7 @@ timeFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -13044,7 +13044,7 @@ timeFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.

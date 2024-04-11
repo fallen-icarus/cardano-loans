@@ -158,7 +158,7 @@ regressionTest1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -416,7 +416,7 @@ regressionTest2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -674,7 +674,7 @@ regressionTest3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -932,7 +932,7 @@ regressionTest4 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -1210,7 +1210,7 @@ regressionTest5 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1221,7 +1221,7 @@ regressionTest5 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -1484,7 +1484,7 @@ regressionTest6 = do
       sampleOutputs start os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1495,7 +1495,7 @@ regressionTest6 = do
                     , uncurry PV2.singleton (_unAsset collateral1) 10
                     ]
                 , outputDatum = OutputDatum $ toDatum $ 
-                    createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                    createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
                 , outputReferenceScript = toReferenceScript Nothing
                 }
              , Output
@@ -1760,7 +1760,7 @@ regressionTest7 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2018,7 +2018,7 @@ regressionTest8 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2276,7 +2276,7 @@ regressionTest9 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2534,7 +2534,7 @@ regressionTest10 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2792,7 +2792,7 @@ regressionTest11 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3050,7 +3050,7 @@ regressionTest12 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3366,7 +3366,7 @@ regressionTest13 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3681,7 +3681,7 @@ regressionTest14 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3938,7 +3938,7 @@ regressionTest15 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.

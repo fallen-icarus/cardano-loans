@@ -19,6 +19,8 @@ module CardanoLoans.Utils
   , readTxId
   , readTxOutRef
   , readFraction
+  , readPubKeyHash
+  , readScriptHash
 
     -- * Misc
   , unsafeFromRight
@@ -31,14 +33,20 @@ module CardanoLoans.Utils
   , wrapVersionedLedgerScript
   , toCardanoApiScript
   , UPLC.serialisedSize
+  , slotToPOSIXTime
+  , posixTimeToSlot
+  , preprodConfig
+  , mainnetConfig
 
   -- * Re-exports
   , applyArguments
   , PV2.CurrencySymbol(..)
   , PV2.TokenName(..)
-  , PV2.Address
-  , PV2.Credential
-  , PV2.POSIXTime
+  , PV2.Address(..)
+  , PV2.Credential(..)
+  , PV2.PubKeyHash(..)
+  , PV2.POSIXTime(..)
+  , PV2.StakingCredential(..)
   , PV2.adaSymbol
   , PV2.adaToken
   , numerator
@@ -46,6 +54,10 @@ module CardanoLoans.Utils
   , PV2.TxOutRef(..)
   , PV2.TxId(..)
   , PV2.SerialisedScript
+  , PV2.ScriptHash(..)
+  , BuiltinByteString(..)
+  , L.Slot(..)
+  , unBuiltinByteString
   ) where
 
 import qualified Data.Aeson as Aeson
@@ -54,6 +66,7 @@ import qualified Codec.Serialise as Serial
 import Data.ByteString.Lazy (fromStrict,toStrict)
 import Data.Text (Text,unpack,pack,replace)
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as SBS
 import Data.String (fromString)
 import Text.Read (readMaybe)
 import Control.Applicative ((<|>))
@@ -70,6 +83,7 @@ import PlutusLedgerApi.V1.Bytes (fromHex,bytes,encodeByteString,LedgerBytesError
 import Ledger.Tx.CardanoAPI.Internal (fromCardanoScriptData)
 import qualified Ledger as L
 import qualified PlutusTx.Builtins as Builtins
+import PlutusTx.Builtins.Internal (BuiltinByteString(..))
 import qualified Plutus.Script.Utils.Scripts as PV2
 import qualified PlutusLedgerApi.V2 as PV2
 
@@ -170,6 +184,64 @@ readFraction s = case toFraction <$> (readMaybeRatio sample <|> readMaybeDouble 
     readMaybeDouble :: String -> Maybe Rational
     readMaybeDouble = fmap toRational . readMaybe @Double
 
+-- | Parse PubKeyHash from user supplied String
+readPubKeyHash :: String -> Either String PV2.PubKeyHash
+readPubKeyHash s = case fromHex $ fromString s of
+  Right (PV2.LedgerBytes bytes') -> Right $ PV2.PubKeyHash bytes'
+  Left msg                   -> Left $ show msg
+
+-- | Parse ValidatorHash from user supplied String
+readScriptHash :: String -> Either String PV2.ScriptHash
+readScriptHash s = case fromHex $ fromString s of
+  Right (PV2.LedgerBytes bytes') -> Right $ PV2.ScriptHash bytes'
+  Left msg                   -> Left $ show msg
+
+-------------------------------------------------
+-- Time
+-------------------------------------------------
+-- | Datatype to configure the length (ms) of one slot and the beginning of the
+-- first slot.
+data SlotConfig = SlotConfig
+  { scSlotLength :: !Integer
+  -- ^ Length (number of milliseconds) of one slot
+  , scSlotZeroTime :: !PV2.POSIXTime
+  -- ^ Beginning of slot 0 (in milliseconds)
+  } deriving (Eq, Show)
+
+-- | Get the starting 'POSIXTime' of a 'Slot' given a 'SlotConfig'.
+slotToBeginPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToBeginPOSIXTime SlotConfig{scSlotLength, scSlotZeroTime} (L.Slot n) =
+  let msAfterBegin = n * scSlotLength
+   in PV2.POSIXTime $ PV2.getPOSIXTime scSlotZeroTime + msAfterBegin
+
+-- | Convert a 'POSIXTime' to 'Slot' given a 'SlotConfig'.
+posixTimeToEnclosingSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToEnclosingSlot SlotConfig{scSlotLength, scSlotZeroTime} (PV2.POSIXTime t) =
+  let timePassed = t - PV2.getPOSIXTime scSlotZeroTime
+      slotsPassed = PlutusTx.divide timePassed scSlotLength
+   in L.Slot slotsPassed
+
+slotToPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime
+
+posixTimeToSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToSlot = posixTimeToEnclosingSlot
+
+-- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
+-- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
+-- normalized to "pretend" that the testnet has always used 1 second slot intervals.
+--
+-- The normalization is done by taking a slot time and subtracting the slot number from it.
+-- For example, slot 56919374 occurred at 1712602574 POSIXTime. So subtracting the slot number 
+-- from the time yields the normalized 0 time. The final number needs to be converted to
+-- milliseconds.
+preprodConfig :: SlotConfig
+preprodConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712603045 - 56919845) * 1000
+
+-- | The mainnet config must also be normalized.
+mainnetConfig :: SlotConfig
+mainnetConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712661664 - 121095373) * 1000
+
 -------------------------------------------------
 -- Misc
 -------------------------------------------------
@@ -216,3 +288,6 @@ unsafeToBuiltinByteString = (\(PV2.LedgerBytes bytes') -> bytes')
                           . unsafeFromRight
                           . fromHex
                           . fromString
+
+unBuiltinByteString :: BuiltinByteString -> SBS.ByteString
+unBuiltinByteString (BuiltinByteString bs) = bs

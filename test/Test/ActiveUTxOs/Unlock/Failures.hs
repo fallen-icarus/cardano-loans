@@ -157,7 +157,7 @@ beaconFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -468,7 +468,7 @@ beaconFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -779,7 +779,7 @@ beaconFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -1104,7 +1104,7 @@ beaconFailure4 = do
       (negotiationBeaconCurrencySymbol,"Offer")
 
   let [activeDatum1,activeDatum2] = flip map offerRefs $ \offerRef ->
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       [loanIdBeacon1,loanIdBeacon2] = map genLoanId offerRefs
 
   -- Accept the offers.
@@ -1464,7 +1464,7 @@ beaconFailure5 = do
       (negotiationBeaconCurrencySymbol,"Offer")
 
   let [activeDatum1,activeDatum2] = flip map offerRefs $ \offerRef ->
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       [loanIdBeacon1,loanIdBeacon2] = map genLoanId offerRefs
 
   -- Accept the offers.
@@ -1824,7 +1824,7 @@ beaconFailure6 = do
       (negotiationBeaconCurrencySymbol,"Offer")
 
   let [activeDatum1,activeDatum2] = flip map offerRefs $ \offerRef ->
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       [loanIdBeacon1,loanIdBeacon2] = map genLoanId offerRefs
 
   -- Accept the offers.
@@ -2170,7 +2170,7 @@ beaconFailure7 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2435,7 +2435,7 @@ beaconFailure8 = do
       (negotiationBeaconCurrencySymbol,"Offer")
 
   let [activeDatum1,activeDatum2] = flip map offerRefs $ \offerRef ->
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       [loanIdBeacon1,loanIdBeacon2] = map genLoanId offerRefs
 
   -- Accept the offers.
@@ -2722,7 +2722,7 @@ beaconFailure9 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -2917,7 +2917,7 @@ beaconFailure10 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3108,7 +3108,7 @@ timeFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3359,7 +3359,7 @@ timeFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3613,7 +3613,7 @@ approvalFailure1 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -3800,7 +3800,7 @@ approvalFailure2 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -4051,7 +4051,7 @@ approvalFailure3 = do
         ]
 
   let activeDatum = 
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       loanIdBeacon = genLoanId offerRef
 
   -- Accept the offer.
@@ -4457,7 +4457,7 @@ addressFailure1 = do
       sampleOutputs start borrowerCred loanAddress os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_borrowerId} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime start) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -4744,7 +4744,7 @@ addressFailure2 = do
       (negotiationBeaconCurrencySymbol,"Offer")
 
   let [activeDatum1,activeDatum2] = flip map offerRefs $ \offerRef ->
-        createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
       [loanIdBeacon1,loanIdBeacon2] = map genLoanId offerRefs
 
   -- Accept the offers.

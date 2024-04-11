@@ -181,7 +181,7 @@ benchTest1 number = do
       sampleOutputs os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 4_000_000 $ mconcat
@@ -401,7 +401,7 @@ benchTest2 number = do
       sampleOutputs os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 5_000_000 $ mconcat
@@ -625,7 +625,7 @@ benchTest3 number = do
       sampleOutputs os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 5_000_000 $ mconcat
@@ -850,7 +850,7 @@ benchTest4 number = do
       sampleOutputs os = flip concatMap os $ 
         \(offerRef,Just od@OfferDatum{_assetBeacon,_offerDeposit}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
-                createAcceptanceDatum borrowerCred offerRef (slotToPosixTime startSlot) od
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) od
           in [ Output
                 { outputAddress = loanAddress
                 , outputValue = utxoValue 5_000_000 $ mconcat

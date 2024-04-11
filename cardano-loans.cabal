@@ -132,14 +132,30 @@ test-suite cardano-loans-tests
     , mtl
     , cardano-node-emulator
 
-executable cardano-swaps
+executable cardano-loans
     import: 
       lang,
       internals
     main-is: Main.hs
     other-modules:
+      CLI.Data.ApiService,
+      CLI.Data.Asset,
+      CLI.Data.Bech32Address,
+      CLI.Data.Commands,
+      CLI.Data.CreditHistory,
+      CLI.Data.LoanHistory,
+      CLI.Data.LoanUTxO,
+      CLI.Data.Network,
+      CLI.Data.Output,
+      CLI.Data.PersonalUTxO,
+      CLI.Data.Transaction,
+      CLI.Parsers,
+      CLI.Query,
+      CLI.Query.Koios,
+      CLI.Run
     build-depends:    
       cardano-loans,
+      cardano-addresses,
       optparse-applicative,
       servant,
       servant-client,
@@ -148,8 +164,10 @@ executable cardano-swaps
       vector,
       aeson-pretty,
       file-embed,
-      prettyprinter-ansi-terminal
+      prettyprinter-ansi-terminal,
+      relude
     hs-source-dirs: app
     default-extensions:
       OverloadedStrings
       RecordWildCards
+      NoImplicitPrelude
