@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module CLI.Run
   (
@@ -14,6 +15,8 @@ import Prettyprinter
 import Prettyprinter.Render.Terminal
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
+import qualified Data.ByteString as SBS
+import Data.FileEmbed
 
 import CardanoLoans
 
@@ -27,6 +30,12 @@ import CLI.Data.CreditHistory
 import CLI.Data.LoanHistory
 import CLI.Query
 
+preprodParams :: SBS.ByteString
+preprodParams = $(embedFile "preprod-params.json")
+
+mainnetParams :: SBS.ByteString
+mainnetParams = $(embedFile "mainnet-params.json")
+
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   ExportScript script file -> runExportScriptCmd script file
@@ -35,6 +44,18 @@ runCommand cmd = case cmd of
   BeaconName info output -> runBeaconName info output
   Query query -> runQuery query
   ConvertTime convert network -> runTimeConversion convert network
+  SubmitTx network api txFile -> 
+    runSubmitTx network api txFile >>= LBS.putStr . encode
+  EvaluateTx network api txFile -> 
+    runEvaluateTx network api txFile >>= LBS.putStr . encode
+  ExportParams network output -> runExportParams network output
+
+runExportParams :: Network -> Output -> IO ()
+runExportParams network output = case (network,output) of
+  (PreProdTestnet,Stdout) -> SBS.putStr preprodParams
+  (PreProdTestnet,File file) -> SBS.writeFile file preprodParams
+  (Mainnet,Stdout) -> SBS.putStr mainnetParams
+  (Mainnet,File file) -> SBS.writeFile file mainnetParams
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do

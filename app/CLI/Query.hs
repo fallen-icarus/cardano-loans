@@ -11,6 +11,8 @@ module CLI.Query
   , runQuerySpecificLoanUTxO
   , runQueryBorrowerHistory
   , runQueryLoanHistory
+  , runSubmitTx
+  , runEvaluateTx
   ) where
 
 import Relude
@@ -18,6 +20,8 @@ import Servant.Client
 import Network.HTTP.Client hiding (responseBody)
 import Network.HTTP.Client.TLS
 import Control.Exception
+import qualified Data.ByteString.Lazy as LBS
+import Data.Aeson
 
 import CLI.Query.Koios as Koios
 import CLI.Data.Bech32Address
@@ -27,6 +31,7 @@ import CLI.Data.PersonalUTxO
 import CLI.Data.LoanUTxO
 import CLI.Data.CreditHistory
 import CLI.Data.LoanHistory
+import CLI.Data.TxCBOR
 
 import CardanoLoans
 
@@ -135,3 +140,45 @@ runQueryLoanHistory network api loanId = do
     (Mainnet,Koios) -> do
       let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
       runClientM (Koios.queryLoanHistory loanId) env
+
+runSubmitTx :: Network -> ApiService -> FilePath -> IO Value
+runSubmitTx network api txFile = do
+  tx' <- decode @TxCBOR <$> LBS.readFile txFile
+  case tx' of
+    Nothing -> return "Failed to deserialise transaction file"
+    Just tx -> do
+      manager' <- newManager tlsManagerSettings
+      res <- case (network,api) of
+        (PreProdTestnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.submitTx tx) env
+        (Mainnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.submitTx tx) env
+      case res of
+        Right r -> return r
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
+        Left err -> throw err
+
+runEvaluateTx :: Network -> ApiService -> FilePath -> IO Value
+runEvaluateTx network api txFile = do
+  tx' <- decode @TxCBOR <$> LBS.readFile txFile
+  case tx' of
+    Nothing -> return "Failed to deserialise transaction file"
+    Just tx -> do
+      manager' <- newManager tlsManagerSettings
+      res <- case (network,api) of
+        (PreProdTestnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.evaluateTx tx) env
+        (Mainnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.evaluateTx tx) env
+      case res of
+        Right r -> return r
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
+        Left err -> throw err

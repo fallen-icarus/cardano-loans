@@ -32,6 +32,12 @@ parseCommand = hsubparser $ mconcat
       info pConvertTime $ progDesc "Convert POSIXTime <--> Slot."
   , command "query" $
       info parseQuery $ progDesc "Query the blockchain."
+  , command "submit" $
+      info pSubmitTx $ progDesc "Submit a transaction to the blockchain."
+  , command "protocol-params" $
+      info pExportParams $ progDesc "Export the current protocol parameters."
+  , command "evaluate-tx" $
+      info pEvaluateTx $ progDesc "Estimate script execution units for a transaction."
   ]
 
 -------------------------------------------------
@@ -791,6 +797,35 @@ pQueryLoanHistory =
     <*> pOutput
 
 -------------------------------------------------
+-- Submit Parser
+-------------------------------------------------
+pSubmitTx :: Parser Command
+pSubmitTx = 
+  SubmitTx
+    <$> pNetwork
+    <*> pApiService
+    <*> pTxFile
+
+-------------------------------------------------
+-- EvaluateTx Parser
+-------------------------------------------------
+pEvaluateTx :: Parser Command
+pEvaluateTx = 
+  EvaluateTx 
+    <$> pNetwork
+    <*> pApiService
+    <*> pTxFile
+
+-------------------------------------------------
+-- ExportParams Parser
+-------------------------------------------------
+pExportParams :: Parser Command
+pExportParams =
+  ExportParams
+    <$> pNetwork
+    <*> pOutput
+
+-------------------------------------------------
 -- Basic Helper Parsers
 -------------------------------------------------
 pOutputFile :: Parser FilePath
@@ -1084,3 +1119,9 @@ pBorrowerId = BorrowerId <$> option (eitherReader readTokenName)
   <> help "The target borrower's id."
   )
 
+pTxFile :: Parser FilePath
+pTxFile = strOption
+  (  long "tx-file"
+  <> metavar "STRING"
+  <> help "Transaction file path."
+  )

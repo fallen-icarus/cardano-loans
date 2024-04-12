@@ -18,6 +18,9 @@ data Command
   | BeaconName BeaconName Output
   | ConvertTime ConvertTime Network
   | Query Query
+  | SubmitTx Network ApiService FilePath
+  | EvaluateTx Network ApiService FilePath
+  | ExportParams Network Output
 
 data Script 
   = NegotiationBeaconScript

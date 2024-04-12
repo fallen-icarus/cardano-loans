@@ -16,6 +16,8 @@ module CLI.Query.Koios
   , querySpecificLoanUTxO
   , queryBorrowerHistory
   , queryLoanHistory
+  , submitTx
+  , evaluateTx
   ) where
 
 import Relude
@@ -34,6 +36,7 @@ import CLI.Data.LoanUTxO
 import CLI.Data.Transaction
 import CLI.Data.CreditHistory
 import CLI.Data.LoanHistory
+import CLI.Data.TxCBOR
 
 -------------------------------------------------
 -- Post Types
@@ -68,6 +71,26 @@ instance ToJSON ExtendedUTxOList where
   toJSON (ExtendedUTxOList as) = 
     object [ "_utxo_refs" .= map (\(TxOutRef hash ix) -> T.pack $ show hash <> "#" <> show ix) as
            , "_extended" .= True
+           ]
+
+newtype SubmitTxCBOR = SubmitTxCBOR TxCBOR
+
+instance ToJSON SubmitTxCBOR where
+  toJSON (SubmitTxCBOR (TxCBOR cbor)) = 
+    object [ "jsonrpc" .= ("2.0" :: Text)
+           , "method" .= ("submitTransaction" :: Text)
+           , "params" .= object [ "transaction" .= object [ "cbor" .= cbor ] ]
+           , "id" .= (Nothing :: Maybe ())
+           ]
+
+newtype EvaluateTxCBOR = EvaluateTxCBOR TxCBOR
+
+instance ToJSON EvaluateTxCBOR where
+  toJSON (EvaluateTxCBOR (TxCBOR cbor)) = 
+    object [ "jsonrpc" .= ("2.0" :: Text)
+           , "method" .= ("evaluateTransaction" :: Text)
+           , "params" .= object [ "transaction" .= object [ "cbor" .= cbor ] ]
+           , "id" .= (Nothing :: Maybe ())
            ]
 
 -------------------------------------------------
@@ -170,6 +193,13 @@ type KoiosApi
      :> QueryParam' '[Required] "select" Text
      :> ReqBody '[JSON] LoanTxs
      :> Post '[JSON] [Transaction]
+  
+  :<|>  ReqBody '[JSON] SubmitTxCBOR
+     :> Post '[JSON] Value
+
+  :<|>  ReqBody '[JSON] EvaluateTxCBOR
+     :> Post '[JSON] Value
+
 
 personalAddressUTxOsApi 
   :<|> borrowerAddresssUTxOsApi
@@ -180,6 +210,8 @@ personalAddressUTxOsApi
   :<|> borrowerTxInfoApi 
   :<|> loanTxsApi 
   :<|> loanTxInfoApi 
+  :<|> submitTxApi
+  :<|> evaluateTxApi
   = client (Proxy :: Proxy KoiosApi)
 
 -------------------------------------------------
@@ -348,6 +380,12 @@ queryLoanHistory loanId = do
         , "assets_minted"
         , "plutus_contracts"
         ]
+
+submitTx :: TxCBOR -> ClientM Value
+submitTx = submitTxApi . SubmitTxCBOR
+
+evaluateTx :: TxCBOR -> ClientM Value
+evaluateTx = evaluateTxApi . EvaluateTxCBOR
 
 -------------------------------------------------
 -- Helper Functions

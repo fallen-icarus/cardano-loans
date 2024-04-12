@@ -149,6 +149,7 @@ executable cardano-loans
       CLI.Data.Output,
       CLI.Data.PersonalUTxO,
       CLI.Data.Transaction,
+      CLI.Data.TxCBOR,
       CLI.Parsers,
       CLI.Query,
       CLI.Query.Koios,
