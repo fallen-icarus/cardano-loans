@@ -427,7 +427,7 @@ processLoanHistory loanId Transaction{..} = do
     toAction red (Fraction (balanceNum,_)) claimExpiration =
       case fromJust $ decodeDatum @LoanRedeemer $ fromJust red of
         MakePayment amount -> mconcat
-          [ "Make payment of "
+          [ "Made payment of "
           , show amount
           , "."
           ]
