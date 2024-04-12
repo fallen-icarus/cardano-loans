@@ -8,7 +8,7 @@ the same parameters as the mainnet.
 ## Table of Contents 
 - [Required Deposits for Reference Scripts](#required-deposits-for-reference-scripts)
 - [Creating Ask UTxOs](#creating-ask-utxos)
-- [Updating Ask UTxOs](#updating-ask-utxs)
+- [Updating Ask UTxOs](#updating-ask-utxos)
 - [Closing Ask UTxOs](#closing-ask-utxos)
 - [Creating Offer UTxOs](#creating-offer-utxos)
 - [Updating Offer UTxOs](#updating-offer-utxos)
@@ -53,7 +53,7 @@ fewer collateral could result in performance as high as 32 asks/tx.
 | 20 | 1.332712 ADA | 1.999068 ADA |
 | 24 | 1.537752 ADA | 2.306628 ADA |
 
-Max: 24 Asks
+Max: 24 Asks  
 Bottleneck: Tx Size
 
 ## Updating Ask UTxOs
@@ -67,7 +67,7 @@ Bottleneck: Tx Size
 | 20 | 1.856170 ADA | 2.784255 ADA |
 | 21 | 1.959086 ADA | 2.938629 ADA |
 
-Max: 24 Asks
+Max: 24 Asks  
 Bottleneck: Memory
 
 #### All UTxOs undergo different conversions. They all start with unique loan assets and collateral and finish with unique loan assets and collateral. Three native assets are used as collateral for each Ask.
@@ -78,7 +78,7 @@ Bottleneck: Memory
 | 10 | 1.269872 ADA | 1.904808 ADA |
 | 13 | 1.537324 ADA | 2.305986 ADA |
 
-Max: 13 Asks
+Max: 13 Asks  
 Bottleneck: Tx Size
 
 ## Closing Ask UTxOs
@@ -94,7 +94,7 @@ Bottleneck: Tx Size
 | 30 | 1.681470 ADA | 2.522205 ADA |
 | 32 | 1.836266 ADA | 2.754399 ADA |
 
-Max: 33 Asks
+Max: 33 Asks  
 Bottleneck: Memory
 
 ## Creating Offer UTxOs
@@ -111,7 +111,7 @@ fewer collateral could result in performance as high as 33 offers/tx.
 | 20 | 1.416127 ADA | 2.124191 ADA |
 | 24 | 1.648776 ADA | 2.473164 ADA |
 
-Max: 24 Offers
+Max: 24 Offers  
 Bottleneck: Tx Size
 
 ## Updating Offer UTxOs
@@ -124,7 +124,7 @@ Bottleneck: Tx Size
 | 15 | 1.684794 ADA | 2.527191 ADA |
 | 18 | 2.018935 ADA | 3.028403 ADA |
 
-Max: 18 Offers
+Max: 18 Offers  
 Bottleneck: Memory
 
 ## Closing Offer UTxOs
@@ -139,7 +139,7 @@ Bottleneck: Memory
 | 25 | 1.396791 ADA | 2.095187 ADA |
 | 29 | 1.693951 ADA | 2.540927 ADA |
 
-Max: 29 Offers
+Max: 29 Offers  
 Bottleneck: Memory
 
 ## Accepting Offers
@@ -156,7 +156,7 @@ Bottleneck: Memory
 | 8 | 1.679143 ADA | 2.518715 ADA |
 | 9 | 1.884754 ADA | 2.827131 ADA |
 
-Max: 9 Offers
+Max: 9 Offers  
 Bottleneck: Memory
 
 #### All offers are from different lenders and are for different loan assets. The same three native assets are used as collateral for each loan.
@@ -171,7 +171,7 @@ Bottleneck: Memory
 | 7 | 1.662465 ADA | 2.493698 ADA |
 | 8 | 1.891267 ADA | 2.836901 ADA |
 
-Max: 8 Offers
+Max: 8 Offers  
 Bottleneck: Memory
 
 ## Making Partial Payments
@@ -192,7 +192,7 @@ could be as high as 14 payments/tx.
 | 9 | 1.691833 ADA | 2.537750 ADA |
 | 10 | 1.854998 ADA | 2.782497 ADA |
 
-Max: 10 Partial Payments
+Max: 10 Partial Payments  
 Bottleneck: Memory
 
 ## Making Full Payments
@@ -215,7 +215,7 @@ could be as high as 15 payments/tx.
 | 11 | 1.691118 ADA | 2.536677 ADA |
 | 12 | 1.827955 ADA | 2.741933 ADA |
 
-Max: 12 Full Payments
+Max: 12 Full Payments  
 Bottleneck: Memory
 
 ## Applying Interest
@@ -231,7 +231,7 @@ All scenarios tested had similar performance.
 | 20 | 1.813411 ADA | 2.720117 ADA |
 | 21 | 1.896226 ADA | 2.844339 ADA |
 
-Max: 21 Loans Updated
+Max: 21 Loans Updated  
 Bottleneck: Tx Size
 
 ## Updating Lender Addresses
@@ -243,7 +243,7 @@ Bottleneck: Tx Size
 | 10 | 1.370066 ADA | 2.055099 ADA |
 | 14 | 1.879126 ADA | 2.818689 ADA |
 
-Max: 14 Loans Updated
+Max: 14 Loans Updated  
 Bottleneck: Tx Size
 
 #### Update the address for multiple loans where each loan uses three assets as collateral. The Key NFTs are all in the same UTxO.
@@ -254,7 +254,7 @@ Bottleneck: Tx Size
 | 10 | 1.239692 ADA | 1.859538 ADA |
 | 15 | 1.771197 ADA | 2.656796 ADA |
 
-Max: 15 Loans Updated
+Max: 15 Loans Updated  
 Bottleneck: Tx Size
 
 ## Claiming Expired Collateral
@@ -279,10 +279,10 @@ could be as high as 17 loans/tx.
 | 9 | 0.989532 ADA | 1.484298 ADA |
 | 10 | 1.107785 ADA | 1.661678 ADA |
 
-Max: unknown
+Max: unknown  
 Bottleneck: unknown
 
-## Unlock Finished Loans
+## Unlocking Finished Loans
 #### Unlock multiple finished loans where all loans use the same loan asset. The collateral was removed during the final payment.
 | Loans Unlocked | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
@@ -293,10 +293,10 @@ Bottleneck: unknown
 | 20 | 1.405749 ADA | 2.108624 ADA |
 | 21 | 1.496552 ADA | 2.244828 ADA |
 
-Max: 21 Loans Unlocked
+Max: 21 Loans Unlocked  
 Bottleneck: Memory
 
-## Unlock Lost Collateral
+## Unlocking Lost Collateral
 #### Unlock multiple lost collateral loans. All loans use the same loan asset and three native assets as collateral.
 | Loans Unlocked | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
@@ -305,7 +305,7 @@ Bottleneck: Memory
 | 10 | 0.881997 ADA | 1.322996 ADA |
 | 15 | 1.389349 ADA | 2.084774 ADA |
 
-Max: 15 Loans Unlocked
+Max: 15 Loans Unlocked  
 Bottleneck: Memory
 
 ## Spending From Proxy Script
@@ -321,5 +321,5 @@ Bottleneck: Memory
 | 60 | 1.433913 ADA | 2.150870 ADA |
 | 67 | 1.692864 ADA | 2.539296 ADA |
 
-Max: 67 UTxOs
+Max: 67 UTxOs  
 Bottleneck: Memory
