@@ -63,7 +63,7 @@ benchTest1 number = do
         , _loanAsset = loanAsset
         , _loanPrinciple = 10_000_000
         , _compoundFrequency = Nothing
-        , _loanTerm = 10000
+        , _loanTerm = 20000
         , _loanInterest = Fraction (1,10)
         , _minPayment = 0
         , _penalty = NoPenalty
@@ -83,13 +83,39 @@ benchTest1 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [("Ask",fromIntegral number),(_unAssetBeacon loanBeacon,fromIntegral number)]
+              { mintTokens = [("Ask",20),(_unAssetBeacon loanBeacon,20)]
               , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
               , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
               , mintReference = Just negotiationRef
               }
           ]
-      , outputs = replicate number
+      , outputs = replicate 20
+          Output
+            { outputAddress = loanAddress
+            , outputValue = utxoValue 3_000_000 $ mconcat
+                [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                , uncurry PV2.singleton (_unAsset collateral1) 1
+                ]
+            , outputDatum = OutputDatum $ toDatum askDatum
+            , outputReferenceScript = toReferenceScript Nothing
+            }
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",20),(_unAssetBeacon loanBeacon,20)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs = replicate 20
           Output
             { outputAddress = loanAddress
             , outputValue = utxoValue 3_000_000 $ mconcat
@@ -110,16 +136,47 @@ benchTest1 number = do
       { tokens =
           [ TokenMint
               { mintTokens = 
-                  [ ("Offer",fromIntegral number)
-                  , (_unAssetBeacon loanBeacon,fromIntegral number)
-                  , (_unLenderId lenderBeacon,fromIntegral number)
+                  [ ("Offer",20)
+                  , (_unAssetBeacon loanBeacon,20)
+                  , (_unLenderId lenderBeacon,20)
                   ]
               , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
               , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
               , mintReference = Just negotiationRef
               }
           ]
-      , outputs = replicate number
+      , outputs = replicate 20
+          Output
+            { outputAddress = loanAddress
+            , outputValue = utxoValue 4_000_000 $ mconcat
+                [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                ]
+            , outputDatum = OutputDatum $ toDatum offerDatum
+            , outputReferenceScript = toReferenceScript Nothing
+            }
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",20)
+                  , (_unAssetBeacon loanBeacon,20)
+                  , (_unLenderId lenderBeacon,20)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs = replicate 20
           Output
             { outputAddress = loanAddress
             , outputValue = utxoValue 4_000_000 $ mconcat
@@ -201,21 +258,6 @@ benchTest1 number = do
                 }
              ]
 
-      sampleInputs os as = concat $
-        [ flip map os $ \(offerRef,_) ->
-            Input
-              { inputId = offerRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-        , flip map as $ \(askRef,_) ->
-            Input
-              { inputId = askRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-        ]
-      
   -- Accept the offers.
   forM_ (zip (grouped 5 offerUTxOs) (grouped 5 askUTxOs)) $ \(offers,asks) -> do
       startSlot <- currentSlot
@@ -909,12 +951,12 @@ benchTest3 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 22
+  [ mustSucceed "benchTest1" $ benchTest1 21
   , mustSucceed "benchTest2" $ benchTest2 16
   , mustSucceed "benchTest3" $ benchTest3 15
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 23
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 22
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 16
   ]
