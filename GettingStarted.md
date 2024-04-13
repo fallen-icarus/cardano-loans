@@ -31,7 +31,7 @@ template scripts to come up with your own remote node template scripts for carda
 - [Unlocking Finished UTxOs](#unlocking-finished-utxos)
 - [Unlocking Lost Collateral](#unlocking-lost-collateral)
 - [Time Conversions](#time-conversions)
-- [Queries](#queryies)
+- [Queries](#queries)
   - [Querying Personal Addresses](#querying-personal-addresses)
   - [Querying Ask UTxOs](#querying-ask-utxos)
   - [Querying Offer UTxOs](#querying-offer-utxos)
@@ -356,7 +356,7 @@ Creating an Ask UTxO involves the following steps:
 ##### Creating your borrower address
 ```bash
 # Export the spending script.
-cardano-swaps scripts loan-script \
+cardano-loans scripts loan-script \
   --out-file loan.plutus
 
 # Create the borrower address.
