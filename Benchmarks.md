@@ -94,7 +94,7 @@ Bottleneck: Tx Size
 | 30 | 1.681470 ADA | 2.522205 ADA |
 | 32 | 1.836266 ADA | 2.754399 ADA |
 
-Max: 33 Asks  
+Max: 32 Asks  
 Bottleneck: Memory
 
 ## Creating Offer UTxOs
