@@ -5977,7 +5977,7 @@ regressionTest19 = do
       }
 
 -- | The next interest application is technically required, but the interest is 0 and there are no
--- penalties so it can be skipped.
+-- penalties so it can be skipped. The minPayment is greater than 0.
 regressionTest20 :: MonadEmulator m => m ()
 regressionTest20 = do
   let -- Borrower Info
@@ -6021,7 +6021,7 @@ regressionTest20 = do
         , _compoundFrequency = Just 1
         , _loanTerm = 3600
         , _loanInterest = Fraction (0,10)
-        , _minPayment = 0
+        , _minPayment = 10
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False

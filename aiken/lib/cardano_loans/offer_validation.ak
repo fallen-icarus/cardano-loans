@@ -223,8 +223,8 @@ fn valid_offer_output(
       @"Datum has wrong penalty",
       when penalty is {
         NoPenalty -> True
-        FixedFee(fee) -> fee > 0
-        PercentFee((fee_num,fee_den)) -> fee_num > 0 && fee_den > 0
+        FixedFee(fee) -> fee > 0 && min_payment > 0
+        PercentFee((fee_num,fee_den)) -> fee_num > 0 && fee_den > 0 && min_payment > 0
       }
     ),
 

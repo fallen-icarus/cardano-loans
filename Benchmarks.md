@@ -169,9 +169,8 @@ Bottleneck: Memory
 | 5 | 1.200567 ADA | 1.800851 ADA |
 | 6 | 1.422197 ADA | 2.133296 ADA |
 | 7 | 1.662465 ADA | 2.493698 ADA |
-| 8 | 1.891267 ADA | 2.836901 ADA |
 
-Max: 8 Offers  
+Max: 7 Offers  
 Bottleneck: Memory
 
 ## Making Partial Payments
@@ -263,7 +262,7 @@ is from a different borrower. It is possible to claim at least 10 loans/tx. Esti
 the upper limit is likely about 13 loans/tx.
 
 If you claim collateral from the same borrower or keep the Key NFTs in a single UTxO, performance
-could be as high as 17 loans/tx.
+could be as high as 19 loans/tx.
 
 #### Claim the collateral for multiple expired loans where each loan use different loan assets and come from different borrowers. Each loan uses three native assets as collateral. The Key NFTs are in separate UTxOs.
 | Loans Claimed | Tx Fee | Req. Collateral |
@@ -291,9 +290,9 @@ Bottleneck: unknown
 | 10 | 0.651921 ADA | 0.977882 ADA |
 | 15 | 0.997425 ADA | 1.496138 ADA |
 | 20 | 1.405749 ADA | 2.108624 ADA |
-| 21 | 1.496552 ADA | 2.244828 ADA |
+| 22 | 1.525030 ADA | 2.287545 ADA |
 
-Max: 21 Loans Unlocked  
+Max: 22 Loans Unlocked  
 Bottleneck: Memory
 
 ## Unlocking Lost Collateral
@@ -304,8 +303,9 @@ Bottleneck: Memory
 | 5 | 0.496909 ADA | 0.745364 ADA |
 | 10 | 0.881997 ADA | 1.322996 ADA |
 | 15 | 1.389349 ADA | 2.084774 ADA |
+| 16 | 1.480003 ADA | 2.220005 ADA |
 
-Max: 15 Loans Unlocked  
+Max: 16 Loans Unlocked  
 Bottleneck: Memory
 
 ## Spending From Proxy Script

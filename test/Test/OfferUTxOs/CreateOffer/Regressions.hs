@@ -1222,6 +1222,88 @@ regressionTest14 = do
       , extraKeyWitnesses = [lenderPubKey]
       }
 
+-- | Create an Offer UTxO with a minPayment > 0 and NoPenalty.
+regressionTest15 :: MonadEmulator m => m ()
+regressionTest15 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrinciple = 10_000_000
+        , _compoundFrequency = Just 10
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _minPayment = 10
+        , _penalty = NoPenalty
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
 -------------------------------------------------
 -- TestTree
 -------------------------------------------------
@@ -1242,4 +1324,5 @@ tests =
   , mustSucceed "regressionTest12" regressionTest12
   , mustSucceed "regressionTest13" regressionTest13
   , mustSucceed "regressionTest14" regressionTest14
+  , mustSucceed "regressionTest15" regressionTest15
   ]

@@ -4648,6 +4648,170 @@ datumFailure37 = do
       , extraKeyWitnesses = [lenderPubKey]
       }
 
+-- | Create an offer with a minPayment of 0, but a fixed fee penalty.
+datumFailure38 :: MonadEmulator m => m ()
+datumFailure38 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrinciple = 10_000_000
+        , _compoundFrequency = Just 10
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _minPayment = 0
+        , _penalty = FixedFee 10
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+-- | Create an offer with a minPayment of 0, but a percent penalty.
+datumFailure39 :: MonadEmulator m => m ()
+datumFailure39 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrinciple = 10_000_000
+        , _compoundFrequency = Just 10
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _minPayment = 0
+        , _penalty = PercentFee $ Fraction (1,10)
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
 -------------------------------------------------
 -- Address Failures
 -------------------------------------------------
@@ -5602,6 +5766,12 @@ tests =
   , scriptMustFailWithError "datumFailure37" 
       "Datum has wrong penalty"
       datumFailure37
+  , scriptMustFailWithError "datumFailure38" 
+      "Datum has wrong penalty"
+      datumFailure38
+  , scriptMustFailWithError "datumFailure39" 
+      "Datum has wrong penalty"
+      datumFailure39
     
     -- Address Failures
   , scriptMustFailWithError "addressFailure1" 
