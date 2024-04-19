@@ -46,7 +46,7 @@ be found [here](./Benchmarks.md).
         - [Claiming Expired Collateral](#claiming-expired-collateral)
         - [Unlocking Finished/Lost Loans](#unlocking-finishedlost-loans)
 - [Benchmarks and Fee Estimations (YMMV)](#benchmarks-and-fee-estimations-ymmv)
-- [Discussion](#discussion)
+- [Features Discussion](#features-discussion)
     - [On-Chain, Emergent Credit History](#on-chain-emergent-credit-history)
     - [Negotiable Collateralization](#negotiable-collateralization)
     - [Under-Collateralized Loans](#under-collateralized-loans)
@@ -1503,7 +1503,7 @@ worst case scenario while the `Min Tx Fee` is the fee if only one action was tak
 | Unlocking Lost Collateral | 16 loans/tx | 1.480003 ADA | 0.246439 ADA |
 | Spending From the Proxy Script | 67 utxos/tx | 1.692864 ADA | 0.181917 ADA |
 
-## Discussion
+## Features Discussion
 
 ### On-Chain, Emergent Credit History
 
