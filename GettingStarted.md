@@ -1654,7 +1654,8 @@ the default or the state right after the borrower's final payment.
 ### Querying a Loan's History
 
 :warning: This query is currently waiting on a
-[bug](https://github.com/cardano-community/koios-artifacts/issues/275) fix from Koios.
+[bug](https://github.com/cardano-community/koios-artifacts/issues/275) fix from Koios. The patch
+will be released with this [update](https://github.com/cardano-community/koios-artifacts/pull/269).
 
 The loan's event history can be queried using the `cardano-loans query loan-history`
 command. The `loan-id` field is the target loan's Loan ID.
