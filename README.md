@@ -88,7 +88,7 @@ Unfortunately, contemporary lending/borrowering DApps on Cardano are implemented
 possibly create a true trustless and decentralized credit-debt market. To fully appreciate this, it
 is first important to understand the deficiencies of the status quo:
 
-##### Oracles
+### Oracles
 
 DApps that rely on off-chain information feeds are subject to the integrity of the underlying oracle
 network. It is pretty easy to find examples of faulty oracle feeds causing DeFi issues that resulted
@@ -111,7 +111,7 @@ Do we really want DeFi to rely on TradFi prices that are heavily influenced by c
 the point of DeFi to create an entirely independent economy, devoid of influence from those in
 power? Any dependence on TradFi prices directly undermines this goal.
 
-##### Inefficient Markets
+### Inefficient Markets
 
 There are other downsides to not supporting direct negotiations; it also results in a very
 inefficient credit-debt market. 
@@ -279,7 +279,7 @@ useful compositions that the DApp developers never considered. The more composit
 possible, the larger, and more complex the DeFi economy can become. And as the risk-management
 example shows, composability can make the complex DeFi economy more resilient.
 
-##### No Trustless Credit History
+### No Trustless Credit History
 
 You simply cannot have a healty credit-debt market without credit history. If the credit history is
 not trustless, it just creates another attack vector governments and hackers can use to target the
@@ -300,7 +300,7 @@ centralized group that may be easy for governments target. If a government is ab
 these beefy computers, governments will still be able to exert undue influence. Blockchain would
 fail to be a check on government abuse.
 
-##### Centralized
+### Centralized
 
 Contemporary lending/borrower DApps use liquidity pools which means users must sacrifice custody,
 delegation control, and voting control of their assets in order to participate in DeFi. As these
@@ -475,7 +475,7 @@ Ask UTxOs have two dedicated beacons:
 
 - *Ask Beacon* - a negotiation beacon token representing an Ask UTxO. It has the token name "Ask".
 - *Loan Asset Beacon* - a negotiation beacon token representing which asset is the desired loan
-asset. It has the token name: `sha2_256( "Asset" ++ asset_policy_id ++ asset_token_name)`.
+asset. It has the token name: `sha2_256("Asset" ++ asset_policy_id ++ asset_token_name)`.
 
 Each Ask UTxO must be store with at least 1 unit of each asset offered for collateral. While not
 technically beacon tokens, these assets can compliment the other beacons by enabling the filtering
@@ -806,7 +806,7 @@ Borrower's begin negotiations by creating a new Ask UTxO with their desired term
 address. The borrower is able to create/update/close multiple Ask UTxOs in a single transaction;
 each Ask UTxO created/updated/closed can have different terms.
 
-##### Ceating Ask UTxOs
+##### Creating Ask UTxOs
 
 In order to successfully create an Ask UTxO, all of the following must be true:
 
@@ -912,7 +912,7 @@ the lender to find all of their current offers, despite them being located in ps
 addresses. The protocol gives custody of Offer UTxOs to whoever controls the credential for that
 Lender ID. *If an Offer UTxO is every created without a Lender ID, the borrower will get custody.*
 
-##### Ceating Offer UTxOs
+##### Creating Offer UTxOs
 
 In order to successfully create an Offer UTxO, all of the following must be true:
 
