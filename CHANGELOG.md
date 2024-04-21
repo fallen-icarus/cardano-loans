@@ -1,37 +1,61 @@
 # Revision history for cardano-loans
 
-## 2.0.0
+## 1.0.0.0rc
 
-#### Core
-* Contracts written using Aiken.
+#### New Features
 
-#### Features
-* Allow lenders to trade open loans using Lock/Key NFTs.
-* Allow lender to specify a zero value for an undesired collateral asset.
-* Allow lender to specify a custom minUTxOValue for Offers that will be returned to the lender when
-  the loan is accepted.
-* Allow creating multiple Offers in a single transaction.
-* Allow accepting multiple loans in a single transaction.
-* Allow making multiple full and partial payments in a single transaction.
-* Allow swapping out collateral of active loans as long as lender's collateralization is respected.
-  The lender must explicitly enable this to prevent abuse.
-* Add compound interest interest through rollover steps. Interest is applied at each step.
-* Add option for interest-free and non-compounding interest loans.
-* Loan payments are made directly to the lender's address. This address can be changed by anyone who
-  owns the corresponding loan Key NFT. By using the proxy script, the lender can safely use arbitrary
-  logic to protect revenue from loan payments.
-* Add claim period for if the Key NFT is lost. This is to prevent permanently locked collateral.
-* Add ability for Borrowers to use either a staking pubkey or a staking script as their credential.
-  This enables the borrower to be a business using arbitrary logic to control spending (eg, multisig).
-* Add an Asset beacon for more expressive off-chain queries.
-* Allow required minimum loan payments as another way for lenders to manage risk.
-* Add prefix to LenderIDs to 1) allow the protocol to keep track of the type of credential it is and
-  2) keep it distinct from the corresponding BorrowerID for the same credential.
+Most of the features discussed in the *Potential Future Features* section of the previous version's
+README have been added:
 
-#### Documentation
-* Add an Architectural Decision Record (ADR).
-* Add extensive benchmarking for typical usage scenarios.
+- *Interest free, non-compounding, and compounding interest loans* - the compounding periods are set
+as part of the negotiation phase.
+- *Required minimum payments* - a borrower is required to repay a certain amount of the loan during
+each compounding period. If the minimum amount is not paid, a penalty will be applied against the
+outstanding balance the next time interest is applied to the loan. This penalty incentivizes
+borrowers to make regular payments. The penalty is set as part of the negotiation phase.
+- *Direct payments to lenders* - when a borrower makes a payment, the payment must go directly to
+the lender's specified address. This address can be updated by the lender.
+- *Tradable bonds* - when a loan is accepted, the borrower must create a lock & key NFT pair that is
+unique to the new loan. The key copy must go to the lender's specified address (the same address
+where future payments will go). This key NFT identifies who the lender is at any point in time. If
+the lender sells this key NFT to another entity, the new entity becomes the lender in the eyes of
+the protocol. The key NFT can be freely traded. The functionality of the Key NFT is specifically
+designed to pair with a secondary market like
+[cardano-secondary-market](https://github.com/fallen-icarus/cardano-secondary-market); the new
+lender can update the payment address in the same transaction where the key NFT is purchased on the
+secondary market. This composition dramatically minimizes possible financial risk for buyers of
+these key NFTs. Imagine what would happen if Bob purchased the key NFT, but Alice fully paid off the
+loan before Bob had a chance to update the payment address...
+- *Multi-asset loans* - the original restriction of only one acceptance per transaction has been
+lifted. It is now possible to accepted multiple offers in a single transaction. Because of this, it
+is now possible for Alice to accept an offer for ada in the same transaction where she accepts an
+offer for djed. This composition enables borrowers to create "packaged" loans where they borrow
+different assets as a hedge against "global" price movements of any one asset. It is also possible
+to make payments on all of these loans in a single transaction. So effectively, these separate loans
+can be treated as a single loan that requested multiple different assets as the loan asset.
+- *Staking script support* - borrowers and lenders can both use staking credentials for their
+identities. This enables the possibility of using multi-sig (or other more complicated logic) to
+protect an entity's identity. This is a major step towards enabling corporations to start using the
+protocol.
+- *Additional beacons* - there is now a loan asset beacon, a loan id beacon, and even the collateral
+used can act like a beacon. These new beacons increase the kinds of queries that are possible.
+- *Updating Asks/Offers in-place* - Ask and Offer UTxOs can now be updated in place. The first
+version required two transactions to do this (closing in one transaction and creating the new UTxO
+in another).
+- *Relaxed Credit History Method* - Borrower IDs can now be burned in the same transaction where
+other tokens are minted/burned provided these other tokens are *not* from the active smart contract.
 
-## 1.0.0
+#### Optimizations
+
+The smart contracts have been re-written in aiken, and all of the "one per tx" restrictions have
+been lifted. Every part of the protocol has seen huge performance improvements over the PlutusTx
+version.
+
+The logic for the protocol was broken over several smart contracts to allow fitting more features
+into the protocol. The universal loan spending script just delegates to one of the other scripts
+which can either be executed as minting policies or staking scripts. Since all scripts can be used
+as reference scripts, there was no drawback from splitting up the logic like this.
+
+## 1.0.0 (MVP)
 
 * First version. Released on an unsuspecting world.
