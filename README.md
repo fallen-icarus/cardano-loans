@@ -1677,9 +1677,9 @@ burner identity drops to 1 in 1000. Lenders will need to factor this risk in to 
 under-collateralized offers they make. If lenders see a borrower already has under-collateralized
 offers, they will need to account for how another under-collateralized offer impacts a malicious
 person's potential APY. As long is it is hard for malicious people like Mike to make a good return,
-most people will not bother dedicating 8-10 years for such a small payout; after factoring in
-[temporal discounting](https://www.investopedia.com/temporal-discounting-7972594), most people will
-decide it just isn't worth the hassle. It is such a long time to wait for such a small return...
+most people will not bother dedicating 8-10 years for such a small payout; after factoring in [time
+preference](https://en.wikipedia.org/wiki/Time_preference), most people will likely decide it just
+isn't worth the hassle. It is such a long time to wait for such a small return...
 
 There are other things lenders can use to further minimize this risk. Just because DIDs don't exist
 yet doesn't mean borrowers can't link their on-chain identities with their public life. A Cardano
