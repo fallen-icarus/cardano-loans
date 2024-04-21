@@ -113,8 +113,7 @@ power? Any dependence on TradFi prices directly undermines this goal.
 
 ### Inefficient Markets
 
-There are other downsides to not supporting direct negotiations; it also results in a very
-inefficient credit-debt market. 
+Not supporting direct negotiations also results in a very inefficient credit-debt market. 
 
 "Efficiency" has a very different meaning to software developers and economists. In their quest for
 efficiency as defined by software developers, contemporary DApp developers sacrifice the very thing
@@ -122,7 +121,8 @@ that makes something economically efficient: *the ability for users to explicity
 preferences.* If Cardano's DeFi **economy** is ever going to reach its full potential, DApp
 developers need to start considering efficiency as defined by economists.
 
-To take a direct quote from cardano-swaps:
+To take a direct quote from
+[cardano-swaps](https://github.com/fallen-icarus/cardano-swaps#why-the-workarounds-for-the-issues-of-the-lp-based-architecture-are-not-sufficient):
 
 > To quote [investopedia](https://www.investopedia.com/terms/p/pricediscovery.asp),  
 > "The process of price discovery looks at a number of tangible and intangible factors, including
@@ -307,7 +307,7 @@ market.
 
 ### Centralized
 
-Contemporary lending/borrower DApps use liquidity pools which means users must sacrifice custody,
+Contemporary lending/borrowing DApps use liquidity pools which means users must sacrifice custody,
 delegation control, and voting control of their assets in order to participate in DeFi. As these
 DApps gain adaption, the underlying Cardano blockchain becomes less decentralized and secure.
 
@@ -1623,7 +1623,7 @@ compensate for this difference. How much more strict should the requirements be?
 To answer this question, consider an identity farm. Mike is malicious and decides to "farm"
 identities: he has these identities lend to each other, he "nutures" them by keeping up with the
 loan payments, and after several years, he "harvests" them to use as burner identities. How
-practical is this attack?
+practical is this attack? The answer depends entirely on lenders.
 
 Let's say it took at least 8 years of good credit for a lender to consider offering an
 under-collateralized loan. And let's say lenders only consider borrowers who had to consistently
@@ -1643,15 +1643,9 @@ Alice agrees to a 1000 ADA loan where only 80% of the loan's value is backed by 
 Therefore, if Mike walked away with the 1000 ADA, he would net 200 ADA. This 200 ADA is his return.
 In otherwords, his 1700 ADA investment yielded a total of 200 ADA over an 8 year time period. That
 equates to an average yearly return of 1.4% (`200 profit / 1700 investment / 8 years * 100`). Mike
-put in all that time and effort farming the identities for only a 1.4% APY.
-
-What if Mike accepted multiple under-collateralized offers at the same time? This would multiply his
-APY. Lender's can easily see all of the burner identity's current Offers as well as all of its
-current active loans. It would be poor risk-management on the lender's part to give Mike another
-loan when he already as an outstanding loan for 1000 ADA. If Mike already has an
-under-collateralized offer, giving him a second one has the added risk of incentivizing burner
-identities. However, lenders can easily factor this in to their risk-management. Keep reading to see
-how.
+put in all that time and effort farming the identities for only a 1.4% APY. But remember, Mike did
+*not* get 1.4% APY each year for 8 years, he had to wait the full 8 years to see any return from
+this attack.
 
 Changing the requirements and the ultimate under-collateralized loan terms can dramatically decrease
 Mike's APY. If Alice required 95% of the 1000 ADA loan to be backed by tangible assets, Mike's APY
@@ -1660,6 +1654,16 @@ drops to 0.36% (the profit drops to 50 ADA). Increasing the required credit hist
 further drop Mikes potential APY. For example, if Alice required 10 years of 20% interest loans in
 order to get a 1000 ADA loan where only 95% was backed by tangible assets, Mike's APY would be 0.2%
 (`50 profit / 2300 investment / 10 years * 100`).
+
+What if Mike accepted multiple under-collateralized offers at the same time? This would multiply his
+APY, but this is very easy to prevent. Lenders can easily see all current offers made to this burner
+identity as well as all of its current active loans. It would be poor risk-management on the
+lender's part to give Mike another loan when he already as an outstanding loan for 1000 ADA; Mike's
+burner identity has no history of handling more than that amount at once. Likewise, if Mike already
+has an under-collateralized offer, giving him a second under-collateralized offer has the added risk
+of increasing the potential profit per burner identity since Mike could accept both in a single
+transaction. This doesn't mean lenders can't compete on under-collateralized offers, it just means
+lenders also need to factor this in to their risk-management.
 
 In order for under-collateralized loans to be secure on DeFi, you do not need to have *zero* burner
 identities. All that matters is that the majority of borrower identities are honest. If 1 out of 10
@@ -1672,9 +1676,10 @@ another lender's requirements only allowed for a 0.3% APY, perhaps the probabili
 burner identity drops to 1 in 1000. Lenders will need to factor this risk in to any
 under-collateralized offers they make. If lenders see a borrower already has under-collateralized
 offers, they will need to account for how another under-collateralized offer impacts a malicious
-person's APY. As long is it is hard for malicious people like Mike to make a good return, most
-people will not bother dedicating 8-10 years for such a small payout. It is such a long time to wait
-for such a small return...
+person's potential APY. As long is it is hard for malicious people like Mike to make a good return,
+most people will not bother dedicating 8-10 years for such a small payout; after factoring in
+[temporal discounting](https://www.investopedia.com/temporal-discounting-7972594), most people will
+decide it just isn't worth the hassle. It is such a long time to wait for such a small return...
 
 There are other things lenders can use to further minimize this risk. Just because DIDs don't exist
 yet doesn't mean borrowers can't link their on-chain identities with their public life. A Cardano
@@ -1691,14 +1696,14 @@ support a healthy under-collateralized loan market. **You do not need DIDs.**
 
 ### Multi-Asset Loans
 
-While technically this protocol only allows one asset to be the loan asset for each loan, the fact
+While this protocol technically only allows one asset to be the loan asset for each loan, the fact
 that this protocol is composable with itself means you can effectively create "packaged" loans where
 each loan is for a different loan asset. For example, imagine if Alice wants to borrower 2000 ADA
 worth of assets, but is concerned about the price volatility of ADA. Instead of doing a single loan
 for 2000 ADA, she can do 1 loan in ADA, 1 loan in DJED, and 1 loan in another asset; the total value
-borrowed would be 2000 ADA. Since she can ask for them in one transaction, accept them in one
-transaction, and make payments on all of them in one transaction; practically speaking, they are
-effectively a single loan with three loan assets. By enabling borrowers to create these packaged
+borrowed would be equivalent to 2000 ADA. Since she can ask for them in one transaction, accept them
+in one transaction, and make payments on all of them in one transaction; practically speaking, they
+are effectively a single loan with three loan assets. By enabling borrowers to create these packaged
 loans, borrowers can hedge themselves against "global" price movements of any one asset.
 
 ### Staking Script Support
@@ -1761,7 +1766,7 @@ register their Cardano staking credential or issued them a dedicated one, this p
 natively supports DIDs. Lenders would just need to cross-reference the government's registered
 credentials when they query a borrower's credit history.
 
-Therefore, whether any changes are need for Cardano-Loans to support DIDs depends entirely on how
+Therefore, whether any changes are need for Cardano-Loans to support DIDs entirely depends on how
 DIDs are issued.
 
 ### Term Extensions and Re-Negotiations
@@ -1769,7 +1774,7 @@ DIDs are issued.
 Refinancing loans are a useful economic feature, and sometimes, borrowers just need a little more
 time to pay back a loan. These features were not implemented because they still require R&D. It is
 unclear whether these features need to be supported directly by Cardano-Loans or whether, thanks to
-its composability, a meta-protocol will suffice. Using a meta-protocol my result in less overall
+its composability, a meta-protocol will suffice. Using a meta-protocol may result in less overall
 complexity than putting all of the features into Cardano-Loans.
 
 ### Linkable Credit Histories
@@ -1780,9 +1785,9 @@ business.
 
 This should likely be a meta-protocol. If Bob uses credential A and credential B, he can trustlessly
 link the two by creating a dedicated transaction with a beacon token. This link would be easily
-queryable off-chain, using the beacon token. When a lender wants to query the credit history,
-they would first look up all linked credentials. Then, they would query all of the credentials'
-credit histories. Nothing would need to change for Cardano-Loans.
+queryable off-chain, using the beacon token. When a lender wants to query the credit history, they
+would first look up all credentials linked to the target one. Then, they would query all of the
+credentials' credit histories. Nothing would need to change for Cardano-Loans.
 
 ### Version Compatibility for Negotiations
 
@@ -1800,7 +1805,7 @@ These questions are currently unanswered which is why this feature still require
 The Cardano-Loans protocol is a rethinking of how Cardano's DeFi economy could evolve. It forgoes
 reliance on global/external token prices in favor of incentivizing the creation of a CSL-native p2p
 credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. Wallets
-and other frontends can easily integrate the protocol into their UI, and even provide all necessary
+and other front-ends can easily integrate the protocol into their UI, and even provide all necessary
 API query services. Endogenous price and rate discovery empowers users to create their own economy,
 one that is decoupled from the existing financial system, in pursuit of something more fair, equal,
 and accessible to all.
