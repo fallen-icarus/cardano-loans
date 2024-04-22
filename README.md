@@ -1,8 +1,8 @@
 # Cardano-Loans
 
-A p2p-DeFi lending/borrowering protocol with a trustless, on-chain credit history. Lenders and
-borrowers can trustlessly negotiate all loan terms prior to initiating the loan. Once the loan
-starts, the protocol will trustlessly enforce all terms agreed upon during negotiations.
+A p2p-DeFi lending/borrowering protocol with an on-chain credit history. Lenders and borrowers can
+trustlessly negotiate all loan terms prior to initiating the loan. Once the loan starts, the
+protocol will enforce all terms agreed upon during negotiations.
 
 As with all [p2p-DeFi protocol](https://github.com/zhekson1/CSL-DeFi-Protocols), all users maintain
 full custody, delegation control, and voting control of their assets at all times. No batchers are
@@ -75,7 +75,7 @@ created.
 ## Motivation
 
 A healthy credit-debt market is a vital (and often the largest) component of a thriving economy. A
-healthy market is one in which prices reflect underlying reality as quickly and fluidly (with as
+healthy market is one in which prices reflect underlying reality as quickly and faithfully (with as
 little friction) as possible. For the sake of avoiding a whole treatise on economics, suffice to say
 that *the best way to achieve fast and frictionless price discovery is through the aggregation of
 maximally expressive individual sentiments.* This is especially true for credit-debt markets, where
@@ -94,7 +94,10 @@ DApps that rely on off-chain information feeds are subject to the integrity of t
 network. It is pretty easy to find examples of faulty oracle feeds causing DeFi issues that resulted
 in users losing money. Not only that, but in many cases, *oracles are simply not necessary*. As long
 as users are able to negotiate the terms *before* initiating the loan, there is no need for
-liquiditations, and therefore, no need for oracles.
+liquiditations, and therefore, no need for oracles. In TradFi, liquiditations are usually only used
+with *margin loans* which are typically short-term loans and/or are generally only used to buy more
+securities (ie, speculate on markets). In a typical economy, most loans are *not* margin loans; you
+wouldn't use a margin loan to start a business.
 
 > What if the value of the colleral falls 6 months into the loan?! Shouldn't Alice be forced to put
 > up more collateral?
@@ -287,9 +290,9 @@ governments and hackers can use to target the growing DeFi economy.
 
 Some DApps try to rely on off-chain credit history databases, but this is not a good approach.
 *Reading* credit histories must be just as trustless as *writing* credit histories. Even if the
-blockchain records the credit history trustlessly, if lenders can't querying the credit history, it
-is effectively the same as there being no credit history. A centralized database, or a database that
-is hard to read, is easy to commandeer/censor. 
+blockchain records the credit history trustlessly, if lenders can't query the credit history, it is
+effectively the same as there being no credit history. A centralized database, or a database that is
+hard to read, is easy to commandeer/censor. 
 
 In practical terms, if only beefy computers are able to read the credit histories from the
 blockchain, those with these computers are in a priviledged position between borrowers and lenders.
@@ -305,6 +308,11 @@ Credit histories *must* be on-chain and *must* be easy to lookup, even with an a
 Otherwise, the credit history database itself would be an existential risk for a DeFi credit-debt
 market.
 
+> NOTE: Data availability is still a work in progress, but so far, there are no alternatives to
+> storing the critical information on-chain. There may never be an alternative; the whole point of
+> the layer 1 chain is to create a global database of critical information. Custody of money is
+> *not* the only critical information an economy relies on.
+
 ### Centralized
 
 Contemporary lending/borrowing DApps use liquidity pools which means users must sacrifice custody,
@@ -318,20 +326,24 @@ possible with their designs. Most layer 1 blockchains are still struggling to ac
 decentralization (it is a very hard problem). In the meantime, it is trivial for governments and
 hackers to target these DApps since they only really need to target the multisig key holders.
 
+Not all blockchain applications need to be decentralized, but core DeFi functionality *definitely
+needs to be decentralized.*
+
 ## The Cardano-Loans DeFi Protocol
 
 Cardano-Loans addresses all of the above limitations by creating a truly bottom-up and endogenous
 credit-debt market for Cardano. By allowing direct negotiations between borrowers and lenders, this
-market is as efficient as possible, without needing to rely on oracles. It achieves all of this
-while still being natively composable with other DeFi DApps, and being maximally decentralized and
-censorship resistant.
+market is theoretically as efficient as possible, without needing to rely on oracles. It achieves
+all of this while still being natively composable with other DeFi DApps, and being maximally
+decentralized and censorship resistant.
 
 ### Supported Features
 
 - **Cryptographically-Protected & Trustless On-Chain Credit History** - a borrower's history is
 directly recorded on-chain and it is 100% controlled by the protocol. *It is impossible for
-borrowers to lie about their credit history.* For the first time ever, the non-banked can start
-building a credit history that is globally accessible and verifiable.
+borrowers to lie about their credit history.* Futhermore, identity theft is also impossible. For the
+first time ever, the non-banked can start building a credit history that is globally accessible and
+verifiable.
 - **Native Support for All Assets** - all assets are directly supported as loan assets and
 collateral assets. Nobody needs to ask permission to use a new asset. Even if only 10 people in the
 world are willing to use an asset, no one can stop them.
@@ -1543,12 +1555,12 @@ their own nations and build up their own, (possibly) globally recognized, econom
 ### Negotiable Collateralization
 
 Since the lenders explicitly set the relative values of each collateral asset used, there is no need
-to use oracles or enable liquidations. However, there is a risk for the value of the collateral to
-fall precipitously during the duration of the loan. If the collateral ever falls too low in value,
-**this is the lender's fault**. The lender either should have asked for a higher relative rate, or a
-different asset all together. It is up to the lender to use proper risk-management. If people want
-to take back control from governments, they need to accept more responsibility. *Freedom isn't
-free.*
+to use oracles or enable liquidations (these are not meant to be margin loans). However, there is a
+risk for the value of the collateral to fall precipitously during the duration of the loan. If the
+collateral ever falls too low in value, **this is the lender's fault**. The lender either should
+have asked for a higher relative rate, or a different asset all together. It is up to the lender to
+use proper risk-management.  If people want to take back control from governments, they need to
+accept more responsibility. *Freedom isn't free.*
 
 ### Under-Collateralized Loans
 
@@ -1605,11 +1617,11 @@ he needs to wait another 5 years to get offered another under-collateralized loa
 did not walk away, and instead paid back the loan? His 5 year reputation would still be in good
 health and he may be able to get another under-collateralized loan offer within a few months.
 Under-collateralized loans allow people to leverage their assets to do something only someone richer
-could do. This means under-collateralized are very economically valuable. **If it is hard to build
-up enough of a reputation to get offered an under-collateralized loan, the incentives actually favor
-paying back the loan.** You can think of it like Proof-of-Work, the more effort required to build up
-an identity, the less likely the person is to abandon that identity. So, how hard will it be to get
-an under-collateralized loan?
+could do. This means under-collateralized loans are very economically valuable. **If it is hard to
+build up enough of a reputation to get offered an under-collateralized loan, the incentives actually
+favor paying back the loan.** You can think of it like Proof-of-Work, the more effort required to
+build up an identity, the less likely the person is to abandon that identity. So, how hard will it
+be to get an under-collateralized loan?
 
 In TradFi, a borrower isn't considered a good credit risk unless they have at least 5-7 years of
 good credit. This rule is fairly universal despite there being very few laws that mandate this
@@ -1708,11 +1720,11 @@ loans, borrowers can hedge themselves against "global" price movements of any on
 
 ### Staking Script Support
 
-Supporting staking script credentials is a major step towards enabling corporations to adopt DeFi.
-Most corporations will not be comfortable having their identities only protected by a single pubkey.
-At the very least, these corporations will prefer using multisig native scripts. Furthermore, there
-will likely be intense pressure from regulators for corporations to use at least a multisig for all
-DeFi activities.
+Supporting staking script credentials allows using any kind of custom logic to protect identities.
+One major use case for this is enabling corporations to adopt DeFi. Most corporations will not be
+comfortable having their identities only protected by a single pubkey. At the very least, these
+corporations will prefer using multisig native scripts. Furthermore, there will likely be intense
+pressure from regulators for corporations to use at least a multisig for all DeFi activities.
 
 ### Endogenous Price and Interest Rate Discovery
 
@@ -1721,13 +1733,15 @@ endogenously producing its own. As such, every piece of a loan, including the re
 assets to collateral, interest rates, and term length are all negotiated and agreed upon fully p2p -
 no oracle feeds required. 
 
-Although this (at first) presents a bootstrapping problem, it may be overcome by the fact that this
-protocol may be the fastest way for the most financially underserved peoples to begin building a
-credit history. Prospective borrowers are incentivized to build p2p relationships within a global
+Although this presents a bootstrapping problem, it may be overcome by the fact that this protocol
+may be the fastest way for the most financially underserved peoples to begin building a credit
+history. Prospective borrowers are incentivized to build p2p relationships within a global
 marketplace of prospective lenders, who themselves are incentivized to lend by the relatively high
 rates that financially underserved borrowers would be willing to pay. Since offers are public,
 lenders can see all offers being made to the borrower and/or for that loan asset, resulting in a
-healthy competition between lenders, and a healthy interest-rate discovery mechanism.
+healthy competition between lenders, and a healthy interest-rate discovery mechanism. And since this
+protocol does not rely on any team or "utility token", this market is immune to any top-down
+influence.
 
 With enough users and liquidity, this protocol may eventually *serve* as the de-facto oracle for
 market-driven interest-rate discovery.
@@ -1754,19 +1768,21 @@ payment which would entirely eliminate the step dedicated to cleaning up Finishe
 > version of Koios which is why this method cannot be used yet. The patch is set to be released with
 > the new version of Koios.
 
-Due to time contraints with the Project Catalyst grants and the uncertainty around when the new
-version of Koios will be released, the decision was made to leave the current method in place. After
-the other protocols are updated, Cardano-Loans will be updated to use the new method. Koios should
-have released the new version by then.
+Unfortunately, this method was discovered late into the development process. Due to time contraints
+with the Project Catalyst grants and the uncertainty around when the new version of Koios will be
+released, the decision was made to leave the current method in place. After the other protocols are
+updated, Cardano-Loans will be updated to use the new method. Koios should have released the new
+version by then.
 
 ### DID Compatibility
 
 The current design may already be compatible with DIDs. If a government either allowed a user to
 register their Cardano staking credential or issued them a dedicated one, this protocol already
 natively supports DIDs. Lenders would just need to cross-reference the government's registered
-credentials when they query a borrower's credit history.
+credentials when they query a borrower's credit history. However, if governments used NFTs instead
+of credentials as DIDs, the protocol may not already support DIDs.
 
-Therefore, whether any changes are need for Cardano-Loans to support DIDs entirely depends on how
+Therefore, whether any changes are needed for Cardano-Loans to support DIDs entirely depends on how
 DIDs are issued.
 
 ### Term Extensions and Re-Negotiations
@@ -1774,8 +1790,9 @@ DIDs are issued.
 Refinancing loans are a useful economic feature, and sometimes, borrowers just need a little more
 time to pay back a loan. These features were not implemented because they still require R&D. It is
 unclear whether these features need to be supported directly by Cardano-Loans or whether, thanks to
-its composability, a meta-protocol will suffice. Using a meta-protocol may result in less overall
-complexity than putting all of the features into Cardano-Loans.
+its composability, a separate DeFi protocol will suffice. Using a separate protocol, that "plugs-in"
+to Cardano-Loans may result in less overall complexity than putting all of the features into one
+protocol.
 
 ### Linkable Credit Histories
 
@@ -1783,10 +1800,10 @@ Linking credit histories is very useful for bootstrapping a new identity. In Tra
 can link their personal credit history to their new business' to bootstrap a credit history for the
 business.
 
-This should likely be a meta-protocol. If Bob uses credential A and credential B, he can trustlessly
-link the two by creating a dedicated transaction with a beacon token. This link would be easily
-queryable off-chain, using the beacon token. When a lender wants to query the credit history, they
-would first look up all credentials linked to the target one. Then, they would query all of the
+This should likely be a separate DeFi protocol. If Bob uses credential A and credential B, he can
+trustlessly link the two by creating a dedicated transaction with a beacon token. This link would be
+easily queryable off-chain, using the beacon token. When a lender wants to query the credit history,
+they would first look up all credentials linked to the target one. Then, they would query all of the
 credentials' credit histories. Nothing would need to change for Cardano-Loans.
 
 ### Version Compatibility for Negotiations
