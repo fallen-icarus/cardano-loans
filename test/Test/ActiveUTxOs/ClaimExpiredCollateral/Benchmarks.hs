@@ -1793,15 +1793,15 @@ benchTest6 number = do
 -- | A `TestTree` containing all benchmark scenarios for claiming expired collateral.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 15
-  , mustSucceed "benchTest2" $ benchTest2 19
+  [ mustSucceed "benchTest1" $ benchTest1 16
+  , mustSucceed "benchTest2" $ benchTest2 20
   , mustSucceed "benchTest3" $ benchTest3 16
   , mustSucceed "benchTest4" $ benchTest4 14
   , mustSucceed "benchTest5" $ benchTest5 10
   , mustSucceed "benchTest6" $ benchTest6 10
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 16
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 17
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 21
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 15
     -- It is hard to test loans from different borrowers since the emulator only has ten keys.

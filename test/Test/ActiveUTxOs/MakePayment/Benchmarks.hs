@@ -2132,6 +2132,300 @@ benchTest7 number = do
           }
       }
 
+-- | Make full payments on multiple loans from the same lender. Three assets are used as 
+-- collateral for each loan. All loans use different loan asset but the same collateral.
+benchTest8 :: MonadEmulator m => Int -> m ()
+benchTest8 number = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 1
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAssets = 
+        map (\i -> Asset $ (testTokenSymbol,) $ fromString $ "TestToken" <> show @Int i) [4..34]
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      collateral3 = Asset (testTokenSymbol,"TestToken3")
+      askDatums = flip map loanAssets $ \loanAsset -> unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrinciple = 10
+        , _loanTerm = 3600
+        , _collateral = [collateral1,collateral2,collateral3]
+        }
+      offerDatums = flip map loanAssets $ \loanAsset -> unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrinciple = 10
+        , _compoundFrequency = Nothing
+        , _loanTerm = 10_000
+        , _loanInterest = Fraction (1,10)
+        , _minPayment = 0
+        , _penalty = NoPenalty
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1_000_000))
+            , (collateral2,Fraction(1,1_000_000))
+            , (collateral3,Fraction(1,1_000_000))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 5_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{..} <- initializeReferenceScripts 
+  mintTestTokens lenderWallet 900_000_000 $ map ((,1000) . snd . _unAsset) loanAssets
+  mintTestTokens borrowerWallet 900_000_000 
+    [ ("TestToken1",1000)
+    , ("TestToken2",1000)
+    , ("TestToken3",1000)
+    ]
+
+  -- Create the Ask UTxO.
+  forM_ (grouped 20 askDatums) $ \asks ->
+    transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey]
+      emptyTxParams
+        { tokens = 
+            [ TokenMint
+                { mintTokens = mconcat
+                    [ [ ("Ask",fromIntegral $ length asks) ]
+                    , flip map asks $ \AskDatum{_assetBeacon} -> (_unAssetBeacon _assetBeacon,1)
+                    ]
+                , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+                , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+                , mintReference = Just negotiationRef
+                }
+            ]
+        , outputs = flip map asks $ \askDatum@AskDatum{_assetBeacon} ->
+            Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  , uncurry PV2.singleton (_unAsset collateral2) 1
+                  , uncurry PV2.singleton (_unAsset collateral3) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+        , referenceInputs = [negotiationRef]
+        , extraKeyWitnesses = [borrowerPubKey]
+        }
+
+  -- Create the Offer UTxO.
+  forM_ (grouped 20 offerDatums) $ \offers ->
+    transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey]
+      emptyTxParams
+        { tokens =
+            [ TokenMint
+                { mintTokens = mconcat
+                    [ [ ("Offer",fromIntegral $ length offers) ]
+                    , [ (_unLenderId lenderBeacon,fromIntegral $ length offers) ]
+                    , flip map offers $ \OfferDatum{_assetBeacon} -> (_unAssetBeacon _assetBeacon,1)
+                    ]
+                , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+                , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+                , mintReference = Just negotiationRef
+                }
+            ]
+        , outputs = flip map offers $ \offerDatum@OfferDatum{_assetBeacon,_loanAsset} ->
+            Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 5_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , uncurry PV2.singleton (_unAsset _loanAsset) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+        , referenceInputs = [negotiationRef]
+        , extraKeyWitnesses = [lenderPubKey]
+        }
+
+  askUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @AskDatum 
+      loanAddress 
+      (negotiationBeaconCurrencySymbol,"Ask")
+
+  offerUTxOs <- 
+    txOutRefsAndDatumsAtAddressWithBeacon @OfferDatum
+      loanAddress 
+      (negotiationBeaconCurrencySymbol,"Offer")
+
+  let sampleBurns os as = concat $ (flip . flip zipWith) os as $
+        \(offerRef,Just OfferDatum{_assetBeacon=oLoanBeacon,_lenderId}) 
+         (_,Just AskDatum{_assetBeacon=aLoanBeacon}) ->
+            [ TokenMint
+                { mintTokens = 
+                    [ ("Offer",-1)
+                    , ("Ask",-1)
+                    , (_unAssetBeacon oLoanBeacon,-1)
+                    , (_unAssetBeacon aLoanBeacon,-1)
+                    , (_unLenderId _lenderId,-1)
+                    ]
+                , mintRedeemer = toRedeemer BurnNegotiationBeacons
+                , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+                , mintReference = Just negotiationRef
+                }
+            , TokenMint
+                { mintTokens = 
+                    [ ("Active",1)
+                    , (_unBorrowerId borrowerBeacon,1)
+                    , (_unAssetBeacon oLoanBeacon,1)
+                    , (_unLoanId $ genLoanId offerRef,2)
+                    ]
+                , mintRedeemer = toRedeemer $ 
+                    CreateActive negotiationBeaconCurrencySymbol
+                , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+                , mintReference = Just activeRef
+                }
+            ]
+
+      sampleOutputs start os = flip concatMap os $ 
+        \(offerRef,Just od@OfferDatum{_assetBeacon}) ->
+          let activeDatum@ActiveDatum{_loanId,_lenderAddress} = 
+                createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime start) od
+          in [ Output
+                { outputAddress = loanAddress
+                , outputValue = utxoValue 5_000_000 $ mconcat
+                    [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                    , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                    , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                    , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                    , uncurry PV2.singleton (_unAsset collateral1) 5
+                    , uncurry PV2.singleton (_unAsset collateral2) 3
+                    , uncurry PV2.singleton (_unAsset collateral3) 2
+                    ]
+                , outputDatum = OutputDatum $ toDatum activeDatum
+                , outputReferenceScript = toReferenceScript Nothing
+                }
+             , Output
+                { outputAddress = toCardanoApiAddress lenderAddr
+                , outputValue = utxoValue 5_000_000 $ mconcat
+                    [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1 ]
+                , outputDatum = 
+                    OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+                , outputReferenceScript = toReferenceScript Nothing
+                }
+             ]
+
+  -- Accept the offers.
+  forM_ (zip (grouped 5 offerUTxOs) (grouped 5 askUTxOs)) $ \(offers,asks) -> do
+      startSlot <- currentSlot
+
+      transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+        emptyTxParams
+          { tokens = sampleBurns offers asks
+          , inputs = 
+              concat $ (flip . flip zipWith) offers asks $ \(offerRef,_) (askRef,_) ->
+                [ Input
+                    { inputId = offerRef
+                    , inputWitness = 
+                        SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+                    }
+                , Input
+                    { inputId = askRef
+                    , inputWitness = 
+                        SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+                    }
+                ]
+          , outputs = sampleOutputs startSlot offers
+          , referenceInputs = [negotiationRef,activeRef,loanRef]
+          , extraKeyWitnesses = [borrowerPubKey]
+          , validityRange = ValidityRange
+              { validityRangeLowerBound = Just startSlot
+              , validityRangeUpperBound = Nothing
+              }
+          }
+
+  activeUTxOs <- take number <$> 
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(offerRef,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 5_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11 ad
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress _lenderAddress
+              , outputValue = utxoValue 2_000_000 $ mconcat
+                  [ uncurry PV2.singleton (_unAsset _loanAsset) 11 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  paymentTime <- (1+) <$> currentSlot
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral (-number))]
+              , mintRedeemer = toRedeemer BurnActiveBeacons
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 11)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentTime
+          }
+      }
+
 -------------------------------------------------
 -- TestTree
 -------------------------------------------------
@@ -2140,18 +2434,20 @@ tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 14
   , mustSucceed "benchTest2" $ benchTest2 15
-  , mustSucceed "benchTest3" $ benchTest3 14
-  , mustSucceed "benchTest4" $ benchTest4 10
-  , mustSucceed "benchTest5" $ benchTest5 12
-  , mustSucceed "benchTest6" $ benchTest6 11
-  , mustSucceed "benchTest7" $ benchTest7 10
+  , mustSucceed "benchTest3" $ benchTest3 15
+  , mustSucceed "benchTest4" $ benchTest4 11
+  , mustSucceed "benchTest5" $ benchTest5 13
+  , mustSucceed "benchTest6" $ benchTest6 12
+  , mustSucceed "benchTest7" $ benchTest7 11
+  , mustSucceed "benchTest8" $ benchTest8 13
 
     -- Performance Increase Tests
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 15
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 16
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 15
-  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 11
-  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 13
-  , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 12
-  , mustExceedTxLimits "perfIncreaseTest7" $ benchTest7 11
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 16
+  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 12
+  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 14
+  , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 13
+  , mustExceedTxLimits "perfIncreaseTest7" $ benchTest7 12
+  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 14
   ]

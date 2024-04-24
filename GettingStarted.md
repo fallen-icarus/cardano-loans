@@ -53,7 +53,7 @@ sudo apt upgrade
 sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
 ```
 
-### Install GHC and cabal
+### Install GHC and Cabal
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 ```
@@ -150,10 +150,10 @@ the compiled scripts yourself, you will also need to install `aiken`. You can in
 cargo like this:
 
 ```bash
-cargo install aiken --version 1.0.24-alpha
+cargo install aiken --version 1.0.26-alpha
 ```
 
-Make sure you instal verison 1.0.24-alpha. Newer versions may change some things and so the source
+Make sure you instal verison 1.0.26-alpha. Newer versions may change some things and so the source
 code may not compile or may result in a different script. As aiken stabilizes, the code will be
 updated to the latest version.
 

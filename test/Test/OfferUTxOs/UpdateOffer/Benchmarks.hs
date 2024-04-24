@@ -284,9 +284,9 @@ benchTest2 number = do
 -- | A `TestTree` containing all benchmark scenarios for updating Offer UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 18
-  , mustSucceed "benchTest2" $ benchTest2 18
+  [ mustSucceed "benchTest1" $ benchTest1 19
+  , mustSucceed "benchTest2" $ benchTest2 19
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 19
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 19
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 20
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
   ]

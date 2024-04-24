@@ -359,8 +359,8 @@ tests = testGroup "Proxy Script Tests"
       failureTest1
 
     -- Benchmark Tests
-  , mustSucceed "benchTest1" $ benchTest1 67
+  , mustSucceed "benchTest1" $ benchTest1 71
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 68
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 72
   ]

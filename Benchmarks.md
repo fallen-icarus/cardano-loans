@@ -65,9 +65,9 @@ Bottleneck: Tx Size
 | 10 | 0.933536 ADA | 1.400304 ADA |
 | 15 | 1.370641 ADA | 2.055962 ADA |
 | 20 | 1.856170 ADA | 2.784255 ADA |
-| 21 | 1.959086 ADA | 2.938629 ADA |
+| 22 | 1.959086 ADA | 2.938629 ADA |
 
-Max: 24 Asks  
+Max: 22 Asks  
 Bottleneck: Memory
 
 #### All UTxOs undergo different conversions. They all start with unique loan assets and collateral and finish with unique loan assets and collateral. Three native assets are used as collateral for each Ask.
@@ -92,9 +92,9 @@ Bottleneck: Tx Size
 | 20 | 1.024599 ADA | 1.536899 ADA |
 | 25 | 1.328601 ADA | 1.992902 ADA |
 | 30 | 1.681470 ADA | 2.522205 ADA |
-| 32 | 1.836266 ADA | 2.754399 ADA |
+| 33 | 1.836266 ADA | 2.754399 ADA |
 
-Max: 32 Asks  
+Max: 33 Asks  
 Bottleneck: Memory
 
 ## Creating Offer UTxOs
@@ -122,9 +122,9 @@ Bottleneck: Tx Size
 | 5 | 0.697886 ADA | 1.046829 ADA |
 | 10 | 1.167328 ADA | 1.750992 ADA |
 | 15 | 1.684794 ADA | 2.527191 ADA |
-| 18 | 2.018935 ADA | 3.028403 ADA |
+| 19 | 2.018935 ADA | 3.028403 ADA |
 
-Max: 18 Offers  
+Max: 19 Offers  
 Bottleneck: Memory
 
 ## Closing Offer UTxOs
@@ -137,9 +137,9 @@ Bottleneck: Memory
 | 15 | 0.789610 ADA | 1.184415 ADA |
 | 20 | 1.069056 ADA | 1.603584 ADA |
 | 25 | 1.396791 ADA | 2.095187 ADA |
-| 29 | 1.693951 ADA | 2.540927 ADA |
+| 30 | 1.693951 ADA | 2.540927 ADA |
 
-Max: 29 Offers  
+Max: 30 Offers  
 Bottleneck: Memory
 
 ## Accepting Offers
@@ -175,7 +175,7 @@ Bottleneck: Memory
 
 ## Making Partial Payments
 Only the worst case scenario is shown. If the loans uses fewer assets as collateral, performance
-could be as high as 14 payments/tx.
+could be as high as 15 payments/tx.
 
 #### Make partial payments on multiple loans where each loan uses a different loan asset and three native assets as collateral.
 | Payments Made | Tx Fee | Req. Collateral |
@@ -190,8 +190,9 @@ could be as high as 14 payments/tx.
 | 8 | 1.529231 ADA | 2.293847 ADA |
 | 9 | 1.691833 ADA | 2.537750 ADA |
 | 10 | 1.854998 ADA | 2.782497 ADA |
+| 11 | 1.956726 ADA | 2.935089 ADA |
 
-Max: 10 Partial Payments  
+Max: 11 Partial Payments  
 Bottleneck: Memory
 
 ## Making Full Payments
@@ -213,8 +214,9 @@ could be as high as 15 payments/tx.
 | 10 | 1.554889 ADA | 2.332334 ADA |
 | 11 | 1.691118 ADA | 2.536677 ADA |
 | 12 | 1.827955 ADA | 2.741933 ADA |
+| 13 | 1.996089 ADA | 2.994134 ADA |
 
-Max: 12 Full Payments  
+Max: 13 Full Payments  
 Bottleneck: Memory
 
 ## Applying Interest
@@ -261,8 +263,8 @@ The emulator only has 10 keys which makes it difficult to test the scenario wher
 is from a different borrower. It is possible to claim at least 10 loans/tx. Estimating from other tests,
 the upper limit is likely about 13 loans/tx.
 
-If you claim collateral from the same borrower or keep the Key NFTs in a single UTxO, performance
-could be as high as 19 loans/tx.
+If you claim collateral from the same borrower and keep the Key NFTs in a single UTxO, performance
+could be as high as 20 loans/tx.
 
 #### Claim the collateral for multiple expired loans where each loan use different loan assets and come from different borrowers. Each loan uses three native assets as collateral. The Key NFTs are in separate UTxOs.
 | Loans Claimed | Tx Fee | Req. Collateral |
@@ -290,9 +292,9 @@ Bottleneck: unknown
 | 10 | 0.651921 ADA | 0.977882 ADA |
 | 15 | 0.997425 ADA | 1.496138 ADA |
 | 20 | 1.405749 ADA | 2.108624 ADA |
-| 22 | 1.525030 ADA | 2.287545 ADA |
+| 21 | 1.525030 ADA | 2.287545 ADA |
 
-Max: 22 Loans Unlocked  
+Max: 21 Loans Unlocked  
 Bottleneck: Memory
 
 ## Unlocking Lost Collateral
@@ -303,9 +305,9 @@ Bottleneck: Memory
 | 5 | 0.496909 ADA | 0.745364 ADA |
 | 10 | 0.881997 ADA | 1.322996 ADA |
 | 15 | 1.389349 ADA | 2.084774 ADA |
-| 16 | 1.480003 ADA | 2.220005 ADA |
+| 17 | 1.480003 ADA | 2.220005 ADA |
 
-Max: 16 Loans Unlocked  
+Max: 17 Loans Unlocked  
 Bottleneck: Memory
 
 ## Spending From Proxy Script
@@ -313,13 +315,14 @@ Bottleneck: Memory
 | UTxOs Spent | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.181917 | 0.272876 ADA |
-| 10 | 0.265021 ADA | 0.397532 ADA |
-| 20 | 0.402887 ADA | 0.604331 ADA |
-| 30 | 0.589088 ADA | 0.883632 ADA |
-| 40 | 0.823271 ADA | 1.234907 ADA |
-| 50 | 1.104733 ADA | 1.657100 ADA |
-| 60 | 1.433913 ADA | 2.150870 ADA |
-| 67 | 1.692864 ADA | 2.539296 ADA |
+| 10 | 0.254617 ADA | 0.381926 ADA |
+| 20 | 0.380115 ADA | 0.570173 ADA |
+| 30 | 0.551719 ADA | 0.827579 ADA |
+| 40 | 0.769077 ADA | 1.153616 ADA |
+| 50 | 1.031486 ADA | 1.547229 ADA |
+| 60 | 1.339384 ADA | 2.009076 ADA |
+| 70 | 1.693037 ADA | 2.539556 ADA |
+| 71 | 1.730921 ADA | 2.596382 ADA |
 
-Max: 67 UTxOs  
+Max: 71 UTxOs  
 Bottleneck: Memory

@@ -369,11 +369,11 @@ benchTest3 number = do
 -- | A `TestTree` containing all benchmark scenarios for updating Ask UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 21
+  [ mustSucceed "benchTest1" $ benchTest1 22
   , mustSucceed "benchTest2" $ benchTest2 23
   , mustSucceed "benchTest3" $ benchTest3 13
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 22
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 23
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 24
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 14
   ]

@@ -1516,17 +1516,17 @@ worst case scenario while the `Min Tx Fee` is the fee if only one action was tak
 | Action | Worst Case | Max Tx Fee | Min Tx Fee |
 |:--:|:--:|:--:|:--:|
 | Creating Asks | 24 asks/tx | 1.537752 ADA | 0.359928 ADA |
-| Closing Asks | 32 asks/tx | 1.836266 ADA | 0.310652 ADA |
+| Closing Asks | 33 asks/tx | 1.836266 ADA | 0.310652 ADA |
 | Creating Offers | 24 offers/tx | 1.648776 ADA | 0.312498 ADA |
-| Closing Offers | 29 offers/tx | 1.693951 ADA |  0.268367 ADA |
+| Closing Offers | 30 offers/tx | 1.693951 ADA |  0.268367 ADA |
 | Accepting Offers | 8 offers/tx | 1.891267 ADA | 0.383901 ADA |
-| Making Partial Payments | 10 payments/tx | 1.854998 ADA | 0.401901 ADA |
-| Making Full Payments | 12 payments/tx | 1.827955 ADA | 0.346314 ADA |
+| Making Partial Payments | 11 payments/tx | 1.956726 ADA | 0.401901 ADA |
+| Making Full Payments | 13 payments/tx | 1.996089 ADA | 0.346314 ADA |
 | Applying Interest/Penalties | 21 loans/tx | 1.896226 ADA | 0.280379 ADA |
 | Updating Lender Addresses | 15 loans/tx | 1.771197 ADA | 0.304445 ADA |
-| Claim Expired Collateral | 10 claims/tx | 1.661678 ADA | 0.253516 ADA |
-| Unlocking Lost Collateral | 16 loans/tx | 1.480003 ADA | 0.246439 ADA |
-| Spending From the Proxy Script | 67 utxos/tx | 1.692864 ADA | 0.181917 ADA |
+| Claim Expired Collateral | 10 claims/tx | 1.107785 ADA | 0.253516 ADA |
+| Unlocking Lost Collateral | 17 loans/tx | 1.480003 ADA | 0.246439 ADA |
+| Spending From the Proxy Script | 71 utxos/tx | 1.730921 ADA | 0.181917 ADA |
 
 ## Features Discussion
 

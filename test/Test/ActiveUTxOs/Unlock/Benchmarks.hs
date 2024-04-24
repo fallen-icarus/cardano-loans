@@ -951,12 +951,12 @@ benchTest3 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 22
-  , mustSucceed "benchTest2" $ benchTest2 16
-  , mustSucceed "benchTest3" $ benchTest3 16
+  [ mustSucceed "benchTest1" $ benchTest1 21
+  , mustSucceed "benchTest2" $ benchTest2 17
+  , mustSucceed "benchTest3" $ benchTest3 17
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 23
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 22
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 18
   ]
