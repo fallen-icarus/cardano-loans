@@ -108,8 +108,9 @@ fn has_enough_collateral(
 ) -> Bool {
   // A function to map over the value of this UTxO. It will return the relative value of
   // the collateral in the output. It will also check the UTxO has the proper beacons.
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), relative_collateral: Int) {
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Bool)) {
     let (cn,tns_dict) = x
+    let (relative_collateral,has_proper_beacons) = acc
 
     // Check the beacons.
     if cn == core.from_active_id(active_beacon_id) {
@@ -149,7 +150,7 @@ fn has_enough_collateral(
       }
 
       when list.foldl(tns_list,(False,False,False,False),check_beacons) is {
-        (True,True,True,True) -> relative_collateral
+        (True,True,True,True) -> (relative_collateral,True)
 
         // This path can be taken if the UTxO has only some of the required beacons.
         _ -> error @"UTxO does not have the right beacons"
@@ -180,11 +181,19 @@ fn has_enough_collateral(
       }
 
       // The starting accumulator should be the current count of relative collateral.
-      list.foldl(non_beacon_toks, relative_collateral, check_collat)
+      (list.foldl(non_beacon_toks, relative_collateral, check_collat), has_proper_beacons)
     }
   }
 
-  list.foldl(value.to_dict(output_value) |> dict.to_list(_), 0, foo) >= principle_taken
+  let (relative_collateral,has_proper_beacons) = 
+    list.foldl(value.to_dict(output_value) |> dict.to_list(_), (0,False), foo) 
+
+  expect True = error_if_false(
+    @"Collateral UTxO missing beacons",
+    has_proper_beacons
+  )
+
+  relative_collateral >= principle_taken
 }
 
 // Returns what information the collateral output and lender output should have based on the
