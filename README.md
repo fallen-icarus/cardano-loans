@@ -29,7 +29,7 @@ be found [here](./Benchmarks.md).
     - [Proxy Script](#proxy-script)
     - [Telling Time](#telling-time)
     - [Protocol Phases and Beacons](#protocol-phases-and-beacons)
-    - [Five Aiken Smart Contracts](#five-aiken-smart-contracts)
+    - [Six Aiken Smart Contracts](#six-aiken-smart-contracts)
     - [Ask UTxOs](#ask-utxos)
         - [Creating Ask UTxOs](#creating-ask-utxos)
         - [Closing Ask UTxOs](#closing-ask-utxos)
@@ -541,14 +541,14 @@ can only move to a new output or be burned if the owner approved the transaction
 trivial for lenders to look up the current state of the loan stored with the Lock NFT since it will
 have the same name as the Key NFT.
 
-### Five Aiken Smart Contracts
+### Six Aiken Smart Contracts
 
 Due to the amount of logic required for this protocol and the desire to minimize the impact from
-redundant executions, this protocol uses 5 separate smart contracts; *not all of them are required
+redundant executions, this protocol uses 6 separate smart contracts; *not all of them are required
 with each transaction*. Each smart contract is dedicated to a specific purpose. As a consequence of
 this, there are actually two separate minting policies for beacons tokens: one for negotiation phase
-beacons and one for active phase beacons. Most user actions only required 2 of the 5 contracts in a
-single transaction. The most that is ever needed is 3 out of the 5 contracts. However, since these
+beacons and one for active phase beacons. Most user actions only required 2 of the 6 contracts in a
+single transaction. The most that is ever needed is 3 out of the 6 contracts. However, since these
 scripts can be used as reference scripts, there is still plenty of room for DApp composability.
 
 - *Negotiation Smart Contract* - this smart contract is in charge of minting/burning beacons for the
@@ -564,7 +564,7 @@ interest/penalty applications. It can only be executed as a staking script.
 - *Address Update Observer Smart Contract* - this smart contract is in charge of observing all
 lender payment address updates. It can only be executed as a staking script.
 - *Loan Spending Smart Contract* - this smart contract is the payment credential for *all* DApp
-addresses. It delegates checks to one of the other 4 smart contracts depending on the action being
+addresses. It delegates checks to one of the other 5 smart contracts depending on the action being
 taken. It can only be executed as a spending script.
 
 The loan spending smart contract hash is hard-coded into *all* of the other smart contracts to
