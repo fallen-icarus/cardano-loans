@@ -55,7 +55,7 @@ benchTest1 number = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -63,7 +63,7 @@ benchTest1 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -317,7 +317,7 @@ benchTest2 number = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -325,7 +325,7 @@ benchTest2 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -686,7 +686,7 @@ benchTest3 number = do
       askDatums = flip map loanAssets $ \loanAsset -> unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -694,7 +694,7 @@ benchTest3 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -763,7 +763,7 @@ benchTest3 number = do
                     [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrinciple
+                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrincipal
                     ]
                 , outputDatum = OutputDatum $ toDatum offerDatum
                 , outputReferenceScript = toReferenceScript Nothing
@@ -988,7 +988,7 @@ benchTest4 number = do
       askDatums = flip map loanAssets $ \loanAsset -> unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -996,7 +996,7 @@ benchTest4 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -1065,7 +1065,7 @@ benchTest4 number = do
                     [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrinciple
+                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrincipal
                     ]
                 , outputDatum = OutputDatum $ toDatum offerDatum
                 , outputReferenceScript = toReferenceScript Nothing
@@ -1246,7 +1246,7 @@ benchTest5 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -1274,7 +1274,7 @@ benchTest5 number = do
           askDatum@AskDatum{..} = unsafeCreateAskDatum $ NewAskInfo
             { _borrowerId = borrowerCred
             , _loanAsset = loanAsset
-            , _loanPrinciple = 10
+            , _loanPrincipal = 10
             , _loanTerm = 3600
             , _collateral = [collateral1]
             }
@@ -1334,7 +1334,7 @@ benchTest5 number = do
                     [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrinciple
+                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrincipal
                     ]
                 , outputDatum = OutputDatum $ toDatum offerDatum
                 , outputReferenceScript = toReferenceScript Nothing
@@ -1524,7 +1524,7 @@ benchTest6 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -1556,7 +1556,7 @@ benchTest6 number = do
           askDatum@AskDatum{..} = unsafeCreateAskDatum $ NewAskInfo
             { _borrowerId = borrowerCred
             , _loanAsset = loanAsset
-            , _loanPrinciple = 10
+            , _loanPrincipal = 10
             , _loanTerm = 3600
             , _collateral = [collateral1,collateral2,collateral3]
             }
@@ -1622,7 +1622,7 @@ benchTest6 number = do
                     [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                     , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrinciple
+                    , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrincipal
                     ]
                 , outputDatum = OutputDatum $ toDatum offerDatum
                 , outputReferenceScript = toReferenceScript Nothing
@@ -1793,16 +1793,16 @@ benchTest6 number = do
 -- | A `TestTree` containing all benchmark scenarios for claiming expired collateral.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 16
-  , mustSucceed "benchTest2" $ benchTest2 20
-  , mustSucceed "benchTest3" $ benchTest3 16
+  [ mustSucceed "benchTest1" $ benchTest1 17
+  , mustSucceed "benchTest2" $ benchTest2 19
+  , mustSucceed "benchTest3" $ benchTest3 17
   , mustSucceed "benchTest4" $ benchTest4 14
   , mustSucceed "benchTest5" $ benchTest5 10
   , mustSucceed "benchTest6" $ benchTest6 10
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 17
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 21
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 18
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 18
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 15
     -- It is hard to test loans from different borrowers since the emulator only has ten keys.
   ]

@@ -53,7 +53,7 @@ benchTest1 number = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -61,7 +61,7 @@ benchTest1 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 20000
         , _loanInterest = Fraction (1,10)
@@ -427,7 +427,7 @@ benchTest2 number = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -435,7 +435,7 @@ benchTest2 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -697,7 +697,7 @@ benchTest3 number = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral2,collateral3]
         }
@@ -705,7 +705,7 @@ benchTest3 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -951,12 +951,12 @@ benchTest3 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 21
-  , mustSucceed "benchTest2" $ benchTest2 17
-  , mustSucceed "benchTest3" $ benchTest3 16
+  [ mustSucceed "benchTest1" $ benchTest1 22
+  , mustSucceed "benchTest2" $ benchTest2 19
+  , mustSucceed "benchTest3" $ benchTest3 17
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 22
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 23
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 18
   ]

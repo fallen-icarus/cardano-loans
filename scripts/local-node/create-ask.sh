@@ -40,7 +40,7 @@ echo "Creating the ask datum..."
 cardano-loans datums ask \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
   --loan-asset $loanAsset \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --collateral-asset $collateral1 \
   --collateral-asset $collateral2 \

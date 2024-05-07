@@ -53,7 +53,7 @@ regressionTest1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -61,7 +61,7 @@ regressionTest1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -320,7 +320,7 @@ regressionTest2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -328,7 +328,7 @@ regressionTest2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -593,7 +593,7 @@ regressionTest3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -601,7 +601,7 @@ regressionTest3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -897,7 +897,7 @@ regressionTest4 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -905,7 +905,7 @@ regressionTest4 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1208,7 +1208,7 @@ regressionTest5 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1216,7 +1216,7 @@ regressionTest5 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1552,7 +1552,7 @@ regressionTest6 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1560,7 +1560,7 @@ regressionTest6 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1837,7 +1837,7 @@ regressionTest7 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1845,7 +1845,7 @@ regressionTest7 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1861,7 +1861,7 @@ regressionTest7 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2191,7 +2191,7 @@ regressionTest8 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2199,7 +2199,7 @@ regressionTest8 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2215,7 +2215,7 @@ regressionTest8 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2543,7 +2543,7 @@ regressionTest9 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral2,collateral3]
         }
@@ -2551,7 +2551,7 @@ regressionTest9 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2822,7 +2822,7 @@ regressionTest10 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2830,7 +2830,7 @@ regressionTest10 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3166,7 +3166,7 @@ regressionTest11 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3174,7 +3174,7 @@ regressionTest11 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3510,7 +3510,7 @@ regressionTest12 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3518,7 +3518,7 @@ regressionTest12 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3822,7 +3822,7 @@ regressionTest13 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3830,7 +3830,7 @@ regressionTest13 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4134,7 +4134,7 @@ regressionTest14 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4142,7 +4142,7 @@ regressionTest14 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4448,7 +4448,7 @@ regressionTest15 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4456,7 +4456,7 @@ regressionTest15 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4762,7 +4762,7 @@ regressionTest16 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4770,7 +4770,7 @@ regressionTest16 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5034,7 +5034,7 @@ regressionTest17 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5042,7 +5042,7 @@ regressionTest17 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5309,14 +5309,14 @@ regressionTest18 = do
       askDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       askDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5324,7 +5324,7 @@ regressionTest18 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5340,7 +5340,7 @@ regressionTest18 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5506,7 +5506,7 @@ regressionTest18 = do
               ]
 
       sampleOutputs ds = flip concatMap offers $ 
-        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
+        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrincipal}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
                 createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
@@ -5516,7 +5516,7 @@ regressionTest18 = do
                       , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon1) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrinciple
+                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrincipal
                       ]
                   , outputDatum = OutputDatum $ toDatum activeDatum
                   , outputReferenceScript = toReferenceScript Nothing
@@ -5573,7 +5573,7 @@ regressionTest18 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) $ 
-                      if _loanPrinciple == 20 then 16 else 6
+                      if _loanPrincipal == 20 then 16 else 6
                   ]
               , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad
               , outputReferenceScript = toReferenceScript Nothing
@@ -5657,14 +5657,14 @@ regressionTest19 = do
       askDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       askDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5672,7 +5672,7 @@ regressionTest19 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5688,7 +5688,7 @@ regressionTest19 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5855,7 +5855,7 @@ regressionTest19 = do
               ]
 
       sampleOutputs ds = flip concatMap offers $ 
-        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
+        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrincipal}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
                 createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
@@ -5865,7 +5865,7 @@ regressionTest19 = do
                       , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon1) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrinciple
+                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrincipal
                       ]
                   , outputDatum = OutputDatum $ toDatum activeDatum
                   , outputReferenceScript = toReferenceScript Nothing
@@ -5922,14 +5922,14 @@ regressionTest19 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
               , outputDatum = OutputDatum $ toDatum $ flip createPostPaymentActiveDatum ad $
-                  if _loanPrinciple == 20 then 22 else 11
+                  if _loanPrincipal == 20 then 22 else 11
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
               { outputAddress = toCardanoApiAddress _lenderAddress
               , outputValue = utxoValue 2_000_000 $ mconcat
                   [ uncurry PV2.singleton (_unAsset _loanAsset) $
-                      if _loanPrinciple == 20 then 22 else 11
+                      if _loanPrincipal == 20 then 22 else 11
                   ]
               , outputDatum = 
                   OutputDatum $ toDatum $ 
@@ -5951,12 +5951,12 @@ regressionTest19 = do
               , mintReference = Just activeRef
               }
           ]
-      , inputs = flip map activeUTxOs $ \(activeUtxoRef,Just ActiveDatum{_loanPrinciple}) ->
+      , inputs = flip map activeUTxOs $ \(activeUtxoRef,Just ActiveDatum{_loanPrincipal}) ->
           Input
             { inputId = activeUtxoRef
             , inputWitness = 
                 SpendWithPlutusReference loanRef InlineDatum $ toRedeemer $ MakePayment $
-                  if _loanPrinciple == 20 then 22 else 11
+                  if _loanPrincipal == 20 then 22 else 11
             }
       , outputs = samplePayments activeUTxOs
       , withdrawals =
@@ -6009,7 +6009,7 @@ regressionTest20 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -6017,7 +6017,7 @@ regressionTest20 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Just 1
         , _loanTerm = 3600
         , _loanInterest = Fraction (0,10)
@@ -6277,7 +6277,7 @@ regressionTest21 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 10_000
         , _collateral = [collateral1]
         }
@@ -6285,7 +6285,7 @@ regressionTest21 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Just 50_000
         , _loanTerm = 1_000_000
         , _loanInterest = Fraction (1,10)

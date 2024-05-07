@@ -54,7 +54,7 @@ cardano-loans datums active new auto \
 # cardano-loans datums active new manual \
 #   --payment-address $lenderAddress \
 #   --loan-asset $loanAsset \
-#   --principle 10000000 \
+#   --principal 10000000 \
 #   --loan-term '3600 slots' \
 #   --interest '3602879701896397 / 36028797018963968' \
 #   --compound-frequency '1200 slots' \

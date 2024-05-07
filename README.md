@@ -710,7 +710,7 @@ data LoanDatum
       -- | The token name for the loan asset beacon.
       , assetBeacon :: TokenName
       -- | The size of the loan.
-      , loanPrinciple :: Integer
+      , loanPrincipal :: Integer
       -- | The desired duration of the loan.
       , loanTerm :: POSIXTime
       -- | The assets that can used as collateral.
@@ -730,7 +730,7 @@ data LoanDatum
       -- | The token name for the loan asset beacon.
       , assetBeacon :: TokenName
       -- | The size of the loan.
-      , loanPrinciple :: Integer
+      , loanPrincipal :: Integer
       -- | The frequency at which interest must be applied and the time the borrower has to meet the
       -- minimum payment requirement.
       , compoundFrequency :: Maybe POSIXTime
@@ -774,7 +774,7 @@ data LoanDatum
       -- | The token name for the loan asset beacon.
       , assetBeacon :: TokenName
       -- | The size of the loan.
-      , loanPrinciple :: Integer
+      , loanPrincipal :: Integer
       -- | The frequency at which interest must be applied and the time the borrower has to meet the
       -- minimum payment requirement.
       , compoundFrequency :: Maybe POSIXTime
@@ -842,7 +842,7 @@ the Borrower ID *and* the target loan address.
     - `borrowerId` == the staking credential hash used in the `CreateCloseOrUpdateAsk` redeemer
     - `loanAsset` == asset that corresponds to the loan asset beacon in this output
     - `assetBeacon` == this output's loan asset beacon's token name
-    - `loanPrinciple` > 0
+    - `loanPrincipal` > 0
     - `loanTerm` > 0
     - `collateral` must not be empty, must be sorted lexicographically, and must *not* have any
     duplicates
@@ -958,7 +958,7 @@ the Lender ID.
     staking credential
     - `loanAsset` == asset that corresponds to the loan asset beacon in this output
     - `assetBeacon` == this output's loan asset beacon's token name
-    - `loanPrinciple` > 0
+    - `loanPrincipal` > 0
     - `compoundFrequency` == `Nothing` or `Just x` where `x` > 0
     - `loanTerm` > 0
     - `loanInterest` denominator > 0 and numerator >= 0
@@ -971,7 +971,7 @@ the Lender ID.
     - `claimPeriod` > 0
     - `offerDeposit` > 0
     - `offerExpiration` == `Nothing` or `Just x` where `x` > 0
-- All outputs with beacons must contain exactly the principle for the loan + the offer deposit
+- All outputs with beacons must contain exactly the principal for the loan + the offer deposit
 amount of ADA. No extraneous assets are allowed.
 - All outputs with beacons must go to a loan address using a valid staking credential.
 - The staking credential in the `CreateCloseOrUpdateOffer` redeemer must approve the transaction, in
@@ -1121,7 +1121,7 @@ the inputs.
         - `lenderAddress` == `lenderAddress` from corresponding Offer UTxO
         - `loanAsset` == `loanAsset` from corresponding Offer UTxO
         - `assetBeacon` == `assetBeacon` from corresponding Offer UTxO
-        - `loanPrinciple` == `loanPrinciple` from corresponding Offer UTxO
+        - `loanPrincipal` == `loanPrincipal` from corresponding Offer UTxO
         - `compoundFrequency` == `compoundFrequency` from corresponding Offer UTxO
         - `lastCompounding` == invalid-before of this transaction (as POSIXTime)
         - `loanTerm` == `loanTerm` from corresponding Offer UTxO
@@ -1133,10 +1133,10 @@ the inputs.
         - `claimExpiration` == invalid-before of this transaction (as POSIXTime) + `loanTerm` +
         `claimPeriod`
         - `loanExpiration` == invalid-before of this transaction (as POSIXTime) + `loanTerm`
-        - `loanOutstanding` == `loanPrinciple` * (1 + `loanInterest`)
+        - `loanOutstanding` == `loanPrincipal` * (1 + `loanInterest`)
         - `totalEpochPayments` == 0
         - `loanId` == `sha2_256( offer_utxo_tx_hash ++ offer_utxo_output_index )`
-    - It must have enough relative collateral to equal the `loanPrinciple`.
+    - It must have enough relative collateral to equal the `loanPrincipal`.
     - It must have exactly 1 Borrower ID with the token name matching `borrowerId`, 1 Active beacon
     with the token name "Active", 1 loan asset beacon with the token name matching `assetBeacon`,
     and 1 Loan ID beacon with the token name matching `loanId`.

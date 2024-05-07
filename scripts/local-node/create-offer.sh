@@ -19,7 +19,7 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-loanPrinciple=10000000
+loanPrincipal=10000000
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the lender..."
@@ -32,7 +32,7 @@ cardano-loans datums offer \
   --payment-address $paymentAddress \
   --lender-staking-pubkey-hash $lenderStakePubKeyHash \
   --loan-asset $loanAsset \
-  --principle $loanPrinciple \
+  --principal $loanPrincipal \
   --loan-term '3600 slots' \
   --interest '0.1' \
   --compound-frequency '1200 slots' \
@@ -76,7 +76,7 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 ## Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in fde2b2d830ce58e43eb2e32f7b0e111df707632757e7230b89ff79f88b3d0984#3 \
-  --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrinciple} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
+  --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrincipal} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \

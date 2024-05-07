@@ -38,7 +38,7 @@ beaconFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -82,7 +82,7 @@ beaconFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -126,7 +126,7 @@ beaconFailure3 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -170,7 +170,7 @@ beaconFailure4 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -214,7 +214,7 @@ beaconFailure5 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -263,7 +263,7 @@ beaconFailure6 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -320,7 +320,7 @@ beaconFailure7 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -378,7 +378,7 @@ beaconFailure8 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -435,7 +435,7 @@ beaconFailure9 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -493,7 +493,7 @@ beaconFailure10 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -551,7 +551,7 @@ beaconFailure11 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -608,7 +608,7 @@ beaconFailure12 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -663,7 +663,7 @@ beaconFailure13 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -719,7 +719,7 @@ beaconFailure14 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -777,7 +777,7 @@ datumFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -834,7 +834,7 @@ datumFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -891,7 +891,7 @@ datumFailure3 = do
         { _lenderId = borrowerCred
         , _lenderAddress = PV2.Address borrowerCred Nothing
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -955,7 +955,7 @@ datumFailure4 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1012,7 +1012,7 @@ datumFailure5 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1074,7 +1074,7 @@ datumFailure6 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = wrongBorrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1130,7 +1130,7 @@ datumFailure7 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1167,7 +1167,7 @@ datumFailure7 = do
       , extraKeyWitnesses = [borrowerPubKey]
       }
 
--- | The AskDatum has a negative loan principle.
+-- | The AskDatum has a negative loan principal.
 datumFailure8 :: MonadEmulator m => m ()
 datumFailure8 = do
   let -- Borrower Info
@@ -1187,7 +1187,7 @@ datumFailure8 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = -1
+        , _loanPrincipal = -1
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1223,7 +1223,7 @@ datumFailure8 = do
       , extraKeyWitnesses = [borrowerPubKey]
       }
 
--- | The AskDatum has a zero loan principle.
+-- | The AskDatum has a zero loan principal.
 datumFailure9 :: MonadEmulator m => m ()
 datumFailure9 = do
   let -- Borrower Info
@@ -1243,7 +1243,7 @@ datumFailure9 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 0
+        , _loanPrincipal = 0
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1299,7 +1299,7 @@ datumFailure10 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = -1
         , _collateral = [collateral1]
         }
@@ -1355,7 +1355,7 @@ datumFailure11 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 0
         , _collateral = [collateral1]
         }
@@ -1411,7 +1411,7 @@ datumFailure12 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = []
         }
@@ -1468,7 +1468,7 @@ datumFailure13 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral2,collateral1,collateral3]
         }
@@ -1532,7 +1532,7 @@ datumFailure14 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral1,collateral2,collateral3]
         }
@@ -1605,7 +1605,7 @@ credentialFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1668,7 +1668,7 @@ credentialFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1731,7 +1731,7 @@ credentialFailure3 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = wrongBorrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1799,7 +1799,7 @@ credentialFailure4 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1864,7 +1864,7 @@ credentialFailure5 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1932,7 +1932,7 @@ approvalFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1997,7 +1997,7 @@ approvalFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2056,7 +2056,7 @@ valueFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2113,7 +2113,7 @@ valueFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral2,collateral3]
         }
@@ -2175,7 +2175,7 @@ valueFailure3 = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2189,7 +2189,7 @@ valueFailure3 = do
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral2,collateral3,collateral4]
         }
@@ -2266,7 +2266,7 @@ valueFailure4 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2324,7 +2324,7 @@ valueFailure5 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2384,7 +2384,7 @@ orderFailure1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2449,7 +2449,7 @@ orderFailure2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2567,10 +2567,10 @@ tests =
       "Datum has wrong asset beacon"
       datumFailure7
   , scriptMustFailWithError "datumFailure8" 
-      "Datum has wrong principle"
+      "Datum has wrong principal"
       datumFailure8
   , scriptMustFailWithError "datumFailure9" 
-      "Datum has wrong principle"
+      "Datum has wrong principal"
       datumFailure9
   , scriptMustFailWithError "datumFailure10" 
       "Datum has wrong term"

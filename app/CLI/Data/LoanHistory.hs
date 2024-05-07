@@ -45,7 +45,7 @@ prettyLoanHistory network LoanHistory{..} =
            , annotate (colorDull Cyan) "loan_id:" <+> pretty _loanId
            , annotate (colorDull Cyan) "lender_address:" <+> 
                pretty (either (const "failed to convert to bech32") fst $ plutusToBech32 network _lenderAddress)
-           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrinciple <+> pretty _loanAsset
+           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , annotate (colorDull Cyan) "interest:" <+> pretty _loanInterest
            , let time = getPOSIXTime _loanTerm in
                annotate (colorDull Cyan) "loan_term:" 

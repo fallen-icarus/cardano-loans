@@ -20,7 +20,7 @@ pub type LoanDatum {
     // prefixed with "Asset" (before hashing).
     asset_beacon: AssetName, 
     // The size of the loan. It must be > 0.
-    loan_principle: Int, 
+    loan_principal: Int, 
     // How long the loan is active once accepted. It must be > 0.
     loan_term: PosixTime, 
     // The assets that will be used as collateral. It must not be empty, it must be sorted
@@ -46,7 +46,7 @@ pub type LoanDatum {
     // prefixed with "Asset" (before hashing).
     asset_beacon: AssetName, 
     // The size of the loan. It must be > 0.
-    loan_principle: Int, 
+    loan_principal: Int, 
     // The frequency at which interest must be applied. Either None or Some(x) where x > 0.
     compound_frequency: Option<PosixTime>, 
     // How long the loan is active once accepted. It must be > 0.
@@ -99,7 +99,7 @@ pub type LoanDatum {
     // The asset name for the loan asset beacon.
     asset_beacon: AssetName, 
     // The initial size of the loan.
-    loan_principle: Int, 
+    loan_principal: Int, 
     // The frequency at which interest must be applied.
     compound_frequency: Option<PosixTime>, 
     // The last time interest was applied.

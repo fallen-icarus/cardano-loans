@@ -51,14 +51,14 @@ regressionTest1 = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -193,14 +193,14 @@ failureTest1 = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -326,14 +326,14 @@ failureTest2 = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -421,7 +421,7 @@ failureTest3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -429,7 +429,7 @@ failureTest3 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)

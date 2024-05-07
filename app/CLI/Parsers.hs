@@ -132,7 +132,7 @@ pCreateNewAskInfo =
       fmap NewAsk $ NewAskInfo
         <$> pUserCredential "borrower"
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> pLoanTerm
         <*> some (pAsset "collateral")
 
@@ -148,7 +148,7 @@ pCreateNewOfferInfo =
         <$> pUserCredential "lender"
         <*> pPaymentAddress
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> (pCompoundFrequency <|> pure Nothing)
         <*> pLoanTerm
         <*> pInterest
@@ -191,7 +191,7 @@ pCreateNewActiveInfoManual =
       fmap NewActiveManual $ NewActiveInfo
         <$> pPaymentAddress
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> (pCompoundFrequency <|> pure Nothing)
         <*> pLoanTerm
         <*> pInterest
@@ -241,7 +241,7 @@ pCreatePostPaymentActiveManual =
         <$> pUserCredential "borrower"
         <*> pPaymentAddress
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> (pCompoundFrequency <|> pure Nothing)
         <*> pLastCompounding
         <*> pLoanTerm
@@ -293,7 +293,7 @@ pCreatePostInterestActiveManual =
         <$> pUserCredential "borrower"
         <*> pPaymentAddress
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> (pCompoundFrequency <|> pure Nothing)
         <*> pLastCompounding
         <*> pLoanTerm
@@ -345,7 +345,7 @@ pCreatePostAddressUpdateActiveManual =
         <$> pUserCredential "borrower"
         <*> pPaymentAddress
         <*> pAsset "loan"
-        <*> pPrinciple
+        <*> pPrincipal
         <*> (pCompoundFrequency <|> pure Nothing)
         <*> pLastCompounding
         <*> pLoanTerm
@@ -866,9 +866,9 @@ pUserCredential s = pStakingPubKeyCredential <|> pStakingScriptCredential
       <> help ("The hash of the " <> s <> "'s staking pubkey.")
       )
 
-pPrinciple :: Parser Integer
-pPrinciple = option auto
-  (  long "principle"
+pPrincipal :: Parser Integer
+pPrincipal = option auto
+  (  long "principal"
   <> metavar "INT"
   <> help "The size of the loan."
   )

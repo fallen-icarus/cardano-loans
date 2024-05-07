@@ -102,7 +102,7 @@ data AskDatum = AskDatum
   -- | The token name for the loan asset beacon.
   , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The assets that will be used as collateral
@@ -116,7 +116,7 @@ instance ToJSON AskDatum where
            , "borrower_id" .= _borrowerId
            , "loan_asset" .= _loanAsset
            , "asset_beacon" .= _assetBeacon
-           , "principle" .= _loanPrinciple
+           , "principal" .= _loanPrincipal
            , "loan_term" .= _loanTerm
            , "collateral" .= _collateral
            ]
@@ -135,7 +135,7 @@ data OfferDatum = OfferDatum
   -- | The token name for the loan asset beacon.
   , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
@@ -166,7 +166,7 @@ instance ToJSON OfferDatum where
            , "lender_address" .= LenderAddress _lenderAddress
            , "loan_asset" .= _loanAsset
            , "asset_beacon" .= _assetBeacon
-           , "principle" .= _loanPrinciple
+           , "principal" .= _loanPrincipal
            , "compound_frequency" .= _compoundFrequency
            , "loan_term" .= _loanTerm
            , "loan_interest" .= _loanInterest
@@ -197,7 +197,7 @@ data ActiveDatum = ActiveDatum
   -- | The token name for the loan asset beacon.
   , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | The last time interest was applied.
@@ -236,7 +236,7 @@ instance ToJSON ActiveDatum where
            , "lender_address" .= LenderAddress _lenderAddress
            , "loan_asset" .= _loanAsset
            , "asset_beacon" .= _assetBeacon
-           , "principle" .= _loanPrinciple
+           , "principal" .= _loanPrincipal
            , "compound_frequency" .= _compoundFrequency
            , "last_compounding" .= _lastCompounding
            , "loan_term" .= _loanTerm
@@ -515,7 +515,7 @@ data NewAskInfo = NewAskInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The assets that will be used as collateral
@@ -531,7 +531,7 @@ unsafeCreateAskDatum NewAskInfo{..} = AskDatum
   , _borrowerId = genBorrowerId _borrowerId
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _loanTerm = _loanTerm
   , _collateral = Collateral _collateral
   }
@@ -544,7 +544,7 @@ data NewOfferInfo = NewOfferInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
@@ -577,7 +577,7 @@ unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
@@ -596,7 +596,7 @@ data NewActiveInfo = NewActiveInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
@@ -632,7 +632,7 @@ unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
@@ -643,7 +643,7 @@ unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   , _lastCompounding = _startTime
   , _claimExpiration = _startTime + _loanTerm + _claimPeriod
   , _loanExpiration = _startTime + _loanTerm
-  , _loanOutstanding = applyInterest (Fraction (_loanPrinciple,1)) _loanInterest
+  , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
   , _totalEpochPayments = 0
   , _loanId = genLoanId _offerId
   }
@@ -660,7 +660,7 @@ createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = A
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = _assetBeacon
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
@@ -671,7 +671,7 @@ createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = A
   , _lastCompounding = startTime
   , _claimExpiration = startTime + _loanTerm + _claimPeriod
   , _loanExpiration = startTime + _loanTerm
-  , _loanOutstanding = applyInterest (Fraction (_loanPrinciple,1)) _loanInterest
+  , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
   , _totalEpochPayments = 0
   , _loanId = genLoanId offerId
   }
@@ -684,7 +684,7 @@ data NewPaymentInfo = NewPaymentInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | The last time interest was applied.
@@ -726,7 +726,7 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} = ActiveDatum
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
@@ -757,7 +757,7 @@ data NewInterestInfo = NewInterestInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | The last time interest was applied.
@@ -799,7 +799,7 @@ unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
@@ -843,7 +843,7 @@ data NewAddressInfo = NewAddressInfo
   -- | The asset to be loaned out.
   , _loanAsset :: Asset
   -- | The size of the loan.
-  , _loanPrinciple :: Integer
+  , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
   , _compoundFrequency :: Maybe POSIXTime
   -- | The last time interest was applied.
@@ -883,7 +883,7 @@ unsafeCreatePostAddressUpdateActiveDatum NewAddressInfo{..} = ActiveDatum
   , _lenderAddress = _lenderAddress
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrinciple = _loanPrinciple
+  , _loanPrincipal = _loanPrincipal
   , _compoundFrequency = _compoundFrequency
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest

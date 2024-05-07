@@ -54,7 +54,7 @@ beaconFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -62,7 +62,7 @@ beaconFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -374,7 +374,7 @@ beaconFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -382,7 +382,7 @@ beaconFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -631,7 +631,7 @@ beaconFailure3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -639,7 +639,7 @@ beaconFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -888,7 +888,7 @@ beaconFailure4 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -896,7 +896,7 @@ beaconFailure4 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1145,7 +1145,7 @@ beaconFailure5 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1153,7 +1153,7 @@ beaconFailure5 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1409,14 +1409,14 @@ beaconFailure6 = do
       askDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       askDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1424,7 +1424,7 @@ beaconFailure6 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1440,7 +1440,7 @@ beaconFailure6 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1606,7 +1606,7 @@ beaconFailure6 = do
               ]
 
       sampleOutputs ds = flip concatMap offers $ 
-        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
+        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrincipal}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
                 createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
@@ -1616,7 +1616,7 @@ beaconFailure6 = do
                       , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon1) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrinciple
+                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrincipal
                       ]
                   , outputDatum = OutputDatum $ toDatum activeDatum
                   , outputReferenceScript = toReferenceScript Nothing
@@ -1671,7 +1671,7 @@ beaconFailure6 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon $ ad1._assetBeacon) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId $ ad1._borrowerId) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
-                , uncurry PV2.singleton (_unAsset collateral1) ad1._loanPrinciple
+                , uncurry PV2.singleton (_unAsset collateral1) ad1._loanPrincipal
                 ]
             , outputDatum = OutputDatum $ toDatum $ createPostInterestActiveDatum 1 ad1
             , outputReferenceScript = toReferenceScript Nothing
@@ -1683,7 +1683,7 @@ beaconFailure6 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon $ ad2._assetBeacon) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId $ ad2._borrowerId) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
-                , uncurry PV2.singleton (_unAsset collateral1) ad2._loanPrinciple
+                , uncurry PV2.singleton (_unAsset collateral1) ad2._loanPrincipal
                 ]
             , outputDatum = OutputDatum $ toDatum $ createPostInterestActiveDatum 1 ad2
             , outputReferenceScript = toReferenceScript Nothing
@@ -1758,14 +1758,14 @@ beaconFailure7 = do
       askDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       askDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -1773,7 +1773,7 @@ beaconFailure7 = do
         { _lenderId = lenderCred1
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1789,7 +1789,7 @@ beaconFailure7 = do
         { _lenderId = lenderCred2
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 20
+        , _loanPrincipal = 20
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -1955,7 +1955,7 @@ beaconFailure7 = do
               ]
 
       sampleOutputs ds = flip concatMap offers $ 
-        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrinciple}) ->
+        \(offerRef,Just offerDatum@OfferDatum{_lenderId,_loanPrincipal}) ->
           let activeDatum@ActiveDatum{_loanId,_lenderAddress,_assetBeacon} = 
                 createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
           in  [ Output
@@ -1965,7 +1965,7 @@ beaconFailure7 = do
                       , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon1) 1
                       , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrinciple
+                      , uncurry PV2.singleton (_unAsset collateral1) _loanPrincipal
                       ]
                   , outputDatum = OutputDatum $ toDatum activeDatum
                   , outputReferenceScript = toReferenceScript Nothing
@@ -2020,7 +2020,7 @@ beaconFailure7 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon $ ad2._assetBeacon) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId $ ad1._borrowerId) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
-                , uncurry PV2.singleton (_unAsset collateral1) ad1._loanPrinciple
+                , uncurry PV2.singleton (_unAsset collateral1) ad1._loanPrincipal
                 ]
             , outputDatum = OutputDatum $ toDatum $ createPostInterestActiveDatum 1 ad1
             , outputReferenceScript = toReferenceScript Nothing
@@ -2032,7 +2032,7 @@ beaconFailure7 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon $ ad1._assetBeacon) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId $ ad2._borrowerId) 1
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
-                , uncurry PV2.singleton (_unAsset collateral1) ad2._loanPrinciple
+                , uncurry PV2.singleton (_unAsset collateral1) ad2._loanPrincipal
                 ]
             , outputDatum = OutputDatum $ toDatum $ createPostInterestActiveDatum 1 ad2
             , outputReferenceScript = toReferenceScript Nothing
@@ -2100,7 +2100,7 @@ beaconFailure8 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2108,7 +2108,7 @@ beaconFailure8 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2292,7 +2292,7 @@ beaconFailure9 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2300,7 +2300,7 @@ beaconFailure9 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2552,7 +2552,7 @@ collateralFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2560,7 +2560,7 @@ collateralFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -2812,7 +2812,7 @@ depositFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -2820,7 +2820,7 @@ depositFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3071,7 +3071,7 @@ depositFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3079,7 +3079,7 @@ depositFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3330,7 +3330,7 @@ depositFailure3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3338,7 +3338,7 @@ depositFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3595,7 +3595,7 @@ addressFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3603,7 +3603,7 @@ addressFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -3856,7 +3856,7 @@ addressFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -3864,7 +3864,7 @@ addressFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4125,14 +4125,14 @@ addressFailure3 = do
       askDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred1
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       askDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred2
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4140,7 +4140,7 @@ addressFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4483,7 +4483,7 @@ approvalFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4491,7 +4491,7 @@ approvalFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -4743,7 +4743,7 @@ orderFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -4751,7 +4751,7 @@ orderFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -5016,7 +5016,7 @@ orderFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5024,7 +5024,7 @@ orderFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -5303,7 +5303,7 @@ orderFailure3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5311,7 +5311,7 @@ orderFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
@@ -5593,7 +5593,7 @@ interestFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5601,7 +5601,7 @@ interestFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -5850,7 +5850,7 @@ interestFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -5858,7 +5858,7 @@ interestFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -6108,7 +6108,7 @@ interestFailure3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -6116,7 +6116,7 @@ interestFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -6369,7 +6369,7 @@ interestFailure4 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -6377,7 +6377,7 @@ interestFailure4 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -6630,7 +6630,7 @@ interestFailure5 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -6638,7 +6638,7 @@ interestFailure5 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -6895,7 +6895,7 @@ datumFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -6903,7 +6903,7 @@ datumFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -7154,7 +7154,7 @@ datumFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -7162,7 +7162,7 @@ datumFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -7413,7 +7413,7 @@ datumFailure3 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -7421,7 +7421,7 @@ datumFailure3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -7673,7 +7673,7 @@ datumFailure4 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -7681,7 +7681,7 @@ datumFailure4 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -7932,7 +7932,7 @@ datumFailure5 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -7940,7 +7940,7 @@ datumFailure5 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -8191,7 +8191,7 @@ datumFailure6 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -8199,7 +8199,7 @@ datumFailure6 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -8385,7 +8385,7 @@ datumFailure6 = do
                 ]
             , outputDatum = 
                 let newDatum = createPostInterestActiveDatum 1 ad
-                in OutputDatum $ toDatum @ActiveDatum newDatum{_loanPrinciple = 0}
+                in OutputDatum $ toDatum @ActiveDatum newDatum{_loanPrincipal = 0}
             , outputReferenceScript = toReferenceScript Nothing
             }
 
@@ -8450,7 +8450,7 @@ datumFailure7 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -8458,7 +8458,7 @@ datumFailure7 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -8709,7 +8709,7 @@ datumFailure8 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -8717,7 +8717,7 @@ datumFailure8 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -8968,7 +8968,7 @@ datumFailure9 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -8976,7 +8976,7 @@ datumFailure9 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -9227,7 +9227,7 @@ datumFailure10 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -9235,7 +9235,7 @@ datumFailure10 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -9486,7 +9486,7 @@ datumFailure11 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -9494,7 +9494,7 @@ datumFailure11 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -9745,7 +9745,7 @@ datumFailure12 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -9753,7 +9753,7 @@ datumFailure12 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -10004,7 +10004,7 @@ datumFailure13 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -10012,7 +10012,7 @@ datumFailure13 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -10263,7 +10263,7 @@ datumFailure14 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -10271,7 +10271,7 @@ datumFailure14 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -10522,7 +10522,7 @@ datumFailure15 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -10530,7 +10530,7 @@ datumFailure15 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -10781,7 +10781,7 @@ datumFailure16 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -10789,7 +10789,7 @@ datumFailure16 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -11040,7 +11040,7 @@ datumFailure17 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -11048,7 +11048,7 @@ datumFailure17 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -11299,7 +11299,7 @@ datumFailure18 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -11307,7 +11307,7 @@ datumFailure18 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -11558,7 +11558,7 @@ datumFailure19 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -11566,7 +11566,7 @@ datumFailure19 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -11817,7 +11817,7 @@ datumFailure20 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -11825,7 +11825,7 @@ datumFailure20 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -12076,7 +12076,7 @@ datumFailure21 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -12084,7 +12084,7 @@ datumFailure21 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -12333,7 +12333,7 @@ datumFailure22 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -12341,7 +12341,7 @@ datumFailure22 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -12578,7 +12578,7 @@ datumFailure23 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -12678,7 +12678,7 @@ datumFailure24 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -12686,7 +12686,7 @@ datumFailure24 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -12940,7 +12940,7 @@ timeFailure1 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -12948,7 +12948,7 @@ timeFailure1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -13197,7 +13197,7 @@ timeFailure2 = do
       askDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -13205,7 +13205,7 @@ timeFailure2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)

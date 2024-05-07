@@ -20,8 +20,8 @@ use cardano_loans/data/datums.{OfferDatum}
 use cardano_loans/utils.{error_if_false,trace_if_false,valid_lender_address,parse_datum}
 
 // This is used to check that the value of Offer UTxOs are correct. It returns the value of the
-// loan asset so that it can be checked against the principle in the datum. When ada is the
-// loan asset, the first Int should be loan_principle + offer_deposit. Due to the way this
+// loan asset so that it can be checked against the principal in the datum. When ada is the
+// loan asset, the first Int should be loan_principal + offer_deposit. Due to the way this
 // function is written, beacon tokens do not count towards the offer quantities even if they
 // are the loan asset. Therefore, beacon tokens cannot be used as the loan asset.
 fn extract_offer_quantity(
@@ -124,7 +124,7 @@ fn valid_offer_output(
     lender_address,
     loan_asset,
     asset_beacon,
-    loan_principle,
+    loan_principal,
     compound_frequency,
     loan_term,
     loan_interest,
@@ -177,8 +177,8 @@ fn valid_offer_output(
       @"Datum has wrong asset beacon", 
       asset_beacon == core.get_asset_beacon_name(expected_asset_beacon)),
     trace_if_false(
-      @"Datum has wrong principle", 
-      loan_principle > 0),
+      @"Datum has wrong principal", 
+      loan_principal > 0),
     trace_if_false(
       @"Datum has wrong compound frequency", 
       // Set to 1 to ensure True when None.
@@ -232,9 +232,9 @@ fn valid_offer_output(
     trace_if_false(
       @"UTxO has wrong value",
       if loan_asset == (#"",#"") { 
-        loan_quantity == loan_principle + offer_deposit
+        loan_quantity == loan_principal + offer_deposit
       } else { 
-        ada_quantity == offer_deposit && loan_quantity == loan_principle
+        ada_quantity == offer_deposit && loan_quantity == loan_principal
       }
     )
   }

@@ -89,7 +89,7 @@ fn process_input(
       lender_address,
       loan_asset,
       asset_beacon,
-      loan_principle,
+      loan_principal,
       compound_frequency,
       last_compounding,
       loan_term,
@@ -139,7 +139,7 @@ fn process_input(
           lender_address: lender_address,
           loan_asset: loan_asset,
           asset_beacon: asset_beacon,
-          loan_principle: loan_principle,
+          loan_principal: loan_principal,
           compound_frequency: compound_frequency,
           last_compounding: 
             last_compounding + number_of_times * option.or_else(compound_frequency,0),

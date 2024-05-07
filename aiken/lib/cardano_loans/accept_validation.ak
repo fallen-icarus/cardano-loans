@@ -23,7 +23,7 @@ use cardano_loans/utils.{error_if_false, parse_datum}
 type RequiredCollateralOutput {
   collateralization: List<(Asset,Fraction)>,
   active_beacon_id: ActiveId,
-  loan_principle: Int,
+  loan_principal: Int,
   loan_id: LoanId,
   asset_beacon: AssetBeacon,
   borrower_id: BorrowerId,
@@ -102,7 +102,7 @@ fn has_enough_collateral(
   borrower_id: BorrowerId,
   asset_beacon: AssetBeacon,
   loan_id: LoanId,
-  principle_taken: Int,
+  principal_taken: Int,
   collateralization: List<(Asset,Fraction)>,
   output_value: Value
 ) -> Bool {
@@ -193,7 +193,7 @@ fn has_enough_collateral(
     has_proper_beacons
   )
 
-  relative_collateral >= principle_taken
+  relative_collateral >= principal_taken
 }
 
 // Returns what information the collateral output and lender output should have based on the
@@ -214,7 +214,7 @@ fn process_input(
     lender_address,
     loan_asset,
     asset_beacon,
-    loan_principle,
+    loan_principal,
     compound_frequency,
     loan_term,
     loan_interest,
@@ -249,7 +249,7 @@ fn process_input(
     lender_address: lender_address,
     loan_asset: loan_asset,
     asset_beacon: asset_beacon,
-    loan_principle: loan_principle,
+    loan_principal: loan_principal,
     compound_frequency: compound_frequency,
     last_compounding: lower_bound, // Initialized to the invalid-before time.
     loan_term: loan_term,
@@ -261,7 +261,7 @@ fn process_input(
     claim_expiration: loan_term + claim_period + lower_bound,
     loan_expiration: loan_term + lower_bound,
     loan_outstanding: // Must apply the first interest calculation.
-      utils.apply_interest((loan_principle,1),loan_interest),
+      utils.apply_interest((loan_principal,1),loan_interest),
     total_epoch_payments: 0,
     loan_id: core.get_loan_id_name(loan_id)
   } |> InlineDatum
@@ -269,7 +269,7 @@ fn process_input(
   let req_collateral = RequiredCollateralOutput{
     collateralization: collateralization,
     active_beacon_id: core.to_active_id(active_beacon_id),
-    loan_principle: loan_principle,
+    loan_principal: loan_principal,
     loan_id: loan_id,
     asset_beacon: core.unsafe_to_asset_beacon(asset_beacon),
     borrower_id: borrower_id,
@@ -486,7 +486,7 @@ fn check_outputs(
       let RequiredCollateralOutput{
         collateralization, 
         active_beacon_id, 
-        loan_principle,
+        loan_principal,
         loan_id, 
         asset_beacon,
         borrower_id, 
@@ -502,7 +502,7 @@ fn check_outputs(
             borrower_id,
             asset_beacon,
             loan_id,
-            loan_principle,
+            loan_principal,
             collateralization,
             val
           )
@@ -575,7 +575,7 @@ fn check_outputs(
       let RequiredCollateralOutput{
         collateralization, 
         active_beacon_id, 
-        loan_principle,
+        loan_principal,
         loan_id: col_loan_id, // This may be a different one than the next req. payment.
         asset_beacon,
         borrower_id, 
@@ -599,7 +599,7 @@ fn check_outputs(
             borrower_id,
             asset_beacon,
             col_loan_id,
-            loan_principle,
+            loan_principal,
             collateralization,
             val
           )

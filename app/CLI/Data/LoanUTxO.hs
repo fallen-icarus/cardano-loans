@@ -99,7 +99,7 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
     prettyLoanDatum (Ask AskDatum{..}) =
       vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "Ask"
            , annotate (colorDull Cyan) "borrower_id:" <+> prettyCredential _stakeCredential
-           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrinciple <+> pretty _loanAsset
+           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , let time = getPOSIXTime _loanTerm in
              annotate (colorDull Cyan) "loan_term:" 
                <+> pretty (time `div` 1000) <+> "slots"
@@ -113,7 +113,7 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
            , annotate (colorDull Cyan) "lender_id:" <+> pretty _lenderId
            , annotate (colorDull Cyan) "lender_address:" <+> 
                pretty (either (const "failed to convert to bech32") fst $ plutusToBech32 network _lenderAddress)
-           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrinciple <+> pretty _loanAsset
+           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , annotate (colorDull Cyan) "interest:" <+> pretty _loanInterest
            , let time = getPOSIXTime _loanTerm in
                annotate (colorDull Cyan) "loan_term:" 
@@ -146,7 +146,7 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
            , annotate (colorDull Cyan) "loan_id:" <+> pretty _loanId
            , annotate (colorDull Cyan) "lender_address:" <+> 
                pretty (either (const "failed to convert to bech32") fst $ plutusToBech32 network _lenderAddress)
-           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrinciple <+> pretty _loanAsset
+           , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , annotate (colorDull Cyan) "interest:" <+> pretty _loanInterest
            , let time = getPOSIXTime _loanTerm in
                annotate (colorDull Cyan) "loan_term:" 

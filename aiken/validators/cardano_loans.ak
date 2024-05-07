@@ -824,7 +824,7 @@ validator(
         //         - lender_address == lender_address from the Offer UTxO.
         //         - loan_asset == loan_asset from the Offer UTxO.
         //         - asset_beacon == asset_beacon from the Offer UTxO.
-        //         - loan_principle == loan_principle from the Offer UTxO.
+        //         - loan_principal == loan_principal from the Offer UTxO.
         //         - compound_frequency == compound_frequency from the Offer UTxO.
         //         - last_compounding == invalid-before of this tx
         //         - loan_term == loan_term from the Offer UTxO.
@@ -838,10 +838,10 @@ validator(
         //                             + claim_period from the Offer UTxO.
         //         - loan_expiration == invalid-before of this tx + loan_term from the Offer UTxO.
         //         - loan_outstanding == 
-        //              loan_principle from the Offer UTxO * (1 + loan_interest from the Offer UTxO)
+        //              loan_principal from the Offer UTxO * (1 + loan_interest from the Offer UTxO)
         //         - total_epoch_payments == 0
         //         - loan_id == sha2_256( offer_tx_hash ++ offer_output_index ) as token name.
-        //    c) It must have enough relative collateral to equal the loan_principle amount.
+        //    c) It must have enough relative collateral to equal the loan_principal amount.
         //    d) It must have exactly 1 BorrowerId, exactly 1 Active beacon, exactly 1 Asset Beacon
         //       that corresponds to the loan asset, and exactly 1 LoanId that matches the loan_id
         //       field in the datum.
@@ -1116,7 +1116,7 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    c) borrower_id == borrower's credential as a token name
         //    d) loan_asset == asset that corresponds to the Asset beacon in the output
         //    e) asset_beacon == Asset beacon name
-        //    f) loan_principle > 0
+        //    f) loan_principal > 0
         //    g) loan_term > 0
         //    h) collateral list must not be empty, be sorted, and not have any duplicates.
         // 4) The output must contain at least one unit of each asset in the collateral list.
@@ -1215,7 +1215,7 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    d) lender_address == either a payment pubkey address or a proxy script address
         //       with a valid staking credential
         //    e) loan_asset == asset that corresponds to the Asset beacon in the output
-        //    f) loan_principle > 0
+        //    f) loan_principal > 0
         //    g) compound_frequency > 0 if used
         //    h) loan_term > 0
         //    i) loan_interest must have a denominator > 0 and a numerator >= 0
@@ -1226,7 +1226,7 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    m) claim_period > 0
         //    n) offer_deposit > 0
         //    o) offer_expiration > 0 if used.
-        // 4) The output must contain exactly the principle for the loan + the offer deposit.
+        // 4) The output must contain exactly the principal for the loan + the offer deposit.
         // 5) No other assets are allowed in the output.
         // 6) The lender's credential must signal approval.
         //

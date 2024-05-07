@@ -51,7 +51,7 @@ regressionTest1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -67,7 +67,7 @@ regressionTest1 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -155,7 +155,7 @@ regressionTest1 = do
       }
 
 -- | Update the terms for a single valid Offer UTxO. The loan asset does not change so no beacons
--- need to be minted. The loan principle and offer deposit do not change.
+-- need to be minted. The loan principal and offer deposit do not change.
 regressionTest2 :: MonadEmulator m => m ()
 regressionTest2 = do
   let -- Borrower Info
@@ -185,7 +185,7 @@ regressionTest2 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -272,7 +272,7 @@ regressionTest2 = do
       }
 
 -- | Update the terms for a single valid Offer UTxO. The loan asset does not change so no beacons
--- need to be minted. The loan principle changes.
+-- need to be minted. The loan principal changes.
 regressionTest3 :: MonadEmulator m => m ()
 regressionTest3 = do
   let -- Borrower Info
@@ -302,7 +302,7 @@ regressionTest3 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -419,7 +419,7 @@ regressionTest4 = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)

@@ -435,7 +435,7 @@ If you are using a staking script, use `borrower-staking-script-hash` instead.
 cardano-loans datums ask \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
   --loan-asset 'lovelace' \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
@@ -590,7 +590,7 @@ instead.
 cardano-loans datums offer \
   --lender-staking-pubkey-hash $lenderCredentialHash \
   --loan-asset 'lovelace' \
-  --principle 100000000 \
+  --principal 100000000 \
   --loan-term '3600 slots' \
   --interest '0.1' \
   --compound-frequency '1200 slots' \
@@ -855,7 +855,7 @@ with this command:
 cardano-loans datums active new manual \
   --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
   --loan-asset 'lovelace' \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
   --compound-frequency '1200 slots' \
@@ -991,7 +991,7 @@ with this command:
 cardano-loans datums active post-payment manual \
   --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
   --loan-asset 'lovelace' \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
   --compound-frequency '1200 slots' \
@@ -1119,7 +1119,7 @@ with this command:
 cardano-loans datums active post-interest manual \
   --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
   --loan-asset 'lovelace' \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
   --compound-frequency '1200 slots' \
@@ -1226,7 +1226,7 @@ with this command:
 cardano-loans datums active post-payment manual \
   --payment-address addr_test1vpz6g5ecxv6mc036lckg6w06wmj7vr073j73llzpsn5t0pguw7m5u \
   --loan-asset 'lovelace' \
-  --principle 10000000 \
+  --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
   --compound-frequency '1200 slots' \

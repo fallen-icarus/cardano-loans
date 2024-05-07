@@ -39,7 +39,7 @@ regressionTest1 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -125,7 +125,7 @@ regressionTest2 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -216,14 +216,14 @@ regressionTest3 = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -315,7 +315,7 @@ regressionTest4 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }
@@ -382,7 +382,7 @@ regressionTest5 = do
       loanDatum = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1]
         }

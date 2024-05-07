@@ -107,7 +107,7 @@ fn valid_ask_output(
     borrower_id,
     loan_asset,
     asset_beacon,
-    loan_principle,
+    loan_principal,
     loan_term,
     collateral
   } = when parse_datum(output_datum) is {
@@ -133,8 +133,8 @@ fn valid_ask_output(
       @"Datum has wrong asset beacon", 
       asset_beacon == core.get_asset_beacon_name(expected_asset_beacon)),
     trace_if_false(
-      @"Datum has wrong principle", 
-      loan_principle > 0),
+      @"Datum has wrong principal", 
+      loan_principal > 0),
     trace_if_false(
       @"Datum has wrong term", 
       loan_term > 0),

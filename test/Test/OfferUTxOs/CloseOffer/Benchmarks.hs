@@ -52,7 +52,7 @@ benchTest1 number = do
         { _lenderId = lenderCred
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _compoundFrequency = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
@@ -161,7 +161,7 @@ benchTest2 number = do
             { _lenderId = lenderCred
             , _lenderAddress = lenderAddr
             , _loanAsset = loan
-            , _loanPrinciple = 10
+            , _loanPrincipal = 10
             , _compoundFrequency = Nothing
             , _loanTerm = 3600
             , _loanInterest = Fraction (1,10)
@@ -181,7 +181,7 @@ benchTest2 number = do
               [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
               , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
               , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId _lenderId) 1
-              , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrinciple
+              , uncurry PV2.singleton (_unAsset _loanAsset) _loanPrincipal
               ]
           , outputDatum = OutputDatum $ toDatum datum
           , outputReferenceScript = toReferenceScript Nothing

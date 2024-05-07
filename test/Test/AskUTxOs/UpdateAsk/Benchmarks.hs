@@ -47,14 +47,14 @@ benchTest1 number = do
       loanDatum1 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset1
-        , _loanPrinciple = 10_000_000
+        , _loanPrincipal = 10_000_000
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral2,collateral3]
         }
       loanDatum2 = unsafeCreateAskDatum $ NewAskInfo
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset2
-        , _loanPrinciple = 10
+        , _loanPrincipal = 10
         , _loanTerm = 3600
         , _collateral = [collateral1,collateral2,collateral3]
         }
@@ -185,7 +185,7 @@ benchTest2 number = do
           unsafeCreateAskDatum $ NewAskInfo
             { _borrowerId = borrowerCred
             , _loanAsset = loan
-            , _loanPrinciple = 10
+            , _loanPrincipal = 10
             , _loanTerm = 3600
             , _collateral = [col]
             }
@@ -288,7 +288,7 @@ benchTest3 number = do
           unsafeCreateAskDatum $ NewAskInfo
             { _borrowerId = borrowerCred
             , _loanAsset = loan
-            , _loanPrinciple = 10
+            , _loanPrincipal = 10
             , _loanTerm = 3600
             , _collateral = col
             }
