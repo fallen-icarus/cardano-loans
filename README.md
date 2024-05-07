@@ -94,19 +94,23 @@ DApps that rely on off-chain information feeds are subject to the integrity of t
 network. It is pretty easy to find examples of faulty oracle feeds causing DeFi issues that resulted
 in users losing money. Not only that, but in many cases, *oracles are simply not necessary*. As long
 as users are able to negotiate the terms *before* initiating the loan, there is no need for
-liquiditations, and therefore, no need for oracles. In TradFi, liquiditations are usually only used
+liquidations, and therefore, no need for oracles. In TradFi, liquidations are usually only used
 with *margin loans* which are typically short-term loans and/or are generally only used to buy more
 securities (ie, speculate on markets). In a typical economy, most loans are *not* margin loans; you
 wouldn't use a margin loan to start a business.
+
+A lot of people believe oracles are required for DeFi because of the following:
 
 > What if the value of the colleral falls 6 months into the loan?! Shouldn't Alice be forced to put
 > up more collateral?
 
 No, she shouldn't. Bob, her lender, knew the loan was going to be a year long loan. If he was
 concerned about the value of the collateral falling during the life of the loan, he could have asked
-for more collateral and/or asked for different collateral. If the collateral ever falls too low,
-relative to the outstanding loan, **it is the lender's fault**. The borrower should not be punished
-because the lender didn't properly manage the risk of a long-term loan.
+for more collateral and/or asked for different collateral. The fact that cryptocurrency markets can
+be extremely volatile does not matter. Volatile assets also exist in TradFi (eg, small cap stocks,
+emerging market assets, etc), and this is exactly how TradFi manages the risk. If the collateral
+ever falls too low, relative to the outstanding loan, **it is the lender's fault**. The borrower
+should not be punished because the lender didn't properly manage the risk of a long-term loan.
 
 Allowing borrowers and lenders to directly negotiate entirely eliminates the need for oracles. This
 dramatically minimizes the DApp's attack surface as well as makes the DeFi economy more independent.
@@ -189,31 +193,36 @@ should be as low as possible.**
 DApp protocols that require users to go through batchers will never be as trustlessly composable as
 fully p2p protocols. The argument was already made in the cardano-swaps
 [README](https://github.com/fallen-icarus/cardano-swaps#why-the-workarounds-for-the-issues-of-the-lp-based-architecture-are-not-sufficient)
-so it will just be quoted here:
+so it will just be quoted here (reformatted for readability):
 
-> - Batcher based protocols cannot trustlessly compose - since LPs require going through middle-men,
-the ultimate transaction for Alice will likely not even be seen by Alice prior to submission to the
-blockchain. How can Alice express that she wants her swap composed with an options contract and
-expect it to be trustlessly executed? How can Bob also do this? Finally, how can the smart contracts
-enforce that *both* Alice's and Bob's compositions are properly executed when their requests are
-batched together? This is not an issue of standards; this is an issue of whether or not the required
-composition logic can even fit in a transaction where other DApp logic is being executed. The only
-way for the composition to be trustless is if smart contracts enforce it. To put it concretely, in
-Alice's composition, the swap logic and the options logic must both be executed in the same
-transaction where the composition logic is executed. Given the very small amount of execution units
-available to scripts in a transaction, is there even room for this extra logic? The composition
-logic requires two things: it must support *arbitrary* compositions and it must be extremely cheap
-since the logic of the actual DApps being composed must also be executed in the same transaction.
-*p2p protocols do not have the same limitations since Alice personally creates and signs her own
-transaction.* The above two requirements are only requirements when middle-men are creating and
-executing transactions on the behalf of users. Even if some composition logic could fit in the
-transaction, would it actually support arbitrary composition (as opposed to only a few priviledged
-DApps being supported)? Even if the answer to this question is yes, that extra logic being executed
-means less space for other DApps to compose in the transaction. Therefore, protocols that require
-batchers will never be able to offer the the same level of trustless composition as fully p2p
-protocols. The only way to actually match the level of composition of p2p protocols is for the
-batcher based composition to *not be trustless* (without the composition logic, more DApps can fit
-in a transaction).
+> Since LPs require going through middle-men, the ultimate transaction for Alice will likely not
+> even be seen by Alice prior to submission to the blockchain. How can Alice express that she wants
+> her swap composed with an options contract and expect it to be trustlessly executed? How can Bob
+> also do this? Finally, how can the smart contracts enforce that *both* Alice's and Bob's
+> compositions are properly executed when their requests are batched together? 
+>
+> This is not an issue of standards; this is an issue of whether or not the required composition
+> logic can even fit in a transaction where other DApp logic is being executed. The only way for the
+> composition to be trustless is if smart contracts enforce it. To put it concretely, in Alice's
+> composition, the swap logic and the options logic must both be executed in the same transaction
+> where the composition logic is executed. Given the very small amount of execution units available
+> to scripts in a transaction, is there even room for this extra logic? 
+>
+> The composition logic requires two things: it must support *arbitrary* compositions and it must be
+> extremely cheap since the logic of the actual DApps being composed must also be executed in the
+> same transaction. *p2p protocols do not have the same limitations since Alice personally creates
+> and signs her own transaction.* The above two requirements are only requirements when middle-men
+> are creating and executing transactions on the behalf of users. 
+>
+> Even if some composition logic could fit in the transaction, would it actually support arbitrary
+> composition (as opposed to only a few priviledged DApps being supported)? Even if the answer to
+> this question is yes, that extra logic being executed means less space for other DApps to compose
+> in the transaction. Therefore, protocols that require batchers will never be able to offer the the
+> same level of trustless composition as fully p2p protocols. 
+>
+> The only way to actually match the level of composition of p2p protocols is for the batcher based
+> composition to *not be trustless* (without the composition logic, more DApps can fit in a
+> transaction).
 
 *Not supporting composability can have serious economic consequences.* As you'll soon see,
 Cardano-Loans allows borrowers to make payments directly to a lender's personal address, and each
@@ -222,7 +231,7 @@ whoever controls the bond can change the address borrowers must make payments to
 
 Imagine if Bob lent 1000 ADA to Alice for 1 year; Bob now has the bond NFT associated with this
 loan. A few months go by and Alice has paid back 200 ADA, leaving 800 ADA still due. Unfortunately
-for Bob, his business has hit some financial trouble and he needs to liquiditate some assets in
+for Bob, his business has hit some financial trouble and he needs to liquidate some assets in
 order to cover its expenses. So he looks to sell the bond NFT for Alice's loan on the secondary
 market, a separate DApp. How much should he expect to get from this sale? If the owner held it to
 "maturity", they *should* be able to get 800 ADA from owning it; but after factoring in the
@@ -326,8 +335,16 @@ possible with their designs. Most layer 1 blockchains are still struggling to ac
 decentralization (it is a very hard problem). In the meantime, it is trivial for governments and
 hackers to target these DApps since they only really need to target the multisig key holders.
 
+Malicious actors are not the only risk to DeFi: regulations are also an existential risk since they
+are another way for governments to exert influence on the DeFi economy. The regulatory landscape is
+still changing, but they all center around whether the DApp is actually decentralized ([Europe
+example](https://cointelegraph.com/news/upcoming-defi-rules-europe-could-ban-non-decentralized-protocols)).
+If there is even a single centralization bottleneck (eg, closed-source smart contracts, permissioned
+batchers, minting of yield tokens, multisig control, etc), the entire DApp can be regulated. If a
+DApp is truly decentralized, it should be *legally unregulatable*.
+
 Not all blockchain applications need to be decentralized, but core DeFi functionality *definitely
-needs to be decentralized.*
+needs to be decentralized.* 
 
 ## The Cardano-Loans DeFi Protocol
 
@@ -372,7 +389,7 @@ lifetime, they can set the relative values in such a way to minimize this risk.
 All negotiations involving the borrower take place in this address and all active loans live in this
 address. This makes it very easy for front-ends to integrate Cardano-Loans as well as for borrowers
 to manage the stake/voting power for assets in the DApp.
-- **Efficient Off-chain Sorting of Loans** - by using beacons tokens, users can easily query the
+- **Efficient Off-chain Sorting of Loans** - by using beacon tokens, users can easily query the
 protocol for any information they may want. These beacon queries can even be combined to create more
 complicated queries. For example, lenders can see all current Asks and optionally filter them by
 loan asset and/or offered collateral.
@@ -438,16 +455,16 @@ use the validity intervals for transactions. Ultimately, the protocol does *not*
 current time; it only needs to know whether a certain time has, or has not, passed.
 
 This is where the validity intervals come in. A smart contract will only ever be run if the validity
-interval is true. Therefore, if the invalid-before is set to slot 10 and the smart contract is being
+interval is true. Therefore, if the `invalid-before` is set to slot 10 and the smart contract is being
 executed, then the smart contract knows that slot 10 is guaranteed to have already passed. Likewise,
-if the invalid-hereafter is set to slot 20 and the smart contract is being executed, then the smart
+if the `invalid-hereafter` is set to slot 20 and the smart contract is being executed, then the smart
 contract knows that slot 20 has definitely *not* passed yet.
 
 Therefore, this protocol uses the following general rules:
-- If you need to prove to the smart contract that time `y` has passed, set the invalid-before bound
+- If you need to prove to the smart contract that time `y` has passed, set the `invalid-before` bound
 to `y`.
 - If you need to prove to the smart contract that time `x` has *not* passed yet, set the
-invalid-hereafter bound to `x`.
+`invalid-hereafter` bound to `x`.
 
 ### Protocol Phases and Beacons
 
@@ -546,7 +563,7 @@ have the same name as the Key NFT.
 Due to the amount of logic required for this protocol and the desire to minimize the impact from
 redundant executions, this protocol uses 6 separate smart contracts; *not all of them are required
 with each transaction*. Each smart contract is dedicated to a specific purpose. As a consequence of
-this, there are actually two separate minting policies for beacons tokens: one for negotiation phase
+this, there are actually two separate minting policies for beacon tokens: one for negotiation phase
 beacons and one for active phase beacons. Most user actions only required 2 of the 6 contracts in a
 single transaction. The most that is ever needed is 3 out of the 6 contracts. However, since these
 scripts can be used as reference scripts, there is still plenty of room for DApp composability.
@@ -821,7 +838,7 @@ the `TokenName` may not be enough to guarantee uniqueness.
 
 ### Ask UTxOs
 
-Borrower's begin negotiations by creating a new Ask UTxO with their desired terms at their loan
+Borrowers begin negotiations by creating a new Ask UTxO with their desired terms at their loan
 address. The borrower is able to create/update/close multiple Ask UTxOs in a single transaction;
 each Ask UTxO created/updated/closed can have different terms.
 
@@ -847,7 +864,7 @@ the Borrower ID *and* the target loan address.
     - `collateral` must not be empty, must be sorted lexicographically, and must *not* have any
     duplicates
 - All outputs with beacons must contain at least one unit of each asset in the collateral list.
-- All outputs with beacon must not have any extraneous assets (ada is always allowed).
+- All outputs with beacons must not have any extraneous assets (ada is always allowed).
 - All outputs with beacons must go to the loan address using the same staking credential as the one
 in the `CreateCloseOrUpdateAsk` redeemer.
 - The staking credential in the `CreateCloseOrUpdateAsk` redeemer must approve the transaction.
@@ -921,7 +938,7 @@ and is locked at the wrong loan address.
 
 ### Offer UTxOs
 
-Lender's continue negotiations by creating a new Offer UTxO with their desired terms at the
+Lenders continue negotiations by creating a new Offer UTxO with their desired terms at the
 corresponding borrower's loan address. The lender is able to create/update/close multiple Offer
 UTxOs in a single transaction; each Offer UTxO created/updated/closed can have different terms and
 be for different borrowers. **The offers do not need to be for the same terms as the borrower's
@@ -1123,16 +1140,16 @@ the inputs.
         - `assetBeacon` == `assetBeacon` from corresponding Offer UTxO
         - `loanPrincipal` == `loanPrincipal` from corresponding Offer UTxO
         - `compoundFrequency` == `compoundFrequency` from corresponding Offer UTxO
-        - `lastCompounding` == invalid-before of this transaction (as POSIXTime)
+        - `lastCompounding` == `invalid-before` of this transaction (as POSIXTime)
         - `loanTerm` == `loanTerm` from corresponding Offer UTxO
         - `loanInterest` == `loanInterest` from corresponding Offer UTxO
         - `minPayment` == `minPayment` from corresponding Offer UTxO
         - `penalty` == `penalty` from corresponding Offer UTxO
         - `collateralization` == `collateralization` from corresponding Offer UTxO
         - `collateralIsSwappable` == `collateralIsSwappable` from corresponding Offer UTxO
-        - `claimExpiration` == invalid-before of this transaction (as POSIXTime) + `loanTerm` +
+        - `claimExpiration` == `invalid-before` of this transaction (as POSIXTime) + `loanTerm` +
         `claimPeriod`
-        - `loanExpiration` == invalid-before of this transaction (as POSIXTime) + `loanTerm`
+        - `loanExpiration` == `invalid-before` of this transaction (as POSIXTime) + `loanTerm`
         - `loanOutstanding` == `loanPrincipal` * (1 + `loanInterest`)
         - `totalEpochPayments` == 0
         - `loanId` == `sha2_256( offer_utxo_tx_hash ++ offer_utxo_output_index )`
@@ -1159,9 +1176,9 @@ transaction.
 
 *Valid Offers and Asks are those containing the proper beacons.*
 
-The loan's start time is set to the invalid-before bound of the acceptance transaction's validity
-interval. If any offers have an expiration set, then the invalid-hereafter bound will also be needed
-to prove the offer has not expired. If no offers have expirations set, the invalid-hereafter bound
+The loan's start time is set to the `invalid-before` bound of the acceptance transaction's validity
+interval. If any offers have an expiration set, then the `invalid-hereafter` bound will also be needed
+to prove the offer has not expired. If no offers have expirations set, the `invalid-hereafter` bound
 can be dropped.
 
 The active beacon script will assume *all* valid negotiation inputs are meant to be for acceptances.
@@ -1235,8 +1252,8 @@ redeemer must specify the size of the payment.
 - All loan payment inputs must be from the same loan address.
 - For every loan payment input:
     - It must still have the Borrower ID.
-    - The loan must not be expired (using invalid-hereafter).
-    - The next interest/penalty application must not be require (using invalid-hereafter).
+    - The loan must not be expired (using `invalid-hereafter`).
+    - The next interest/penalty application must not be require (using `invalid-hereafter`).
     - There must be an output to the `lenderAddress` in the input's `ActiveDatum` with:
         - A `PaymentDatum` where the `CurrencySymbol` is the active smart contract policy id and the
         `TokenName` is the `loanId` from the input's `ActiveDatum`
@@ -1261,11 +1278,11 @@ redeemer must specify the size of the payment.
 
 In order to ensure compound interest accrues and penalties are applied, the borrower cannot make the
 next payment if the next interest and/or penalty application is due. The script uses the
-invalid-hereafter flag to assert a time has not passed. For convenience, the borrower can set the
-invalid-hereafter flag to the slot when the next interest application is due (or expiration if no
+`invalid-hereafter` flag to assert a time has not passed. For convenience, the borrower can set the
+`invalid-hereafter` flag to the slot when the next interest application is due (or expiration if no
 more applications are required). The only time penalty is applied without also applying loan
 interest is when the loan interest is set to zero. If multiple payments are being made in a single
-transaction, the invalid-hereafter bound should be set to the earliest deadline.
+transaction, the `invalid-hereafter` bound should be set to the earliest deadline.
 
 The payment observer smart contract will only validate loan inputs spent using the `MakePayment`
 spending redeemer. All other inputs will be ignored.
@@ -1330,7 +1347,7 @@ to satisfy the new Active UTxOs minUTxOValue.
 `ObserveInterest` redeemer. 
 - All interest/penalty inputs must be from the same loan address.
 - For all interest/penalty inputs:
-    - The loan must not be expired (using invalid-hereafter).
+    - The loan must not be expired (using `invalid-hereafter`).
     - The Borrower ID must still be present.
     - The `depositIncrease` attached to the `ApplyInterest` redeemer must be >= 0
     - The `numberOfTimes` attached to the `ApplyInterest` redeemer must be >= 1
@@ -1345,9 +1362,9 @@ to satisfy the new Active UTxOs minUTxOValue.
 The interest observer smart contract will only validate loan inputs spent using the `ApplyInterest`
 spending redeemer. All other inputs will be ignored.
 
-Interest and penalties cannot be applied to loans that are already expired. The invalid-hereafter
+Interest and penalties cannot be applied to loans that are already expired. The `invalid-hereafter`
 bound is used to prove the loan's expiration has not passed yet. When applying interest/penalties to
-multiple loans, the invalid-hereafter should be set to the earliest loan expiration.
+multiple loans, the `invalid-hereafter` should be set to the earliest loan expiration.
 
 Penalties are applied whenever `totalEpochPayments` < `minPayment`. If `numberOfTimes` is > 1, the
 first application is the only one that may not have a penalty; all subsequent applications are
@@ -1389,7 +1406,7 @@ Active UTxOs minUTxOValue.
 - The address update observer smart contract must be executed as a staking script using the
 `ObserveAddressUpdate` redeemer. 
 - For all update inputs:
-    - The loan must not be expired (using invalid-hereafter).
+    - The loan must not be expired (using `invalid-hereafter`).
     - The Borrower ID must still be present.
     - The new lender address must either use a payment pubkey, or the proxy script as the payment
     credential and a valid staking credential.
@@ -1401,8 +1418,8 @@ Active UTxOs minUTxOValue.
           address in the `UpdateLenderAddress` redeemer.
         - The exact same value as the input + the new deposit amount of ada.
 
-The invalid-hereafter bound is used to prove the loan is not expired. When updating the address for
-multiple loans, the invalid-hereafter bound can be set to the earliest expiration.
+The `invalid-hereafter` bound is used to prove the loan is not expired. When updating the address for
+multiple loans, the `invalid-hereafter` bound can be set to the earliest expiration.
 
 The address update observer smart contract will only validate loan inputs spent using the
 `UpdateLenderAddress` spending redeemer. All other inputs will be ignored.
@@ -1452,13 +1469,13 @@ To claim the collateral for an expired loan, all of the following must be true:
 - The active smart contract must be executed as a minting policy using the `BurnKeyAndClaimExpired`
   redeemer.
 - For all Active UTxOs being claimed:
-    - The loan must be expired (using invalid-before).
+    - The loan must be expired (using `invalid-before`).
     - The loan must still contain the Borrower ID.
     - Both the Lock and Key NFT for this loan must be burned.
     - All active beacons among the inputs must be burned.
 
-The invalid-before bound is used to prove the expiration time has passed. When claiming multiple
-expired loans, invalid-before can be set to the latest loan expiration.
+The `invalid-before` bound is used to prove the expiration time has passed. When claiming multiple
+expired loans, `invalid-before` can be set to the latest loan expiration.
 
 The Borrower ID is required so that only the borrower can claim any remaining collateral in the UTxO
 as well as the minUTxOValue deposit that was stored with the Active UTxO. This deposit belongs to
@@ -1490,13 +1507,13 @@ To unlock Active UTxOs, all of the following must be true:
 executed as a minting policy using the `BurnRemainderOrUnlockLost` redeemer.
 - For all Active UTxOs being unlocked:
     - If the Borrower ID is still present, the loan's `claimExpiration` must have passed (using
-    invalid-before).
+    `invalid-before`).
     - All active beacons among the inputs must be burned.
 - The loan address' staking credential must signal approval.
 
-The invalid-before bound is used to prove the claim expiration has passed. When unlocking multiple
-loans, invalid-before can be set to the latest claim expiration. If all Active UTxOs in the
-transaction are Finished Active UTxOs, the invalid-before bound is not necessary.
+The `invalid-before` bound is used to prove the claim expiration has passed. When unlocking multiple
+loans, `invalid-before` can be set to the latest claim expiration. If all Active UTxOs in the
+transaction are Finished Active UTxOs, the `invalid-before` bound is not necessary.
 
 Any lost collateral UTxOs claimed with this redeemer will still count as defaults for the borrower.
 
@@ -1550,7 +1567,8 @@ astronomically cheaper to maintain, it offers things not even the contemporary d
 - Credit histories are globally accessible and verifiable.
 
 Using Cardano-Loans, the non-banked can finally leap-frog passed the incompetence/corruption of
-their own nations and build up their own, (possibly) globally recognized, economic identity.
+their own national financial systems and build up their own, (possibly) globally recognized,
+economic identity.
 
 ### Negotiable Collateralization
 
@@ -1563,6 +1581,9 @@ use proper risk-management.  If people want to take back control from government
 accept more responsibility. *Freedom isn't free.*
 
 ### Under-Collateralized Loans
+
+*TL;DR: Cardano-Loans can easily support a healthy market of under-collateralized loans **as long as
+lenders properly manage the risks**. No DIDs are required.*
 
 Under-collateralized loans can be a hot topic in the crypto-ecosystem because there is wide spread
 belief that you cannot have secure under-collateralized loans with a pseudonymous/anonymous identity
@@ -1602,7 +1623,7 @@ much his reputation is worth to him. If his reputation is worth less than the re
 will likely walk away. However, if his reputation is worth more than the remaining 20%, Bob will
 likely pay back the loan to protect the value of his reputation. And just like with all assets, the
 value of a reputation depends on its scarcity. **Whether the reputation is for a public,
-pseudonymous, or anonymous identity is irrelevent** - the dark web marketplaces are proof of this.
+pseudonymous, or anonymous identity is irrelevant** - the dark web marketplaces are proof of this.
 
 The real factor for the security of under-collateralized loans is how hard it will be to build up
 enough of a reputation to get offered one. If it takes three weeks to get enough of a reputation to
@@ -1632,10 +1653,10 @@ create. **This does not mean under-collateralized loans require DIDs**; it just 
 requirements to get an under-collateralized loan in DeFi should be more strict than in TradFi to
 compensate for this difference. How much more strict should the requirements be?
 
-To answer this question, consider an identity farm. Mike is malicious and decides to "farm"
+To answer this question, consider an identity farm attack. Mike is malicious and decides to "farm"
 identities: he has these identities lend to each other, he "nutures" them by keeping up with the
 loan payments, and after several years, he "harvests" them to use as burner identities. How
-practical is this attack? The answer depends entirely on lenders.
+practical is this attack? *The answer depends entirely on lenders.*
 
 Let's say it took at least 8 years of good credit for a lender to consider offering an
 under-collateralized loan. And let's say lenders only consider borrowers who had to consistently
@@ -1674,8 +1695,8 @@ lender's part to give Mike another loan when he already as an outstanding loan f
 burner identity has no history of handling more than that amount at once. Likewise, if Mike already
 has an under-collateralized offer, giving him a second under-collateralized offer has the added risk
 of increasing the potential profit per burner identity since Mike could accept both in a single
-transaction. This doesn't mean lenders can't compete on under-collateralized offers, it just means
-lenders also need to factor this in to their risk-management.
+transaction. *This doesn't mean lenders can't compete on under-collateralized offers, it just means
+lenders also need to factor this in to their risk-management.*
 
 In order for under-collateralized loans to be secure on DeFi, you do not need to have *zero* burner
 identities. All that matters is that the majority of borrower identities are honest. If 1 out of 10
@@ -1683,7 +1704,7 @@ borrower identities is a burner identity, that means the under-collateralized lo
 90% of the time. It is just like with consensus protocols; you don't need 100% honesty, you just
 need the majority to be honest. The degree of honesty comes down to how strict lenders will be with
 giving out under-collateralized offers. If a lender's requirements allow Mike a 1% APY, perhaps
-there is a 1 in 10 chance the borrower he is dealing with is a burner identity. Meanwhile, if
+there is a 1 in 10 chance the borrower he is negotiating with is a burner identity. Meanwhile, if
 another lender's requirements only allowed for a 0.3% APY, perhaps the probability the borrower is a
 burner identity drops to 1 in 1000. Lenders will need to factor this risk in to any
 under-collateralized offers they make. If lenders see a borrower already has under-collateralized
@@ -1699,11 +1720,16 @@ podcaster can deliberately announce which identity is theirs. Then, if they defa
 public reputation will get hurt, too. This further incentivizes the Cardano podcaster to pay back
 their loans.
 
+> NOTE: There is a chance that a lender's offer *becomes* an under-collateralized loan after one of
+> the collateral assets experiences a volatile price movement. As discussed in the previous section,
+> this is just another risk lenders need to be cognisant of. If you want to accept volatile assets
+> as collateral, you need to properly manage the risks.
+
 If most lenders properly manage the risks of under-collateralized loans, Cardano-Loans can easily
 support a healthy under-collateralized loan market. **You do not need DIDs.**
 
 > If people want to take back control from governments, they need to accept more responsibility.
-> *Freedom isn't free.*
+> *Freedom isn't free.*  
 > -- quote from previous section
 
 ### Multi-Asset Loans
@@ -1824,5 +1850,5 @@ reliance on global/external token prices in favor of incentivizing the creation 
 credit-debt market. It is censorship-resistant, scalable, and straightforward in its design. Wallets
 and other front-ends can easily integrate the protocol into their UI, and even provide all necessary
 API query services. Endogenous price and rate discovery empowers users to create their own economy,
-one that is decoupled from the existing financial system, in pursuit of something more fair, equal,
+one that is decoupled from the existing financial system - in pursuit of something more fair, equal,
 and accessible to all.
