@@ -363,7 +363,8 @@ first time ever, the non-banked can start building a credit history that is glob
 verifiable.
 - **Native Support for All Assets** - all assets are directly supported as loan assets and
 collateral assets. Nobody needs to ask permission to use a new asset. Even if only 10 people in the
-world are willing to use an asset, no one can stop them.
+world are willing to use an asset, no one can stop them. Futhermore, *there is no limit to the number
+of assets a borrower can use as collateral for a loan.*
 - **Interest-Free, Non-Compounding, or Compounding Interest** - lenders and borrowers have full
 flexibility over what the interest for the loans will be. They can even decide on what the
 compounding frequency will be.
