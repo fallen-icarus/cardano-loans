@@ -98,24 +98,6 @@ fn get_beacons_to_burn(
                 )
               }
 
-              // If there are three beacons, this is a finished Active UTxO.
-              [(tn1,n1),(tn2,n2),(tn3,n3)] -> {
-                let new_req_burn = req_burn |>
-                  dict.insert_with(_,tn1,-n1,utils.sum_token_values,byte.compare) |>
-                  dict.insert_with(_,tn2,-n2,utils.sum_token_values,byte.compare) |>
-                  dict.insert_with(_,tn3,-n3,utils.sum_token_values,byte.compare)
-
-                get_beacons_to_burn(
-                  active_beacon_id,
-                  loan_script_cred,
-                  lower_bound,
-                  rest_ins, // Move on to the next input.
-                  rest_reds, // Move on to the next redeemer.
-                  new_req_burn,
-                  Some(addr)
-                )
-              }
-
               // This path can only be taken if the above two matches failed which should never
               // happen.
               _ -> error @"E2"

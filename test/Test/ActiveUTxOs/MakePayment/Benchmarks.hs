@@ -537,16 +537,6 @@ benchTest2 number = do
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
               { outputAddress = toCardanoApiAddress lenderAddr
               , outputValue = utxoValue 11_000_000 mempty
               , outputDatum = 
@@ -563,7 +553,12 @@ benchTest2 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral (-number))]
+              { mintTokens = flip concatMap activeUTxOs $ \(_, Just ActiveDatum{..}) ->
+                  [ ("Active",-1)
+                  , (_unBorrowerId _borrowerId,-1)
+                  , (_unAssetBeacon _assetBeacon,-1)
+                  , (_unLoanId _loanId,-1)
+                  ]
               , mintRedeemer = toRedeemer BurnActiveBeacons
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
@@ -828,16 +823,6 @@ benchTest3 number = do
           if even i then
             -- full payment
             [ Output
-                { outputAddress = loanAddress
-                , outputValue = utxoValue 4_000_000 $ mconcat
-                    [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                    , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                    , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                    ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-                , outputReferenceScript = toReferenceScript Nothing
-                }
-            , Output
                 { outputAddress = toCardanoApiAddress lenderAddr
                 , outputValue = utxoValue 11_000_000 mempty
                 , outputDatum = 
@@ -877,7 +862,13 @@ benchTest3 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral $ negate $ number `div` 2)]
+              { mintTokens = flip concatMap (zip activeUTxOs [1::Int ..]) $ 
+                  \((_, Just ActiveDatum{..}),i) -> if odd i then [] else 
+                    [ ("Active",-1)
+                    , (_unBorrowerId _borrowerId,-1)
+                    , (_unAssetBeacon _assetBeacon,-1)
+                    , (_unLoanId _loanId,-1)
+                    ]
               , mintRedeemer = toRedeemer BurnActiveBeacons
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
@@ -1447,16 +1438,6 @@ benchTest5 number = do
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 5_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
               { outputAddress = toCardanoApiAddress lenderAddr
               , outputValue = utxoValue 11_000_000 mempty
               , outputDatum = 
@@ -1473,7 +1454,12 @@ benchTest5 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral (-number))]
+              { mintTokens = flip concatMap activeUTxOs $ \(_, Just ActiveDatum{..}) ->
+                  [ ("Active",-1)
+                  , (_unBorrowerId _borrowerId,-1)
+                  , (_unAssetBeacon _assetBeacon,-1)
+                  , (_unLoanId _loanId,-1)
+                  ]
               , mintRedeemer = toRedeemer BurnActiveBeacons
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
@@ -1752,16 +1738,6 @@ benchTest6 number = do
           if even i then
             -- full payment
             [ Output
-                { outputAddress = loanAddress
-                , outputValue = utxoValue 5_000_000 $ mconcat
-                    [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                    , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                    , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                    ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-                , outputReferenceScript = toReferenceScript Nothing
-                }
-            , Output
                 { outputAddress = toCardanoApiAddress lenderAddr
                 , outputValue = utxoValue 11_000_000 mempty
                 , outputDatum = 
@@ -1803,7 +1779,13 @@ benchTest6 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral $ negate $ number `div` 2)]
+              { mintTokens = flip concatMap (zip activeUTxOs [1::Int ..]) $ 
+                  \((_, Just ActiveDatum{..}),i) -> if odd i then [] else 
+                    [ ("Active",-1)
+                    , (_unBorrowerId _borrowerId,-1)
+                    , (_unAssetBeacon _assetBeacon,-1)
+                    , (_unLoanId _loanId,-1)
+                    ]
               , mintRedeemer = toRedeemer BurnActiveBeacons
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
@@ -2369,16 +2351,6 @@ benchTest8 number = do
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 5_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
               { outputAddress = toCardanoApiAddress _lenderAddress
               , outputValue = utxoValue 2_000_000 $ mconcat
                   [ uncurry PV2.singleton (_unAsset _loanAsset) 11 ]
@@ -2396,7 +2368,12 @@ benchTest8 number = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,fromIntegral (-number))]
+              { mintTokens = flip concatMap activeUTxOs $ \(_, Just ActiveDatum{..}) ->
+                  [ ("Active",-1)
+                  , (_unBorrowerId _borrowerId,-1)
+                  , (_unAssetBeacon _assetBeacon,-1)
+                  , (_unLoanId _loanId,-1)
+                  ]
               , mintRedeemer = toRedeemer BurnActiveBeacons
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
@@ -2433,21 +2410,21 @@ benchTest8 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 14
-  , mustSucceed "benchTest2" $ benchTest2 15
-  , mustSucceed "benchTest3" $ benchTest3 15
+  , mustSucceed "benchTest2" $ benchTest2 16
+  , mustSucceed "benchTest3" $ benchTest3 16
   , mustSucceed "benchTest4" $ benchTest4 11
-  , mustSucceed "benchTest5" $ benchTest5 13
-  , mustSucceed "benchTest6" $ benchTest6 12
+  , mustSucceed "benchTest5" $ benchTest5 18
+  , mustSucceed "benchTest6" $ benchTest6 14
   , mustSucceed "benchTest7" $ benchTest7 11
-  , mustSucceed "benchTest8" $ benchTest8 13
+  , mustSucceed "benchTest8" $ benchTest8 15
 
     -- Performance Increase Tests
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 15
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 16
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 16
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 12
-  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 14
-  , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 13
+  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 19
+  , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 15
   , mustExceedTxLimits "perfIncreaseTest7" $ benchTest7 12
-  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 14
+  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 16
   ]

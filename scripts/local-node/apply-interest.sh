@@ -11,7 +11,7 @@ interestObserverScript="${loanDir}interest_observer.plutus"
 lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zr265ke6yq0krxr5xuansyeggscxdem2w5rtk6s99deap6fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqlgq56x"
+borrowerLoanAddr="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
 
 activeDatumFile="${loanDir}activeDatum.json"
 observerRedeemerFile="${loanDir}observeInterest.json"
@@ -22,9 +22,9 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 numberOfApplications=1
-loanUTxO='27fedf54ffd8c907fb5e5231a4933a5fa84ae0585097478c5dbb7fbbfcb1578d#1'
-expirationTime=$((1712854602000)) # The loan expiration.
-loanIdTokenName='0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced'
+loanUTxO='af3e17004877cb9ec8025c0c2e3540ce4dce0c2774ba66f3962b5e358c88f41e#1'
+expirationTime=$((1715804120000)) # The loan expiration.
+loanIdTokenName='01ccf3dc6904b2cb3d6507f02e7cb52b575826f4962791e32bef0d60101fa86c'
 
 ## Convert the posix time to a slot number for invalid-hereafter.
 echo "Calculating the required slot number..."
@@ -114,15 +114,15 @@ loanId="${activePolicyId}.${loanIdTokenName}"
 # Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 27fedf54ffd8c907fb5e5231a4933a5fa84ae0585097478c5dbb7fbbfcb1578d#4 \
-  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 5 ${collateral1} + 3 ${collateral2}" \
+  --tx-in 0094644ca620e01f8d9594f6b2ce6a4186ffcc09ff6f4d6fe72fbe99b850ae41#1 \
+  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 3 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference 97a8f2492c058e3a95191628ba1584227d751c84db6b30ea056edf7142724ba8#0 \
+  --withdrawal-tx-in-reference 146f833828ae3e29ae8460847eaf5ce32102ebb9a23614d9ced7e48000f29a1b#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --required-signer-hash $borrowerStakePubKeyHash \

@@ -63,9 +63,9 @@ pub type ActiveBeaconsRedeemer {
   // Burn the lock and key NFTs, and claim expired collateral.
   BurnKeyAndClaimExpired
 
-  // Burn all remaining beacons. If the BorrowerId is present, the loan's claim period must
+  // Burn all remaining beacons and claim lost collateral. The loan's claim period must
   // have passed.
-  BurnRemainderOrUnlockLost
+  BurnAndUnlockLost
 
   // Burn any beacons.
   BurnActiveBeacons

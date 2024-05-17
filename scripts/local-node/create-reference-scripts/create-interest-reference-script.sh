@@ -18,7 +18,7 @@ cardano-loans scripts \
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in c0b3e96be19325a3277b6531d5d8a64925db0ef92989a29fb96be7b65b02fa0b#1 \
+  --tx-in 6c87bb937fd938a4dd6dc65e0bc0740c55b1acad331740922b0f865a08cb54e8#1 \
   --tx-out "$(cat "${walletDir}01.addr") + 24000000 lovelace" \
   --tx-out-reference-script-file $scriptFile \
   --change-address "$(cat "${walletDir}01.addr")" \

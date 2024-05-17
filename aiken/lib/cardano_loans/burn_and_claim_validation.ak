@@ -79,11 +79,8 @@ fn get_beacons_to_burn(
                 )
               }
 
-              // This path can only be taken if the above two matches failed which means the UTxO
-              // has the wrong number of beacons. This can only happen if the UTxO is a finished
-              // Active UTxO (ie, missing the BorrowerId but still has the rest of the beacons). 
-              // SpendWithKeyNFT can only be used on live Active UTxOs.
-              _ -> error @"UTxO input is a finished loan"
+              // There should never be Active UTxOs with less than or more than four beacons.
+              _ -> error @"E7"
             }
           }
 

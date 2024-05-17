@@ -52,6 +52,9 @@ instance ToJSON ActiveBeaconId where
 newtype Fraction = Fraction { _unFraction :: (Integer,Integer) }
   deriving (Show,Eq)
 
+instance Ord Fraction where
+  (Fraction (num1,den1)) <= (Fraction (num2,den2)) = num1 * den2 <= num2 * den1
+
 instance PV2.ToData Fraction where
   toBuiltinData (Fraction (num,den)) = 
     PV2.BuiltinData $ PV2.List [PV2.toData num, PV2.toData den]

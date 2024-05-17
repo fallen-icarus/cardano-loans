@@ -31,7 +31,7 @@ use cardano_loans/data/redeemers.{
     ActiveBeaconsRedeemer,
     CreateActive, 
     BurnKeyAndClaimExpired,
-    BurnRemainderOrUnlockLost,
+    BurnAndUnlockLost,
     BurnActiveBeacons,
 
     PaymentObserverRedeemer,
@@ -413,7 +413,7 @@ validator() {
       }
 
       Unlock -> {
-        // This redeemer has three purposes:
+        // This redeemer has two purposes:
         // 1) Spend invalid Active UTxOs (ie, UTxO with an ActiveDatum but missing an Active Beacon).
         // 2) Unlock expired collateral if the Key NFT is lost. Since the Key NFT can be 
         //    accidentally lost forever, it would be possible for the corresponding collateral to 
@@ -421,8 +421,6 @@ validator() {
         //    borrower to claim lost collateral, but only after the agreed upon claim period has 
         //    passed. Any collateral claimed with this redeemer will still count as a default 
         //    against the borrower.
-        // 3) Clean up finished Active UTxOs since not all of the beacons could be burned during the
-        //    full payment.
         //
         // If the input contains an Active beacon, it will just check that the active beacon
         // script is properly executed. Otherwise, it will check for the borrower's approval
@@ -447,7 +445,7 @@ validator() {
         // the proper redeemer.
         if !(value.tokens(utxo_value,active_beacon_id) |> dict.is_empty(_)) {
             // The active beacon script must be exectued with the proper redeemer.
-            let req_redeemer: Data = BurnRemainderOrUnlockLost
+            let req_redeemer: Data = BurnAndUnlockLost
             trace_if_false(
               @"Active beacon script not executed with proper redeemer",
               dict.get(redeemers, Mint(active_beacon_id)) == Some( req_redeemer )
@@ -527,18 +525,6 @@ validator(loan_script_hash: ScriptHash) {
         // interest application may or may not require a penalty, all subsequent applications
         // applied in the transaction are guaranteed to require the penalty.
         //
-        // Since this redeemer requires that the UTxO being evaluated is not expired (and therefore,
-        // still has a BorrowerId), and since the corresponding output must have the same number of
-        // BorrowerIds as the input, this redeemer cannot interfere with the credit history. It can
-        // safely be composed with the `MakePayment` redeemer. If the BorrowerId was not required,
-        // this redeemer could be used on finished loans in the same transaction where another loan
-        // is paid off. This would add another output with an Active beacon but missing the
-        // BorrowerId even though the loan was already finished. In other words, it could result in
-        // loans being counted multiple times in the credit history. It is possible to ignore the
-        // double counting but this requires more involved data analyses of the credit history. To
-        // keep the data analyses simple, the protocol just prevents this scenario in the first
-        // place. There is no valid use case for applying interest to a finished loan.
-        //
         // Because the datum can grow with this redeemer, the minUTxOValue requirement can increase.
         // Parameter changes can also make this requirement grow. Therefore, requiring the value of
         // the new UTxO to be exactly the same as the input could be too strict in some situations.
@@ -605,25 +591,24 @@ validator(loan_script_hash: ScriptHash) {
         // 3) The borrower must approve the transaction.
         // 4) For all loan payment inputs:
         //    a) The input must have an ActiveDatum.
-        //    b) The input must still have the BorrowerID.
+        //    b) The input must the required beacons.
         //    c) The loan must not be expired.
         //    d) The next interest and/or penalty application must not be required.
         //    e) There must be an output to the lender_address with a payment output:
         //       1) The datum must be inline (active_beacon_id,loan_id).
         //       2) It must contain the amount of the loan asset specified in the MakePayment
         //          used to spend that UTxO.
-        //    f) There must be an active output to the borrower's loan address with the proper datum:
-        //       1) Exactly the same as the input's datum except the loan_outstanding and 
+        //    f) If the payment is a partial payment, there must be an active output to the 
+        //       borrower's loan address with:
+        //       1) Exactly the same datum as the input's datum except the loan_outstanding and 
         //          total_epoch_payments are updated to reflect payment.
-        //    g) If the remaining balance is paid off:
-        //       1) The BorrowerId for this loan must be burned.
-        //       2) No other kinds of active beacons can be minted/burned in this tx.
-        //       3) The Active UTxO must still have the remaining beacons.
-        //       4) All collateral is unlocked.
-        //       Otherwise:
-        //       1) All of the beacons must still be in the Active UTxO.
-        //       2) The proportion of collateral taken must be <= the proportion of the amount
+        //       2) All of the beacons from the input.
+        //       3) The proportion of collateral taken must be <= the proportion of the amount
         //          paid. 
+        //    g) If the remaining balance is paid off:
+        //       1) All beacons from the input must be burned.
+        //       2) All collateral can be taken.
+        // 5) The active beacon script can only mint/burn beacons related to the payments.
         //
         // In order to ensure compound interest accrues and penalties are applied, the borrower
         // cannot make the next payment if the next interest and/or penalty application is due. The
@@ -636,20 +621,14 @@ validator(loan_script_hash: ScriptHash) {
         // If the ActiveDatum says the collateral is swappable, the borrower can swap out collateral
         // when making a payment as long as the relative value of the collateral is still valid.
         //
-        // To account for interest, collateral can only be taken proportional to the amount of
+        // To account for interest, collateral can only be taken proportionally to the amount of
         // the outstanding_balance paid off. This ensures there will always be collateral until
         // the very end of the loan which helps incentivize proper behavior from borrowers.
         //
-        // The credit history is based on how many active beacons are burned along with the
-        // BorrowerId in the transaction. If the BorrowerId is the only active beacon burned, then
-        // all active loan outputs without the BorrowerId are successful payments. These outputs
-        // will still have the remaining beacons. When a borrower defaults, the BorrowerId will burn
-        // burned along with all of the other active beacons present in the transaction. Therefore,
-        // when BorrowerIds are _not_ burned in isolation, all defaults are the active loan inputs
-        // that still contain the BorrowerId. A key assumption is that this redeemer _cannot_ be
-        // used with Active UTxOs that are already missing the BorrowerIds and this redeemer
-        // _cannot_ be composed with either claiming expired loans or unlocking loans.
-
+        // The credit history is based on what redeemers were used in transactions where 
+        // BorrowerIds are burned. If MakePayment is used and the amount paid is greater than or
+        // equal to the outstanding_balance for that input, this is a full payment. If Unlock or 
+        // SpendWithKeyNFT is used on inputs with BorrowerIds, these are defaults.
 
         // Extract the required information from the script context.
         expect ScriptContext( 
@@ -807,7 +786,7 @@ validator(
         //
         // For this redeemer to successfully execute, all of the following must be true:
         // 1) All loan inputs must come from the same loan address.
-        // 2) No finished loans (ie, those with an Active beacon but no BorrowerId) are allowed
+        // 2) No invalid loans (ie, those with an ActiveDatum but no beacons) are allowed
         //    among the inputs.
         // 3) The number of valid Offer UTxO inputs must equal the number of valid Ask UTxO
         //    inputs.
@@ -940,14 +919,9 @@ validator(
         // To successfully claim the collateral for an expired loan, all of the following must
         // be true:
         // 1) All loan inputs must be Active loans that have expired.
-        // 2) All loan inputs must still contain the BorrowerId for each loan.
+        // 2) All loan inputs must still contain the beacons for each loan.
         // 3) Both the lock & key NFT for each loan must be burned.
         // 4) All beacons must be burned.
-        //
-        // The BorrowerId is required so that only the borrower can claim any remaining collateral
-        // in the UTxO as well as the minUTxOValue deposit that was stored with the Active UTxO. 
-        // This deposit belongs to the borrower. Finished loans should not be claimable with the 
-        // Key NFT for this reason.
         //
         // Since the Key NFT is actually being burned in this transaction (ie, the UTxO is being
         // consumed), this can be used as a proxy for the lender's approval.
@@ -975,11 +949,11 @@ validator(
         )
       }
 
-      BurnRemainderOrUnlockLost -> {
-        // This redeemer can be used on either finsihed Active loans or lost collateral UTxOs (ie,
-        // expired Active UTxOs whose claim period has passed). In either case, all beacons must be
-        // burned and the borrower must signal approval. It will cross-reference the redeemer map
-        // to only check inputs being spent with the Unlock redeemer.
+      BurnAndUnlockLost -> {
+        // This redeemer can be used to unlock lost collateral UTxOs (ie, expired Active UTxOs whose
+        // claim period has passed). In either case, all beacons must be burned and the borrower
+        // must signal approval. It will cross-reference the redeemer map to only check inputs being
+        // spent with the Unlock redeemer.
         //
         // The invalid-before flag is used to prove that the expiration time has actually
         // passed. When claiming multiple expired loans, this flag should be set to the latest
@@ -989,8 +963,8 @@ validator(
         // borrower.
         //
         // To successfully execute this redeemer, all of the following must be true:
-        // 1) All loan inputs must be Active loans that have either finished or had their claim
-        //    period passed (invalid Active UTxOs are ignored).
+        // 1) All loan inputs must be Active loans that had their claim
+        //    period pass (invalid Active UTxOs are ignored).
         // 2) All beacons must be burned.
         //
         // Since the Unlock redeemer is also meant to spend invalid Active UTxOs, this redeemer

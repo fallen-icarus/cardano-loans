@@ -41,7 +41,7 @@ cardano-loans datums ask \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
   --loan-asset $loanAsset \
   --principal 10000000 \
-  --loan-term '3600 slots' \
+  --loan-term '10800 slots' \
   --collateral-asset $collateral1 \
   --collateral-asset $collateral2 \
   --out-file $askDatumFile
@@ -71,15 +71,15 @@ assetBeacon="${beaconPolicyId}.${assetTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in 25762e065cb4a6e07124e36fddc54b31b874565a445965042914265922cac677#1 \
-  --tx-in 25762e065cb4a6e07124e36fddc54b31b874565a445965042914265922cac677#0 \
-  --tx-in 1f4b5eaf864f57ad3ee4e58edd5bc955fa1315752b663f80719a67a5900f1b99#1 \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 19 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 8 ${collateral2}" \
+  --tx-in dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#1 \
+  --tx-in 18d3124d14ae7e18610f3715c04809ac5807a12e01ad39b5bb02dbf1c1d2644e#2 \
+  --tx-in 18d3124d14ae7e18610f3715c04809ac5807a12e01ad39b5bb02dbf1c1d2644e#3 \
+  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 30 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 954 ${collateral2}" \
   --tx-out "${borrowerLoanAddr} + 3000000 lovelace + 1 ${askBeacon} + 1 ${assetBeacon} + 1 ${collateral1} + 1 ${collateral2}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon} + 1 ${assetBeacon}" \
-  --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
+  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \

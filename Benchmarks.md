@@ -19,7 +19,6 @@ the same parameters as the mainnet.
 - [Applying Interest](#applying-interest)
 - [Updating Lender Addresses](#updating-lender-addresses)
 - [Claiming Expired Collateral](#claiming-expired-collateral)
-- [Unlocking Finished Loans](#unlocking-finished-loans)
 - [Unlocking Lost Collateral](#unlocking-lost-collateral)
 - [Spending From Proxy Script](#spending-from-proxy-script)
 
@@ -197,26 +196,28 @@ Bottleneck: Memory
 
 ## Making Full Payments
 Only the worst case scenario is shown. If the loans uses fewer assets as collateral, performance
-could be as high as 15 payments/tx.
+could be as high as 18 payments/tx.
 
 #### Make full payments on multiple loans where each loan uses a different loan asset and three native assets as collateral.
 | Payments Made | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
-| 1 | 0.346314 ADA | 0.519471 ADA |
-| 2 | 0.479046 ADA | 0.718569 ADA |
-| 3 | 0.612166 ADA | 0.918249 ADA |
-| 4 | 0.745675 ADA | 1.118513 ADA |
-| 5 | 0.879573 ADA | 1.319360 ADA |
-| 6 | 1.013859 ADA | 1.520789 ADA |
-| 7 | 1.148534 ADA | 2.722801 ADA |
-| 8 | 1.283597 ADA | 2.925396 ADA |
-| 9 | 1.419049 ADA | 2.128574 ADA |
-| 10 | 1.554889 ADA | 2.332334 ADA |
-| 11 | 1.691118 ADA | 2.536677 ADA |
-| 12 | 1.827955 ADA | 2.741933 ADA |
-| 13 | 1.996089 ADA | 2.994134 ADA |
+| 1 | 0.319935 ADA | 0.479903 ADA |
+| 2 | 0.389334 ADA | 0.584001 ADA |
+| 3 | 0.462881 ADA | 0.694322 ADA |
+| 4 | 0.542556 ADA | 0.813834 ADA |
+| 5 | 0.620447 ADA | 0.930671 ADA |
+| 6 | 0.699034 ADA | 1.048551 ADA |
+| 7 | 0.789683 ADA | 1.184525 ADA |
+| 8 | 0.871673 ADA | 1.307510 ADA |
+| 9 | 0.961766 ADA | 1.442649 ADA |
+| 10 | 1.054031 ADA | 1.581047 ADA |
+| 11 | 1.154448 ADA | 1.731672 ADA |
+| 12 | 1.242162 ADA | 1.863243 ADA |
+| 13 | 1.345897 ADA | 2.018846 ADA |
+| 14 | 1.474547 ADA | 2.211821 ADA |
+| 15 | 1.606533 ADA | 2.409800 ADA |
 
-Max: 13 Full Payments  
+Max: 15 Full Payments  
 Bottleneck: Memory
 
 ## Applying Interest
@@ -282,20 +283,6 @@ could be as high as 20 loans/tx.
 
 Max: unknown  
 Bottleneck: unknown
-
-## Unlocking Finished Loans
-#### Unlock multiple finished loans where all loans use the same loan asset. The collateral was removed during the final payment.
-| Loans Unlocked | Tx Fee | Req. Collateral |
-|:--:|:--:|:--:|
-| 1 | 0.223732 ADA | 0.335598 ADA |
-| 5 | 0.390561 ADA | 0.585842 ADA |
-| 10 | 0.651921 ADA | 0.977882 ADA |
-| 15 | 0.997425 ADA | 1.496138 ADA |
-| 20 | 1.405749 ADA | 2.108624 ADA |
-| 21 | 1.525030 ADA | 2.287545 ADA |
-
-Max: 21 Loans Unlocked  
-Bottleneck: Memory
 
 ## Unlocking Lost Collateral
 #### Unlock multiple lost collateral loans. All loans use the same loan asset and three native assets as collateral.

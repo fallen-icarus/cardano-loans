@@ -43,7 +43,7 @@ used can act like a beacon. These new beacons increase the kinds of queries that
 version required two transactions to do this (closing in one transaction and creating the new UTxO
 in another).
 - *Relaxed Credit History Method* - Borrower IDs can now be burned in the same transaction where
-other tokens are minted/burned provided these other tokens are *not* from the active smart contract.
+other tokens are minted/burned.
 
 #### Optimizations
 

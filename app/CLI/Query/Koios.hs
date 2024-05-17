@@ -30,7 +30,6 @@ import Data.Maybe (fromJust)
 import CardanoLoans
 
 import CLI.Data.Bech32Address
-import CLI.Data.Asset
 import CLI.Data.PersonalUTxO
 import CLI.Data.LoanUTxO
 import CLI.Data.Transaction
@@ -344,7 +343,7 @@ queryBorrowerIdBurnHistory (BorrowerId borrowerId) = do
 queryBorrowerHistory :: BorrowerId -> ClientM [CreditHistory]
 queryBorrowerHistory borrowerId = do
     info <- queryBorrowerIdBurnHistory borrowerId >>= borrowerTxInfoApi select
-    return $ concatMap (processCreditHistory borrowerId) info
+    return $ concatMap processCreditHistory info
   where
     select =
       toText $ intercalate ","
@@ -354,6 +353,7 @@ queryBorrowerHistory borrowerId = do
         , "inputs"
         , "outputs"
         , "assets_minted"
+        , "plutus_contracts"
         ]
 
 queryLoanTxs :: LoanId -> ClientM [LoanTx]
@@ -402,47 +402,40 @@ assetToQueryParam assets = "cs.[" <> T.intercalate "," (go assets) <> "]"
 keysQueryParam :: Text
 keysQueryParam = "cs.[{\"policy_id\":\"" <> show activeBeaconCurrencySymbol <> "\"}]"
 
-processCreditHistory :: BorrowerId -> Transaction -> [CreditHistory]
-processCreditHistory (BorrowerId borrowerId) Transaction{..}
-    | uniqueBurns == 1 = catMaybes $ map processSuccess _outputs
-    | otherwise = catMaybes $ map processDefault _inputs
+processCreditHistory :: Transaction -> [CreditHistory]
+processCreditHistory Transaction{..} = 
+    maybe [] (catMaybes . map proccessEvent) _plutusContracts
   where
-    uniqueBurns :: Int
-    uniqueBurns = length 
-                . filter (\AssetMint{_policyId} -> _policyId == show activeBeaconCurrencySymbol)
-                $ _assetsMinted
-
-    processSuccess :: TransactionUTxO -> Maybe CreditHistory
-    processSuccess TransactionUTxO{..} = do
-      -- It must not have the borrower id.
-      guard $ isJust $ flip find _nativeAssets $ \NativeAsset{_policyId,_tokenName} -> 
-        _policyId == show activeBeaconCurrencySymbol && 
-        _tokenName /= toText (showTokenName borrowerId)
-
-      -- But is must still have the Active beacon.
-      guard $ isJust $ flip find _nativeAssets $ \NativeAsset{_policyId,_tokenName} -> 
-        _policyId == show activeBeaconCurrencySymbol && 
-        _tokenName == toText (showTokenName activeBeaconName)
-
-      return $ CreditHistory
-        { _default = False
-        , _remainingLovelace = _lovelaces
-        , _remainingNativeAssets = _nativeAssets
-        , _loanTerms = fromJust $ decodeDatum @ActiveDatum $ fromJust _inlineDatum
-        }
-
-    processDefault :: TransactionUTxO -> Maybe CreditHistory
-    processDefault TransactionUTxO{..} = do
-      -- It must have the borrower id.
-      guard $ isJust $ flip find _nativeAssets $ \NativeAsset{_policyId,_tokenName} -> 
-        _policyId == show activeBeaconCurrencySymbol && _tokenName == toText (showTokenName borrowerId)
-
-      return $ CreditHistory
-        { _default = True
-        , _remainingLovelace = _lovelaces
-        , _remainingNativeAssets = _nativeAssets
-        , _loanTerms = fromJust $ decodeDatum @ActiveDatum $ fromJust _inlineDatum
-        }
+    proccessEvent :: PlutusContract -> Maybe CreditHistory
+    proccessEvent PlutusContract{..} = do
+      datum@ActiveDatum{_loanOutstanding} <- maybe Nothing (decodeDatum @ActiveDatum) _datum
+      redeemer <- maybe Nothing (decodeDatum @LoanRedeemer) _redeemer
+      TransactionUTxO{_lovelaces,_nativeAssets} <- 
+        find (\TransactionUTxO{_inlineDatum} -> _inlineDatum == _datum) _inputs
+      case redeemer of
+        MakePayment{_paymentAmount} -> 
+          if Fraction(_paymentAmount,1) < _loanOutstanding then Nothing else
+            return $ CreditHistory
+              { _default = False
+              , _remainingLovelace = _lovelaces
+              , _remainingNativeAssets = _nativeAssets
+              , _loanTerms = datum
+              }
+        SpendWithKeyNFT -> 
+          return $ CreditHistory
+            { _default = True
+            , _remainingLovelace = _lovelaces
+            , _remainingNativeAssets = _nativeAssets
+            , _loanTerms = datum
+            }
+        Unlock -> 
+          return $ CreditHistory
+            { _default = True
+            , _remainingLovelace = _lovelaces
+            , _remainingNativeAssets = _nativeAssets
+            , _loanTerms = datum
+            }
+        _ -> Nothing
 
 processLoanHistory :: LoanId -> Transaction -> Maybe LoanHistory
 processLoanHistory loanId Transaction{..} = do

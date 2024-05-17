@@ -49,14 +49,14 @@ assetBeacon="${beaconPolicyId}.${assetTokenName}"
 ## Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in efc6d88663c7a052dd09dc79e1e332f78e41d4be2cfde693715499ed7bb6d52e#1 \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
   --tx-in 9d7b8e4f3ab7fa082f020ae2cc6cf7577ebb2a7cb190b9517a3c8c1f94283a88#1 \
   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 9 ${collateral1}" \
   --mint "-1 ${askBeacon} + -1 ${assetBeacon}" \
-  --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
+  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \

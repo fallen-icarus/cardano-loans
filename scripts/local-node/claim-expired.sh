@@ -13,9 +13,9 @@ loanAsset='lovelace'
 collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a'
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
-loanUTxO='a1395baad0b4a1786bc62a7315c8debe2f7f89a78817e575fd9bd80d16c8032f#1'
-claimTime=$((1712752992000+1000)) # The loan expiration + 1 slot.
-loanIdTokenName='a07d02e5a58f6714075dad0476d7a627e12d93ce54e05f0c5ed26099a239e532'
+loanUTxO='168c1c4b71595c6e2c4191cea58dc58667657f04afb677bc70e0ac4b7da9f7bc#1'
+claimTime=$((1715797442000+1000)) # The loan expiration + 1 slot.
+loanIdTokenName='e82604a9900b9cb6ea388e586c81998070a6fad366991650f6b836f5b2eb204d'
 borrowerIdTokenName='3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa'
 
 ## Convert the posix time to a slot number for invalid-before.
@@ -23,6 +23,9 @@ echo "Calculating the required slot number..."
 claimSlot=$(cardano-loans convert-time \
   --posix-time $claimTime \
   --testnet)
+
+#### You can alternatively just use the chain tip.
+# claimSlot=$(cardano-loans query current-slot --testnet)
 
 ## Create the required redeemers.
 echo "Creating the active redeemer..."
@@ -55,14 +58,16 @@ loanId="${activePolicyId}.${loanIdTokenName}"
 ## Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in a1395baad0b4a1786bc62a7315c8debe2f7f89a78817e575fd9bd80d16c8032f#0 \
-  --tx-in 9b252dbf31fe9b3dd03601f87f10b80d2dda98d84635721a2ae3dd06b93d0b86#1 \
+  --tx-in 677b9d48ad49cbbe6763bfea889ead8577219d6f3881eb4005372710c61f44d5#1 \
+  --tx-in 168c1c4b71595c6e2c4191cea58dc58667657f04afb677bc70e0ac4b7da9f7bc#0 \
+  --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 8 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 4 ${collateral2}" \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -2 ${loanId}" \
-  --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
+  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

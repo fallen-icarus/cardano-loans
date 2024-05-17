@@ -6,7 +6,7 @@ walletDir="${mainDir}wallets/"
 loanDir="${mainDir}loan-files/"
 tmpDir="${mainDir}tmp/"
 
-borrowerAddress="addr_test1zr265ke6yq0krxr5xuansyeggscxdem2w5rtk6s99deap6fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqlgq56x"
+borrowerAddress="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
 
 paymentAddress=$(cat "${walletDir}02.addr")
 lenderStakePubKeyFile="${walletDir}02Stake.vkey"
@@ -33,7 +33,7 @@ cardano-loans datums offer \
   --lender-staking-pubkey-hash $lenderStakePubKeyHash \
   --loan-asset $loanAsset \
   --principal $loanPrincipal \
-  --loan-term '3600 slots' \
+  --loan-term '10800 slots' \
   --interest '0.1' \
   --compound-frequency '1200 slots' \
   --minimum-payment 2000000 \
@@ -75,11 +75,11 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli transaction build \
-  --tx-in fde2b2d830ce58e43eb2e32f7b0e111df707632757e7230b89ff79f88b3d0984#3 \
+  --tx-in 9a2d9ac798c872d3a7856dc0b6d9848129f5c7de6800c8170a39133d3525f743#1 \
   --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrincipal} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
-  --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
+  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \

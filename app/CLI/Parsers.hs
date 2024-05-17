@@ -463,7 +463,7 @@ pActiveRedeemer = hsubparser $ mconcat
     pBurnRemainderOrUnlockLost :: Parser Command
     pBurnRemainderOrUnlockLost = 
       CreateRedeemer
-        <$> pure (NewActive BurnRemainderOrUnlockLost)
+        <$> pure (NewActive BurnAndUnlockLost)
         <*> pOutputFile
 
     pBurnActiveBeacons :: Parser Command

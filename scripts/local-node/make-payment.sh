@@ -11,7 +11,7 @@ paymentObserverScript="${loanDir}payment_observer.plutus"
 lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zr265ke6yq0krxr5xuansyeggscxdem2w5rtk6s99deap6fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqlgq56x"
+borrowerLoanAddr="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -22,10 +22,10 @@ loanAsset='lovelace'
 collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a'
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
-paymentAmount=77000000
-loanUTxO='234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#0'
-expirationTime=$((1712852202000+1200000)) # Either the next compounding time or the loan expiration.
-loanIdTokenName='0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced'
+paymentAmount=9900001
+loanUTxO='57101ea3e7b2bc8daadca48cc680db81d45361ce9674f1db3ff3a2b9100de855#0'
+expirationTime=$((1715793320000+1200000)) # Either the next compounding time or the loan expiration.
+loanIdTokenName='01ccf3dc6904b2cb3d6507f02e7cb52b575826f4962791e32bef0d60101fa86c'
 
 ## Convert the posix time to a slot number for invalid-hereafter.
 echo "Calculating the required slot number..."
@@ -130,24 +130,22 @@ cardano-loans redeemers active-script burn-all \
 # Full payment transaction.
 cardano-cli transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#1 \
+  --tx-in 1b13cb14dd34452e0c0f771290f98c53250cb0e41cb02c57843fb9ae109049d5#0 \
   --tx-out "${lenderAddress} + ${paymentAmount} ${loanAsset}" \
   --tx-out-inline-datum-file $paymentDatumFile \
-  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon}" \
-  --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 5 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 8 ${collateral1}" \
   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 3 ${collateral2}" \
-  --mint "-1 ${borrowerId}" \
-  --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
+  --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -1 ${loanId}" \
+  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference c0b3e96be19325a3277b6531d5d8a64925db0ef92989a29fb96be7b65b02fa0b#0 \
+  --withdrawal-tx-in-reference a96248cd1788c4b435b8ff9268236f8fa5d62faaa6cb73d600de869e7361be40#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --required-signer-hash $borrowerStakePubKeyHash \
@@ -160,19 +158,18 @@ cardano-cli transaction build \
 # # Parial payment transaction.
 # cardano-cli transaction build \
 #   --tx-in $loanUTxO \
-#   --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+#   --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
 #   --spending-plutus-script-v2 \
 #   --spending-reference-tx-in-inline-datum-present \
 #   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-#   --tx-in a4afa3648bf273c563c6b66c51110f7bfdfbe761d53a7a8e1961d79e3d53b0cd#4 \
+#   --tx-in 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#1 \
 #   --tx-out "${lenderAddress} + ${paymentAmount} ${loanAsset}" \
 #   --tx-out-inline-datum-file $paymentDatumFile \
-#   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 5 ${collateral1} + 3 ${collateral2}" \
+#   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 3 ${collateral2}" \
 #   --tx-out-inline-datum-file $activeDatumFile \
-#   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 4 ${collateral1}" \
-#   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 2 ${collateral2}" \
+#   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 1 ${collateral2}" \
 #   --withdrawal "${observerAddress}+0" \
-#   --withdrawal-tx-in-reference c0b3e96be19325a3277b6531d5d8a64925db0ef92989a29fb96be7b65b02fa0b#0 \
+#   --withdrawal-tx-in-reference a96248cd1788c4b435b8ff9268236f8fa5d62faaa6cb73d600de869e7361be40#0 \
 #   --withdrawal-plutus-script-v2 \
 #   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
 #   --required-signer-hash $borrowerStakePubKeyHash \

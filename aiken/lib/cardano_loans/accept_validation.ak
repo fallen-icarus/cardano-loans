@@ -290,9 +290,7 @@ fn process_input(
 // output information to expect. The order of the inputs determines the required order for the
 // corresponding loan outputs. Only inputs with negotiation beacons need to be checked. Ask inputs
 // have two beacons (Ask, and Asset beacon) while Offers have three beacons (Offer, LenderId, and
-// Asset beacon). Finished Active loans also have three beacons, but these beacons use the
-// active beacon id so finished Active loan UTxOs are still clearly distinct from Offer UTxOs with 
-// three negotiation beacons. All inputs must come from the same loan address.
+// Asset beacon). All inputs must come from the same loan address.
 fn get_input_info(
   negotiation_beacon_id: NegotiationId,
   payment_observer_hash: ScriptHash,

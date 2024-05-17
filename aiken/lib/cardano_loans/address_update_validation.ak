@@ -71,7 +71,7 @@ fn add_deposit_value(
     )
 
   expect True = error_if_false(
-    @"Address update input missing Borrower Id",
+    @"Address update input missing beacons",
     found_borrower_id
   )
 

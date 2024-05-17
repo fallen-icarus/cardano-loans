@@ -8,7 +8,7 @@ tmpDir="${mainDir}tmp/"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
 
-activeRedeemerFile="${loanDir}BurnRemainderAndUnlock.json"
+activeRedeemerFile="${loanDir}BurnAndUnlockLost.json"
 loanRedeemerFile="${loanDir}unlock.json"
 
 loanAsset='lovelace'
@@ -29,6 +29,9 @@ echo "Calculating the required slot number..."
 unlockSlot=$(cardano-loans convert-time \
   --posix-time $unlockTime \
   --testnet)
+
+#### You can alternatively just use the chain tip.
+# unlockSlot=$(cardano-loans query current-slot --testnet)
 
 ## Create the required redeemers.
 echo "Creating the active redeemer..."
@@ -61,7 +64,7 @@ loanId="${activePolicyId}.${loanIdTokenName}"
 ## Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
@@ -69,7 +72,7 @@ cardano-cli transaction build \
   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 11 ${collateral1}" \
   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 9 ${collateral2}" \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -1 ${loanId}" \
-  --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
+  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

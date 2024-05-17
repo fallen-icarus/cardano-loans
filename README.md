@@ -1,10 +1,10 @@
 # Cardano-Loans
 
-A p2p-DeFi lending/borrowering protocol with an on-chain credit history. Lenders and borrowers can
+A p2p-DeFi lending/borrowing protocol with an on-chain credit history. Lenders and borrowers can
 trustlessly negotiate all loan terms prior to initiating the loan. Once the loan starts, the
 protocol will enforce all terms agreed upon during negotiations.
 
-As with all [p2p-DeFi protocol](https://github.com/zhekson1/CSL-DeFi-Protocols), all users maintain
+As with all [p2p-DeFi protocols](https://github.com/zhekson1/CSL-DeFi-Protocols), all users maintain
 full custody, delegation control, and voting control of their assets at all times. No batchers are
 required.
 
@@ -44,7 +44,8 @@ be found [here](./Benchmarks.md).
         - [Applying Interest/Penalties](#applying-interestpenalties)
         - [Updating a Lender Address](#updating-a-lender-address)
         - [Claiming Expired Collateral](#claiming-expired-collateral)
-        - [Unlocking Finished/Lost Loans](#unlocking-finishedlost-loans)
+        - [Unlocking Lost Collateral](#unlocking-lost-collateral)
+    - [On-Chain Credit History](#on-chain-credit-history)
 - [Benchmarks and Fee Estimations (YMMV)](#benchmarks-and-fee-estimations-ymmv)
 - [Features Discussion](#features-discussion)
     - [On-Chain, Emergent Credit History](#on-chain-emergent-credit-history)
@@ -54,7 +55,6 @@ be found [here](./Benchmarks.md).
     - [Staking Script Support](#staking-script-support)
     - [Endogenous Price and Interest Rate Discovery](#endogenous-price-and-interest-rate-discovery)
 - [Future Considerations](#future-considerations)
-    - [Alternative Credit History Method](#alternative-credit-history-method)
     - [DID Compatibility](#did-compatibility)
     - [Term Extensions and Re-Negotiations](#term-extensions-and-re-negotiations)
     - [Linkable Credit Histories](#linkable-credit-histories)
@@ -67,24 +67,24 @@ Cardano-Loans is a *fully p2p* lending/borrowing protocol for the Cardano Settle
 empowers users to create and operate a CSL-native credit-debt market via trustlessly negotiable and
 enforcable p2p loans, and on-chain credit history. This circumvents the need for oracles and/or
 concentrated lending pools in favor of *endogenous* price and interest-rate discovery. Users deploy
-(and interact with each others') script addresses, so full spending *and* delegation control of
+and interact with each others' script addresses; so full spending *and* delegation control of
 assets are maintained, and contract upgrades occur democratically. This protocol natively supports
 *all* Cardano assets as both loan assets and collateral assets - even assets that have yet to be
 created.
 
 ## Motivation
 
-A healthy credit-debt market is a vital (and often the largest) component of a thriving economy. A
-healthy market is one in which prices reflect underlying reality as quickly and faithfully (with as
-little friction) as possible. For the sake of avoiding a whole treatise on economics, suffice to say
-that *the best way to achieve fast and frictionless price discovery is through the aggregation of
-maximally expressive individual sentiments.* This is especially true for credit-debt markets, where
-money itself is the asset, priced via interest rates. Futhermore, as with all DeFi protocols, any
-credit-debt market that seeks to be an alternative to the current global financial system will
+A healthy credit-debt market is a vital, and often the largest, component of a thriving economy. A
+healthy market is one in which prices reflect underlying reality as quickly and faithfully (ie, with
+as little friction) as possible. For the sake of avoiding a whole treatise on economics, suffice to
+say that *the best way to achieve fast and frictionless price discovery is through the aggregation
+of maximally expressive individual sentiments.* This is especially true for credit-debt markets,
+where money itself is the asset, priced via interest rates. Futhermore, as with all DeFi protocols,
+any credit-debt market that seeks to be an alternative to the current global financial system will
 likely be perceived as a threat by those in positions of high power, so censorship resistance is an
 essential feature. 
 
-Unfortunately, contemporary lending/borrowering DApps on Cardano are implemented in ways that cannot
+Unfortunately, contemporary lending/borrowing DApps on Cardano are implemented in ways that cannot
 possibly create a true trustless and decentralized credit-debt market. To fully appreciate this, it
 is first important to understand the deficiencies of the status quo:
 
@@ -108,9 +108,10 @@ No, she shouldn't. Bob, her lender, knew the loan was going to be a year long lo
 concerned about the value of the collateral falling during the life of the loan, he could have asked
 for more collateral and/or asked for different collateral. The fact that cryptocurrency markets can
 be extremely volatile does not matter. Volatile assets also exist in TradFi (eg, small cap stocks,
-emerging market assets, etc), and this is exactly how TradFi manages the risk. If the collateral
-ever falls too low, relative to the outstanding loan, **it is the lender's fault**. The borrower
-should not be punished because the lender didn't properly manage the risk of a long-term loan.
+emerging market assets, etc), and this is one of methods TradFi uses to manages the risk. If the
+collateral ever falls too low, relative to the outstanding loan, **it is the lender's fault**. The
+borrower should not be punished because the lender didn't properly manage the risk of a long-term
+loan.
 
 Allowing borrowers and lenders to directly negotiate entirely eliminates the need for oracles. This
 dramatically minimizes the DApp's attack surface as well as makes the DeFi economy more independent.
@@ -139,7 +140,7 @@ To take a direct quote from
 > the true market sentiment. And when market sentiment cannot be accurately reflected, misallocation
 > of resources is inevitable (ie, an unhealthy economy). 
 
-Why is it that typical lending/borrowering DApps control every aspect of the loan: what asset can be
+Why is it that typical lending/borrowing DApps control every aspect of the loan: what asset can be
 loaned out, what collateral can be used, what the interest rate will be, etc? This top-down control
 of everything can only result in market inefficiencies. 
 
@@ -307,11 +308,13 @@ In practical terms, if only beefy computers are able to read the credit historie
 blockchain, those with these computers are in a priviledged position between borrowers and lenders.
 They can deny sharing the credit histories for borrowers they don't like. This would effectively
 nullify a borrower's entire credit history since lenders will most likely treat an unknown history
-the same as no history. Even if the people with these beefy computers are honest, they are a very
-centralized group that may be easy for governments target. If a government is able to commandeer
-these beefy computers, governments will still be able to exert undue influence. Blockchain would
-fail to be a check on government abuse. This argument applies to priorietary credit history
-databases as well.
+the same as no history. This same method can even be used to censor borrowers they *do* like since
+the unknown credit history will scare away competing lenders.
+
+Furthermore, even if the people with these beefy computers are honest, they are a very centralized
+group that may be easy for governments to target. If a government is able to commandeer these beefy
+computers, governments will still be able to exert undue influence. Blockchain would fail to be a
+check on government abuse. This argument applies to proprietary credit history databases as well.
 
 Credit histories *must* be on-chain and *must* be easy to lookup, even with an average computer.
 Otherwise, the credit history database itself would be an existential risk for a DeFi credit-debt
@@ -326,7 +329,7 @@ market.
 
 Contemporary lending/borrowing DApps use liquidity pools which means users must sacrifice custody,
 delegation control, and voting control of their assets in order to participate in DeFi. As these
-DApps gain adaption, the underlying Cardano blockchain becomes less decentralized and secure.
+DApps gain adoption, the underlying Cardano blockchain becomes less decentralized and secure.
 
 Furthermore, despite issuing "governance tokens", most of these DApps are controlled by nothing more
 than a multisig. The DApp developers have the ability to freeze all market activity. The claim is
@@ -363,12 +366,14 @@ first time ever, the non-banked can start building a credit history that is glob
 verifiable.
 - **Native Support for All Assets** - all assets are directly supported as loan assets and
 collateral assets. Nobody needs to ask permission to use a new asset. Even if only 10 people in the
-world are willing to use an asset, no one can stop them. Futhermore, *there is no limit to the number
-of assets a borrower can use as collateral for a loan.*
+world are willing to use an asset, no one can stop them. 
+- **Multi-Collateral Loans** - borrowers can use a basket of assets as collateral for a loan.
+Furthermore, *there is no limit to the number of assets a borrower can use as collateral for a
+loan.*
 - **Interest-Free, Non-Compounding, or Compounding Interest** - lenders and borrowers have full
 flexibility over what the interest for the loans will be. They can even decide on what the
 compounding frequency will be.
-- **Naturally Incentivized Regular Payments** - borrower's are incentivized to make regular payments
+- **Naturally Incentivized Regular Payments** - borrowers are incentivized to make regular payments
 on loans to avoid penalties agreed upon during negotiations. Because of this, lenders may be more
 willing to lend since there will be more regularity in when they will receive payments. This
 regularity can help them manage risk.
@@ -393,7 +398,7 @@ to manage the stake/voting power for assets in the DApp.
 - **Efficient Off-chain Sorting of Loans** - by using beacon tokens, users can easily query the
 protocol for any information they may want. These beacon queries can even be combined to create more
 complicated queries. For example, lenders can see all current Asks and optionally filter them by
-loan asset and/or offered collateral.
+loan asset and/or offered collateral. It is even possible to query a loan's entire event history.
 - **Democratic Upgradability** - users decide if and when to upgrade to a new version of the DApp.
 No one can decide this for them, or force them to move to a new version (eg, by freezing all
 functionality for the current version).
@@ -413,7 +418,7 @@ where all collateral is kept until the loan is either repaid or expired. As is c
 *distributed dApps*, all such loan addresses use the same validator script for the payment
 credential, and a unique, user-defined staking key or script for the staking credential.
 Owner-related actions are delegated to the staking credential *by* the validator script, so the user
-maintains full control of all assets at the address. The borrower's credit history is
+maintains full custody of all assets at the address. The borrower's credit history is
 cryptographically tied to the staking credential used in the loan address.
 
 Since negotiations occur in the borrower's address, the borrower maintains staking and voting rights
@@ -426,7 +431,7 @@ offers, which incentivizes lenders to be proactive and not leave offers open for
 
 ### Proxy Script
 
-Since Cardano-Loans has borrowers make payments directly to lender's, care must be taken when the
+Since Cardano-Loans has borrowers make payments directly to lenders, care must be taken when the
 lender's address uses a payment plutus script. This is because the protocol enforces a specific
 datum with loan payments in order to guarantee uniqueness of outputs - this is currently the
 cheapest option for preventing double satisfaction. If the loan payments with this enforced datum
@@ -447,7 +452,7 @@ payment credential and a plutus script as the staking credential. *The proxy scr
 paired with a staking credential.* The protocol will disallow any proxy scripts used without a
 staking credential.
 
-This proxy script can be used for all DeFi protocols that wish to enable direct payments to users.
+This proxy script can be used for *all* DeFi protocols that wish to enable direct payments to users.
 
 ### Telling Time
 
@@ -472,12 +477,12 @@ to `y`.
 All actions are largely categorized into two broad phases:
 
 1. *Negotiation Phase* - this is when borrowers ask for a loan, lenders make offers, and
-   negotiations happen. It ends when either the borrower and lender go their separate ways or a
+   negotiations happen. It ends when either the borrower and lender go their separate ways, or a
 borrower accepts a lender's offer.
 2. *Active Phase* - this phase starts when a borrower accepts a lender's offer. During this phase,
    the protocol will enforce all terms agreed upon during the negotiation phase.
 
-##### Phase UTxOs
+#### Phase UTxOs
 
 Further dividing the protocol's phases, each phase separates "states" into dedicated UTxO types.
 
@@ -493,11 +498,9 @@ address, and holds the collateral for the loan as well as the current state of t
 UTxO contains a unique ID, and one of the beacon tokens attached to this UTxO is strictly to make it
 easy to find this specific loan UTxO, off-chain.
 
-The Active UTxOs can be further sub-divided into 4 types:
+The Active UTxOs can be further sub-divided into 3 types:
 
 - *Live* - this Active UTxO is for a loan that is still active and being paid off.
-- *Finished* - this Active UTxO is for a loan that has successfully been repaid. It is waiting to be
-cleaned up.
 - *Expired* - this Active UTxO is for a loan that has expired before fully being repaid. It is
 waiting for a lender to claim the collateral.
 - *Lost* - this is an Expired Active UTxO that has been waiting around long enough for the protocol
@@ -506,11 +509,12 @@ bond NFT is lost, the protocol allows the borrower to claim the collateral attac
 The time until the protocol considers an Expired Active UTxO "lost" is one of the negotiable loan
 terms.
 
-##### Ask UTxO Beacons
+#### Ask UTxO Beacons
 
 Ask UTxOs have two dedicated beacons:
 
-- *Ask Beacon* - a negotiation beacon token representing an Ask UTxO. It has the token name "Ask".
+- *Ask Beacon* - a negotiation beacon token representing an Ask UTxO. It has the token name "Ask"
+(converted to hexidecimal).
 - *Loan Asset Beacon* - a negotiation beacon token representing which asset is the desired loan
 asset. It has the token name: `sha2_256("Asset" ++ asset_policy_id ++ asset_token_name)`.
 
@@ -518,24 +522,24 @@ Each Ask UTxO must be store with at least 1 unit of each asset offered for colla
 technically beacon tokens, these assets can compliment the other beacons by enabling the filtering
 of Ask UTxOs by those offering specific assets as collateral.
 
-##### Offer UTxO Beacons
+#### Offer UTxO Beacons
 
 Offer UTxOs have three dedicated beacons:
 
 - *Offer Beacon* - a negotiation beacon token representing an Offer UTxO. It has the token name
-"Offer".
+"Offer" (converted to hexidecimal).
 - *Loan Asset Beacon* - a negotiation beacon token representing which asset is the offered loan asset.
 It has the token name: `sha2_256( "Asset" ++ asset_policy_id ++ asset_token_name )`.
 - *Lender ID Beacon* - a negotiation beacon token representing the lender this offer belongs to. It
 has the token name: `sha2_256( prefix ++ lender_staking_credential_hash)` where `prefix` is either
 `00` or `01` if the lender's credential is a pubkey credential or script credential, respectively.
 
-##### Active UTxO Beacons
+#### Active UTxO Beacons
 
 Active UTxOs have four dedicated beacons:
 
 - *Active Beacon* - an active beacon token representing an Active UTxO. It has the token name
-"Active".
+"Active" (converted to hexidecimal).
 - *Loan Asset Beacon* - an active beacon token representing which asset is the offered loan asset.
 It has the token name: `sha2_256( "Asset" ++ asset_policy_id ++ asset_token_name )`.
 - *Borrower ID Beacon* - an active beacon token representing the borrower this loan is for. Its
@@ -544,14 +548,13 @@ DApp address).
 - *Loan ID Beacon* - an active beacon token uniquely representing this Active UTxO. Its token name
 is:  `sha2_256( offer_utxo_tx_hash ++ offer_utxo_output_index )`. There are two of these for each
 loan, one is stored with the collateral and one is the NFT that can be freely traded among lenders.
-This Loan ID token pair is called the "Lock & Key NFTs".
 
 The Loan Asset Beacon names for the negotiation phase and active phase are deliberately the same to
 simplify the off-chain querying.
 
 The borrower's credit history is directly tied to what happens with the Borrower ID Beacon.
 
-The 2 Loan ID Beacons act as *Lock & Key NFTs*. One copy is *always* stored with the collateral
+The two Loan ID Beacons act as *Lock & Key NFTs*. One copy is *always* stored with the collateral
 while the other is the bond NFT given to the lender. Whenever the lender wants to do something (eg,
 update the payment address or claim expired collateral), the transaction must contain *both* copies.
 Because of this, the Key NFT can act as a proxy for the lender's approval of the action; the Key NFT
@@ -605,11 +608,12 @@ flowchart LR
 
 The protocol's complementary proxy smart contract is hard-coded into the address update observer
 smart contract and the negotiation smart contract so that lender payment addresses can be checked
-for proper configurations.
+for proper configurations. **If any smart contract has the wrong hashes hard-coded, the beacons
+will be different and these UTxOs will be invisible to users using the correct beacons.**
 
 The redeemers and datums are introduced here:
 
-##### Negotiation Smart Contract Redeemers
+#### Negotiation Smart Contract Redeemers
 ```haskell
 data NegotiationBeaconsRedeemer
   -- | Create, close, or update some Ask UTxOs (1 or more). The credential is the borrower's
@@ -626,7 +630,7 @@ data NegotiationBeaconsRedeemer
   | RegisterNegotiationScript
 ```
 
-##### Active Smart Contract Redeemers
+#### Active Smart Contract Redeemers
 ```haskell
 data ActiveBeaconsRedeemer
   -- | Create some Active UTxOs (1 or more) for the borrower. The CurrencySymbol is the 
@@ -637,14 +641,13 @@ data ActiveBeaconsRedeemer
   = CreateActive { negotiationPolicyId :: CurrencySymbol }
   -- | Burn the lock and key NFT to claim expired collateral attached to the associated lock NFT.
   | BurnKeyAndClaimExpired
-  -- Burn all remaining beacons and claim "Lost" collateral, if any. This is used for both
-  -- Finished Active UTxOs and Lost Active UTxOs.
-  | BurnRemainderOrUnlockLost
+  -- Burn all remaining beacons and claim "Lost" collateral. 
+  | BurnAndUnlockLost
   -- | Burn any beacons. This is only ever used in transactions with full payments.
   | BurnActiveBeacons
 ```
 
-##### Payment Observer Smart Contract Redeemers
+#### Payment Observer Smart Contract Redeemers
 ```haskell
 data PaymentObserverRedeemer
   -- | Observer a borrower's loan payment transaction. It will validate all inputs spent using the
@@ -655,7 +658,7 @@ data PaymentObserverRedeemer
   | RegisterPaymentObserverScript
 ```
 
-##### Interest Observer Smart Contract Redeemers
+#### Interest Observer Smart Contract Redeemers
 ```haskell
 data InterestObserverRedeemer
   -- | Observer a borrower's loan interest application transaction. It will validate all inputs
@@ -666,7 +669,7 @@ data InterestObserverRedeemer
   | RegisterInterestObserverScript
 ```
 
-##### Address Update Observer Smart Contract Redeemers
+#### Address Update Observer Smart Contract Redeemers
 ```haskell
 data AddressUpdateObserverRedeemer
   -- | Observer a lender's address update transaction. It will validate all inputs spent using the
@@ -677,7 +680,7 @@ data AddressUpdateObserverRedeemer
   | RegisterAddressUpdateObserverScript
 ```
 
-##### Loan Spending Smart Contract Redeemers
+#### Loan Spending Smart Contract Redeemers
 ```haskell
 data LoanRedeemer
   -- | Close or update an Ask UTxO.
@@ -696,14 +699,17 @@ data LoanRedeemer
   -- | Update the address where loan payments must go. Optionally deposit additional ada if needed
   -- for the minUTxOValue.
   | UpdateLenderAddress { newAddress :: Address, depositIncrease :: Integer }
-  -- | Clean up remaining beacons from Finished Active UTxOs and/or claim Lost Active UTxOs.
+  -- | Clean up remaining beacons from Lost Active UTxOs and claim the attached collateral.
   | Unlock
   deriving (Generic,Show)
 ```
 
-##### Loan Spending Smart Contract Datums
-A DApp UTxO's datum can either be an `AskDatum`, an `OfferDatum`, or an `ActiveDatum`. `POSIXTime`
-is always in milliseconds.
+#### Loan Spending Smart Contract Datums
+
+A DApp UTxO's datum can either be an `AskDatum`, an `OfferDatum`, or an `ActiveDatum`. All datums
+must be inline datums.  
+
+`POSIXTime` is always in milliseconds.
 
 ```haskell
 -- | A type synonym for an asset's full name.
@@ -825,8 +831,10 @@ data LoanDatum
       }
 ```
 
-##### Payment Datum
-This datum is attached to all direct outputs to lenders. It is used to prevent double-satisfaction.
+#### Payment Datum
+
+This inline datum is attached to all direct outputs to lenders. It is used to prevent
+double-satisfaction.
 
 ```haskell
 -- | The `CurrencySymbol` is always the active beacon policy id, and the `TokenName` is always
@@ -843,18 +851,22 @@ Borrowers begin negotiations by creating a new Ask UTxO with their desired terms
 address. The borrower is able to create/update/close multiple Ask UTxOs in a single transaction;
 each Ask UTxO created/updated/closed can have different terms.
 
-##### Creating Ask UTxOs
+#### Creating Ask UTxOs
 
-In order to successfully create an Ask UTxO, all of the following must be true:
+At a high-level, creating Ask UTxOs involves creating Ask UTxO outputs with the desired `AskDatum`s
+at a specific borrower's address, and tagging them with the required beacons so that they will be
+broadcast to potential lenders. The borrower must approve this action.
+
+At a low-level, in order to successfully create an Ask UTxO, all of the following must be true:
 
 - The negotiation beacon smart contract must be executed as a minting policy using
 `CreateCloseOrUpdateAsk`.
 - The staking credential used with the `CreateCloseOrUpdateAsk` redeemer must be the one used for
 the Borrower ID *and* the target loan address.
 - All outputs with beacons must have exactly two kinds of beacons, with exactly one unit of each:
-    - an Ask beacon with the token name "Ask"
+    - an Ask beacon with the token name "Ask" (converted to hexidecimal)
     - a loan asset beacon with the token name corresponding to this Ask's loan asset.
-- All outputs with beacons must have a valid `AskDatum`:
+- All outputs with beacons must have a valid inline `AskDatum`:
     - `negotiationBeaconId` == the negotiation smart contract policy id
     - `activeBeaconId` == the negotiation smart contract's hard-coded active smart contract hash
     - `borrowerId` == the staking credential hash used in the `CreateCloseOrUpdateAsk` redeemer
@@ -885,7 +897,7 @@ list cannot be used as collateral for a loan*.
 A consequence of these requirements is that all Ask UTxOs created *must* be for the same borrower.
 
 The borrower's credential must signal approval so that only that borrower can initiate negotiations
-under that identity. This helps cryptographically prevents identity theft.
+under that identity. This helps cryptographically prevent identity theft.
 
 The loan asset is deliberately allowed to be the same as a collateral asset to enable secured loans.
 Secured loans are very useful for bootstrapping a borrower's credit history. You can read more about
@@ -895,9 +907,12 @@ There is no need for the `AskDatum` to contain the observer scripts since the ob
 are hard-coded into the active beacon script. Therefore, the active beacon script hash implicitly
 also declares what observer scripts are allowed to be used.
 
-##### Closing Ask UTxOs
+#### Closing Ask UTxOs
 
-Closing Ask UTxOs requires:
+At a high-level, closing Ask UTxOs involves spending the Ask UTxOs and burning all beacons attached
+to them. The borrower must approve this action.
+
+At a low-level, all of the following must be true:
 
 - The loan spending smart contract is executed for the Ask UTxO input using `CloseOrUpdateAsk`.
 - The Ask UTxO must have an `AskDatum`.
@@ -922,14 +937,16 @@ the rare scenarios where the loan spending smart contract will check directly.
 > contract as a minting policy for one borrower, and as a staking script for the second borrower.
 > Both borrower credentials must still approve the transaction so there is no risk of theft. This
 > works because the negotiation smart contract doesn't care where inputs with beacons come from; it
-> only cares about outputs with beacons. In this case, there aren't any outputs with beacons.
+> only cares about outputs with beacons and whether the required borrower approved the transaction.
+> In this case, there aren't any outputs with beacons and both borrowers approved.
 
-##### Updating Ask UTxOs
+#### Updating Ask UTxOs
 
 If the Ask UTxO is changing the loan asset, the loan asset beacon will need to be changed which
 means the negotiation smart contract must be executed as a minting policy. However, if no beacons
-need to be changed, the negotiation smart contract can be executed as a staking script. *All other
-requirements are the same as closing Ask UTxOs.* Even the redeemers used are the same.
+need to be changed while the datums are being updated, the negotiation smart contract must be
+executed as a staking script. *All other requirements are the same as creating Ask UTxOs.* You will
+need to use the same spending redeemer as when closing Ask UTxOs.
 
 It is *not* possible to move an Ask UTxO to a new loan address in the case where a borrower wishes
 to use a different staking credential. Using both the minting execution and staking execution in a
@@ -954,9 +971,13 @@ the lender to find all of their current offers, despite them being located in ps
 addresses. The protocol gives custody of Offer UTxOs to whoever controls the credential for that
 Lender ID. *If an Offer UTxO is every created without a Lender ID, the borrower will get custody.*
 
-##### Creating Offer UTxOs
+#### Creating Offer UTxOs
 
-In order to successfully create an Offer UTxO, all of the following must be true:
+At a high-level, creating Offer UTxOs involves creating Offer UTxO outputs with the desired
+`OfferDatum`s at a borrower's address (1 or more), and tagging them with the required beacons so
+that they will be broadcast to users (including the lender). The lender must approve this action.
+
+At a low-level, in order to successfully create an Offer UTxO, all of the following must be true:
 
 - The negotiation beacon smart contract must be executed as a minting policy using
 `CreateCloseOrUpdateOffer`.
@@ -967,7 +988,7 @@ the Lender ID.
     - a loan asset beacon with the token name corresponding to this Offer's loan asset
     - a Lender ID beacon with the token name corresponding to the credential used in the
     `CreateCloseOrUpdateOffer` redeemer
-- All outputs with beacons must have a valid `OfferDatum`:
+- All outputs with beacons must have a valid inline `OfferDatum`:
     - `negotiationBeaconId` == the negotiation smart contract policy id
     - `activeBeaconId` == the negotiation smart contract's hard-coded active smart contract hash
     - `lenderId` == the Lender ID beacon token name for the staking credential used in the
@@ -992,7 +1013,7 @@ the Lender ID.
 - All outputs with beacons must contain exactly the principal for the loan + the offer deposit
 amount of ADA. No extraneous assets are allowed.
 - All outputs with beacons must go to a loan address using a valid staking credential.
-- The staking credential in the `CreateCloseOrUpdateOffer` redeemer must approve the transaction, in
+- The staking credential in the `CreateCloseOrUpdateOffer` redeemer must approve the transaction in
 the way that matches the prefix for the Lender ID: pubkeys must sign and staking scripts must be
 executed.
 
@@ -1013,10 +1034,10 @@ can be set to 0 to allow interest-free loans. When `compoundFrequency` is set to
 borrower will never need to apply interest or penalties; they can continue making payments until the
 loan expires.
 
-The `minPayment` is the minimum required payment a borrower must make each compound period. If the
-minimum payment has not been met by the time the next interest payment is required, the `penalty`
-will be applied to the outstanding balance. This field incentivizes the borrower to make regular
-payments on the loan. 
+The `minPayment` is the minimum required payment a borrower must make each compound period; it does
+not need to be in a single transaction. If the minimum payment has not been met by the time the next
+interest payment is required, the `penalty` will be applied to the outstanding balance. This field
+incentivizes the borrower to make regular payments on the loan. 
 
 The `penalty` field determines what to do in the case a borrower fails to meet the required minimum
 payment. The penalty can be set to `NoPenalty` to make the offer more competitive against other
@@ -1024,7 +1045,8 @@ offers. *You cannot set a penalty unless `minPayment` is greater than 0.* You ca
 for a `minPayment` greater than zero, but there is no point doing that; the `minPayment` field will
 be ignored. If `loanInterest` is set to 0 and `penalty` is set to `NoPenalty`, then the borrower
 will never need to apply interest or penalties; they can continue making payments until the loan
-expires.
+expires. It is possible to set penalties on interest-free loans by still specifying a compounding
+frequency.
 
 If the lender does not want a particular collateral asset used, the relative value for that asset
 can be set to 0 to prevent it from counting as collateral. Alternatively, the undesired asset can be
@@ -1054,9 +1076,12 @@ redeemer.
 > this ever happens, it just means this Lender ID requires withdrawing from the staking address for
 > all actions. There is no risk of theft or permanent locking.
 
-##### Closing Offer UTxOs
+#### Closing Offer UTxOs
 
-Closing Offer UTxOs requires:
+At a high-level, closing Offer UTxOs involves spending the Offer UTxOs and burning all beacons attached
+to them. The lender must approve this action.
+
+At a low-level, all of the following must be true:
 
 - The loan spending smart contract is executed for the Offer UTxO input using `CloseOrUpdateOffer`.
 - The Offer UTxO must have an `OfferDatum`.
@@ -1073,9 +1098,10 @@ The negotiation smart contract will actually do the exact same check as when cre
 However, since closing Offer UTxOs implies no new Offer UTxO outputs, there are no outputs to check.
 
 If there is ever an invalid Offer UTxO (ie, an Offer UTxO with an `OfferDatum` but no beacons), it
-can be spent with this method; the negotiation smart contract would not need to be executed.
-Normally, the negotiation smart contarct will check for the proper approval for Offer UTxOs, but
-this is the one scenario where the loan spending smart contract will check directly.
+can be spent by the borrower with this method; the negotiation smart contract would not need to be
+executed. Normally, the negotiation smart contarct will check for the proper approval for Offer
+UTxOs, but this is one of the rare scenarios where the loan spending smart contract will check
+directly.
 
 > NOTE: It is possible to close Offer UTxOs for two different lender credentials by using the
 > negotiation smart contract as a minting policy for one credential, and as a staking script for the
@@ -1084,12 +1110,13 @@ this is the one scenario where the loan spending smart contract will check direc
 > beacons; it only cares about the proper approvals and outputs with beacons. In this case, both
 > required credentials approved and there aren't any outputs with beacons.
 
-##### Updating Offer UTxOs
+#### Updating Offer UTxOs
 
 If the Offer UTxO is changing the loan asset, the loan asset beacon will need to be changed which
 means the negotiation smart contract must be executed as a minting policy. However, if no beacons
-need to be changed, the negotiation smart contract can be executed as a staking script. *All other
-requirements are the same as closing Offer UTxOs.*
+need to be changed while the datums are updated, the negotiation smart contract must be executed as
+a staking script. *All other requirements are the same as creating Offer UTxOs.* You will need to
+use the same spending redeemer as when closing Offer UTxOs.
 
 It is *not* possible to convert the Lender ID to a new credential in a single transaction. Using
 both the minting execution and staking execution in a single transaction does not help because they
@@ -1103,12 +1130,17 @@ lender's Offer UTxO. The new Active UTxO will get a unique identifier based on t
 was used to create it. The protocol will trustlessly enforce all loan terms agreed upon during
 negotiations.
 
-##### Accepting an Offer UTxO
+#### Accepting an Offer UTxO
 
-A loan starts once an Offer UTxO is accepted. A borrower is able to accept multiple Offer UTxOs in
-the same transaction, provided all Offers are for them. 
+Borrowers are able to accept multiple offers in a single transaction.
 
-In order to accept Offer UTxOs, all of the following must be true:
+At a high-level, accepting an offer entails converting *both* an Offer UTxO and an Ask UTxO into a
+single Active UTxO; the Offer UTxO and the Ask UTxO do *not* need to be for the same terms. All of
+the negotiation beacons attached to the Offer UTxO and Ask UTxO must be burned, and the Active UTxO
+must be tagged with the proper active beacons. The borrower must approve this transaction.
+
+At a low-level, all of the following must be true:
+
 - The Offer UTxOs must be spent by executing the loan spending script with the `AcceptOffer`
 redeemer.
 - The Ask UTxOs must be spent by executing the loan spending script with either the `AcceptOffer`
@@ -1122,13 +1154,13 @@ contract policy id set as the attached `CurrencySymbol`.
 `BurnNegotiationBeacons` redeemer. It is significantly cheaper to use the `BurnNegotiationBeacons`
 redeemer. If `BurnNegotiationBeacons` is used, then the Ask UTxOs must be spent with the
 `AcceptOffer` spending redeemer.
-- No finished loans (ie, those with an Active beacon but no Borrower ID beacon) are allowed among
+- No invalid loans (ie, those with an `ActiveDatum` but no beacons) are allowed among
 the inputs.
 - The number of valid Offer UTxO inputs must equal the number of valid Ask UTxO inputs.
 - All valid offers among the inputs must not be expired.
 - Every valid offer must have a corresponding collateral output:
     - It must be locked at the loan address where the offer originates
-    - The datum must be an `ActiveDatum` with:
+    - The datum must be an inline `ActiveDatum` with:
         - `activeBeaconId` == active smart contract policy id
         - `paymentObserverHash` == hard-coded hash of the payment observer smart contract
         - `interestObserverHash` == hard-coded hash of the interest observer smart contract
@@ -1183,9 +1215,10 @@ to prove the offer has not expired. If no offers have expirations set, the `inva
 can be dropped.
 
 The active beacon script will assume *all* valid negotiation inputs are meant to be for acceptances.
-This dramatically simplifies the logic.
+This dramatically simplifies the logic. The script also tightly controls what negotiation beacons
+can be minted/burned; no new outputs with negotiation beacons can be created.
 
-The ask inputs are not compared against the offer inputs because the borrower must manually accept
+The ask inputs are *not* compared against the offer inputs because the borrower must manually accept
 the offer, and is therefore already explicitly consenting to the offer's terms. As a plus, if the
 lender made a counter-offer, the borrower can immediately accept it; this would not be possible if
 the borrower's Ask UTxO had to match the offer accepted (the borrower would first have to update
@@ -1211,16 +1244,17 @@ This redeemer does not need to check any other output. All it needs to focus on 
 minted beacons end up. The other redeemers will check all continuing Active UTxOs (ie, Active loans
 present in both the inputs and outputs). By tightly controlling what beacons can be minted and
 burned, this redeemer cannot be used to cheat on any active loan. This also enables accepting offers
-to happen in the same transaction as other actions on loans, such as partial payments.
+in the same transaction as other actions on loans, such as partial payments.
 
 > NOTE: Accepting offers can only be composed with other actions that do *not* interfere with its
-> minting/burning requirements.
+> minting/burning requirements. Since full payments require specific burning, you *cannot* compose
+> accepting offers with making full payments.
 
 When accepting multiple offers in a single transaction, **the order of the corresponding outputs
 matter!** All required collateral outputs must be in the same order as the offer inputs. Likewise,
 all required lender payment outputs must be in the same order as the offer inputs. *The
-corresponding collateral output and lender payment output do not need to be next to each other in
-the transaction's outputs.* The rules are:
+corresponding collateral output and lender payment output do not need to be adjacent in the
+transaction's outputs.* The rules are:
 
 - When you filter the transaction's outputs for the collateral outputs, are they in the same order
 as the offer inputs?
@@ -1234,14 +1268,14 @@ performance. Because you can still mix in other outputs, this should not have an
 composability. There are also [CIPs](https://github.com/cardano-foundation/CIPs/pull/758) that could
 give even greater flexibility over output ordering.
 
-##### Making a Loan Payment
+#### Making a Loan Payment
 
 Borrowers can make partial or full payments on any loan that has not expired yet *and* does not
 require an interest/penalty application. Multiple payments can be made in a single transaction.
 
-At a high-level, a payment requires updating the `ActiveDatum` attached to the collateral UTxO *and*
-paying the lender directly to their specified address. Therefore, each payment input requires two
-outputs.
+At a high-level, a payment requires updating the `ActiveDatum` attached to the collateral UTxO to
+reflect the payment amount *and* paying the lender directly to their specified address. Therefore,
+each payment input requires two outputs.
 
 To make a payment, all of the following must be true:
 
@@ -1252,7 +1286,7 @@ redeemer must specify the size of the payment.
 `ObservePayment` redeemer. 
 - All loan payment inputs must be from the same loan address.
 - For every loan payment input:
-    - It must still have the Borrower ID.
+    - It must have the required beacons.
     - The loan must not be expired (using `invalid-hereafter`).
     - The next interest/penalty application must not be require (using `invalid-hereafter`).
     - There must be an output to the `lenderAddress` in the input's `ActiveDatum` with:
@@ -1260,30 +1294,25 @@ redeemer must specify the size of the payment.
         `TokenName` is the `loanId` from the input's `ActiveDatum`
         - The amount of the loan asset specified in the `MakePayment` redeemer used to spend the
         input.
-    - There must be an output to the originating loan address with the proper datum:
+    - If the payment is a partial payment, there must be an active output to the borrower's loan
+    address with:
         - The exact same datum as the input except the `loanOutstanding` and `totalEpochPayments`
         fields are updated to reflect the payment amount.
-    - If the remaining balance was paid off:
-        - The active smart contract must be executed as a minting policy using the
-        `BurnActiveBeacons` redeemer.
-        - The Borrower ID for this loan must be burned.
-        - No other kinds of active beacons can be minted/burned in this transaction. Other copies of
-          this Borrower ID can still be burned.
-        - The loan address output with the updated datum must still have the other three beacons for
-        the loan.
-        - All remaining collateral can be taken.
-    - If this is just a partial payment:
-        - The loan address output with the updated datum must still have all four beacons.
+        - All of the beacons from the input.
         - Collateral can be taken proportionally to the amount of the outstanding balance paid off.
+    - If the remaining balance was paid off:
+        - All beacons attached to the loan must be burned.
+        - All remaining collateral can be taken.
 - The staking credential in the loan address must approve the transaction.
 
 In order to ensure compound interest accrues and penalties are applied, the borrower cannot make the
 next payment if the next interest and/or penalty application is due. The script uses the
-`invalid-hereafter` flag to assert a time has not passed. For convenience, the borrower can set the
-`invalid-hereafter` flag to the slot when the next interest application is due (or expiration if no
-more applications are required). The only time penalty is applied without also applying loan
-interest is when the loan interest is set to zero. If multiple payments are being made in a single
-transaction, the `invalid-hereafter` bound should be set to the earliest deadline.
+`invalid-hereafter` flag to assert the next compounding period has not started (or the expiration
+has passed, whichever is first). For convenience, the borrower can set the `invalid-hereafter` flag
+to the slot when the next interest application is due (or expiration if no more applications are
+required). The only time penalty is applied without also applying loan interest is when the loan
+interest is set to zero. If multiple payments are being made in a single transaction, the
+`invalid-hereafter` bound should be set to the earliest deadline.
 
 The payment observer smart contract will only validate loan inputs spent using the `MakePayment`
 spending redeemer. All other inputs will be ignored.
@@ -1308,26 +1337,11 @@ outputs must be in the same order as the loan inputs, but they do not need to be
 still have other outputs mixed in. This order restriction dramatically improves performance, but
 shouldn't negatively impact composability.
 
-The credit history is based on how many active beacons are burned along with the Borrower ID in the
-transaction. If the Borrower ID is the only active beacon burned, then all active loan outputs
-without the Borrower ID are successful payments. These outputs will still have the remaining beacons.
-When a borrower defaults, the Borrower ID will burn burned along with all of the other active beacons
-present in the transaction. Therefore, when Borrower ID are *not* burned in isolation, all defaults
-are the active loan inputs that still contain the Borrower ID. Key assumptions are that this redeemer
-*cannot* be used with Active UTxOs that are already missing the Borrower IDs, and this redeemer
-*cannot* be composed with either claiming expired loans or unlocking loans (these require burning
-other beacons). 
-
-> NOTE: There is another method for identifying defaults that can be used in the next version of
-> cardano-loans; you can read about it [here](#alternative-credit-history-method). The new method
-> would allow burning all beacons at the time of the full payment which means the extra step of
-> closing a Finsihed Active UTxO would no longer be needed.
-
 Because of the burning requirement, making full payments cannot happen in the same transaction where
 offers are accepted. However, since partial payments do not require any burning, partial payments
 can be composed with accepting offers.
 
-##### Applying Interest/Penalties
+#### Applying Interest/Penalties
 
 Once the current compounding period ends, the protocol will prevent the borrower from making any
 further payments until after they apply the required interest and/or penalty. If the borrower
@@ -1338,18 +1352,22 @@ If the borrower misses several compound periods, they can get caught back up in 
 transaction; the interest and penalties will still be properly applied. The borrower can apply the
 interest/penalties for multiple loans in a single transaction.
 
-To apply the interest/penalties, all of the following must be true:
+At a high-level, applying interest/penalties entails evolving the Active UTxO to update its
+`ActiveDatum`. The value should be exactly the same (optionally depositing more ada for the
+minUTxOValue) and the borrower must approve.
+
+At a low-level, all of the following must be true:
 
 - The Active UTxO the application is for must have an `ActiveDatum`.
 - The Active UTxO the application is for must be spent using the `ApplyInterest` redeemer, and the
 redeemer must specify the number of applications required as well as if any ada needs to be added
-to satisfy the new Active UTxOs minUTxOValue.
+to satisfy the new Active UTxO's minUTxOValue.
 - The interest observer smart contract must be executed as a staking script using the
 `ObserveInterest` redeemer. 
 - All interest/penalty inputs must be from the same loan address.
 - For all interest/penalty inputs:
     - The loan must not be expired (using `invalid-hereafter`).
-    - The Borrower ID must still be present.
+    - The input must have the required beacons.
     - The `depositIncrease` attached to the `ApplyInterest` redeemer must be >= 0
     - The `numberOfTimes` attached to the `ApplyInterest` redeemer must be >= 1
     - There must be a corresponding Active UTxO output to the originating loan address with:
@@ -1388,9 +1406,9 @@ can still have other outputs mixed in. This order restriction dramatically impro
 shouldn't negatively impact composability.
 
 Since applying interest/penalties does not involve burning, this action can be composed with
-accepting offers.
+accepting offers. It can also be composed with making payments (partial and/or full).
 
-##### Updating a Lender Address
+#### Updating a Lender Address
 
 When a Key NFT for an Active UTxO is traded, the new owner needs to update the `lenderAddress`
 attached to the UTxO so that they can get all future payments. This protocol is designed so that the
@@ -1398,7 +1416,10 @@ attached to the UTxO so that they can get all future payments. This protocol is 
 secondary market. It is possible to update the addresses for multiple loans in a single transaction
 as long as the lender controls all of the required Key NFTs.
 
-To update a lender address, all of the following must be true:
+At a high-level, updating the address involves moving the Key NFT to the new address that will be
+used for the lender address, and evolving the Active UTxO to update its datum.
+
+At a low-level, all of the following must be true:
 
 - The Active UTxO the update is for must have an `ActiveDatum`.
 - The Active UTxO the update is for must be spent using the `UpdateLenderAddress` redeemer, and the
@@ -1408,7 +1429,7 @@ Active UTxOs minUTxOValue.
 `ObserveAddressUpdate` redeemer. 
 - For all update inputs:
     - The loan must not be expired (using `invalid-hereafter`).
-    - The Borrower ID must still be present.
+    - The input must have the required beacons.
     - The new lender address must either use a payment pubkey, or the proxy script as the payment
     credential and a valid staking credential.
     - The Key NFT for the loan must be output to the new address with a `PaymentDatum` where the
@@ -1429,12 +1450,12 @@ As a proxy for the lender's approval, it is enough to check that there were two 
 Lock and the Key NFT) moved during this transaction: one must still be attached to the collateral
 UTxO and the other must go to the new address. The new `lenderAddress` will be set to wherever the
 Key NFT ends up. The address is set to the destination of the Key NFT because, if it was enough for
-the Key NFT to just move, malicious frontends could deliberately choose the UTxO with the Key NFT
+the Key NFT to just move, malicious front-ends could deliberately choose the UTxO with the Key NFT
 and return the NFT as change in an unrelated transaction for Alice. Alice would still own the Key
-NFT, but the malicious frontend could have updated the `lenderAddress` for Alice's loan without
+NFT, but the malicious front-end could have updated the `lenderAddress` for Alice's loan without
 Alice noticing. By requiring the new address to be the destination of the Key NFT, Alice is much
 more likely to notice malicious behavior since it is much easier to detect the withdrawal of assets
-from an address; the malicious frontend would have to steal the Key NFT to change Alice's lender
+from an address; the malicious front-end would have to steal the Key NFT to change Alice's lender
 address. The spending redeemer is used to tell the script where to expect the Key NFT; this improves
 performance.
 
@@ -1451,19 +1472,22 @@ payments. This redeemer therefore prioritizes composing the purchase of the Key 
 changing of the lender address. In this scenario, the Key NFT would be "moving" to a new UTxO which
 means it would be found in the transaction inputs, as opposed to the reference inputs.
 
-When updating the address for multiple loans, **The order of the update outputs matter!** The rules
+When updating the address for multiple loans, **the order of the update outputs matter!** The rules
 are exactly the same as when accepting offers: the order of the corresponding collateral outputs
 must be in the same order as the update inputs *and* the corresponding Key NFT outputs must be in
 the same order as the update inputs. You can still have other outputs mixed in. This order
 restriction dramatically improves performance, but shouldn't negatively impact composability.
 
-##### Claiming Expired Collateral
+#### Claiming Expired Collateral
 
 Whoever controls the Key NFT for a loan is able to claim any collateral when the loan expires.
 Lenders can claim the collateral for multiple expired loans as long as they control all required Key
 NFTs.
 
-To claim the collateral for an expired loan, all of the following must be true:
+At a high-level, claiming expired collateral entails spending the Active UTxO, and burning all
+beacons for that loan including the Key NFT (ie, two Loan ID beacons must be burned).
+
+At a low-level, all of the following must be true:
 
 - The Active UTxO being claimed must have an `ActiveDatum`.
 - The Active UTxO being claimed must be spent using the `SpendWithKeyNFT` redeemer.
@@ -1471,16 +1495,12 @@ To claim the collateral for an expired loan, all of the following must be true:
   redeemer.
 - For all Active UTxOs being claimed:
     - The loan must be expired (using `invalid-before`).
-    - The loan must still contain the Borrower ID.
+    - The loan must contain the beacons.
     - Both the Lock and Key NFT for this loan must be burned.
-    - All active beacons among the inputs must be burned.
+    - All active beacons among the inputs spent with `SpendWithKeyNFT` must be burned.
 
-The `invalid-before` bound is used to prove the expiration time has passed. When claiming multiple
-expired loans, `invalid-before` can be set to the latest loan expiration.
-
-The Borrower ID is required so that only the borrower can claim any remaining collateral in the UTxO
-as well as the minUTxOValue deposit that was stored with the Active UTxO. This deposit belongs to
-the borrower. Finished loans should not be claimable with the Key NFT for this reason.
+The `invalid-before` bound is used to prove the expiration time has passed. The flag can always be
+set to the current time.
 
 Since the Key NFT is actually being burned in this transaction (ie, the UTxO is being consumed),
 this can be used as a proxy for the lender's approval.
@@ -1492,35 +1512,47 @@ However, the borrower is also now able to claim the collateral so the protocol w
 collateral to whoever is first. Lenders should claim any collateral before the `claimExpiration`
 passes. The claim period was part of the negotiations so this shouldn't be a problem.
 
-##### Unlocking Finished/Lost Loans
+#### Unlocking Lost Collateral
 
-> NOTE: In the future, the step of unlocking finished loans may not be needed.
+A borrower is able to claim any expired Active UTxOs whose claim period has passed.
 
-A borrower is able to clean up any Finished Active UTxOs as well as claim any expired Active UTxOs
-whose claim period has passed.
+At a high-level, claiming lost collateral entails spending the Active UTxO, and burning all beacons
+for that loan *excluding* the Key NFT (ie, one Loan ID beacon must be burned).
 
-To unlock Active UTxOs, all of the following must be true:
+At a low-level, all of the following must be true:
 
 - The Active UTxO being unlocked must have an `ActiveDatum`.
 - The Active UTxO being unlocked must be spent using the `Unlock` redeemer.
 - All Active UTxOs being unlocked must come from the same loan address.
 - If any of the Active UTxOs spent with `Unlock` contain beacons, the active smart contract must be
-executed as a minting policy using the `BurnRemainderOrUnlockLost` redeemer.
-- For all Active UTxOs being unlocked:
-    - If the Borrower ID is still present, the loan's `claimExpiration` must have passed (using
-    `invalid-before`).
-    - All active beacons among the inputs must be burned.
+executed as a minting policy using the `BurnAndUnlockLost` redeemer.
+- For all Active UTxOs with beacons being unlocked:
+    - The loan's `claimExpiration` must have passed (using `invalid-before`).
+    - All active beacons among the inputs must be burned. 
+    - The Key NFT must not be burned.
 - The loan address' staking credential must signal approval.
 
-The `invalid-before` bound is used to prove the claim expiration has passed. When unlocking multiple
-loans, `invalid-before` can be set to the latest claim expiration. If all Active UTxOs in the
-transaction are Finished Active UTxOs, the `invalid-before` bound is not necessary.
+The `invalid-before` bound is used to prove the claim expiration has passed. This flag can always be
+set to the current time. 
 
 Any lost collateral UTxOs claimed with this redeemer will still count as defaults for the borrower.
 
 Invalid Active UTxOs (ie, UTxOs with an `ActiveDatum` but no beacons) can be spent using just the
 `Unlock` spending redeemer. The loan spending script will directly check for the borrower's
-approval.
+approval. The `invalid-before` flag is not needed to unlock invalid Active UTxOs.
+
+### On-Chain Credit History
+
+The credit history is based off which redeemers are used in transactions where Borrower IDs are
+burned. If `MakePayment` is used on a inputs with Borrower IDs and the amount paid (specified in the
+redeemer) is greater than or equal to the input's outstanding balance (specified in the datum), this
+is the final payment on that loan; it is being fully paid off in this transaction. However, if
+`Unlock` or `SpendWithKeyNFT` are used on loan inputs with Borrower IDs, these are guaranteed to be
+defaults. This relationship between redeemers and the Borrower IDs can be used to create a trustless
+credit history for that borrower. In concrete terms, lenders would first look for all transactions
+where Borrower IDs are burned. Then, they would further inspect those transactions to see which
+redeemers were used on the inputs with that Borrower ID. The datums attached to the inputs were the
+state of the loan at the time of the final payment or default (ie, right before the final event).
 
 ## Benchmarks and Fee Estimations (YMMV)
 
@@ -1539,10 +1571,10 @@ worst case scenario while the `Min Tx Fee` is the fee if only one action was tak
 | Closing Offers | 30 offers/tx | 1.693951 ADA |  0.268367 ADA |
 | Accepting Offers | 8 offers/tx | 1.891267 ADA | 0.383901 ADA |
 | Making Partial Payments | 11 payments/tx | 1.956726 ADA | 0.401901 ADA |
-| Making Full Payments | 13 payments/tx | 1.996089 ADA | 0.346314 ADA |
+| Making Full Payments | 15 payments/tx | 1.606533 ADA | 0.319935 ADA |
 | Applying Interest/Penalties | 21 loans/tx | 1.896226 ADA | 0.280379 ADA |
 | Updating Lender Addresses | 15 loans/tx | 1.771197 ADA | 0.304445 ADA |
-| Claim Expired Collateral | 10 claims/tx | 1.107785 ADA | 0.253516 ADA |
+| Claiming Expired Collateral | 10 claims/tx | 1.107785 ADA | 0.253516 ADA |
 | Unlocking Lost Collateral | 17 loans/tx | 1.480003 ADA | 0.246439 ADA |
 | Spending From the Proxy Script | 71 utxos/tx | 1.730921 ADA | 0.181917 ADA |
 
@@ -1552,10 +1584,11 @@ worst case scenario while the `Min Tx Fee` is the fee if only one action was tak
 
 Cardano-Loans automatically generates the credit history for every borrower; there is no additional
 cost for this. Every part of the loan is tracked, not just whether it was a default. For example,
-lenders can see how much of the loan a borrower paid back before they defaulted. Therefore, not all
-defaults (should) impact creditworthiness in the same way. Futhermore, when new versions of the
-protocol come out, the borrower's credit history is not lost; a borrower's credit history transcends
-the protocol's version (assuming they are using the same credential across versions).
+lenders can see how much of the loan a borrower paid back before they defaulted as well as how often
+they made payments on the loan. Therefore, not all defaults (should) impact creditworthiness in the
+same way. Futhermore, when new versions of the protocol come out, the borrower's credit history is
+not lost; a borrower's credit history transcends the protocol's version (assuming they are using the
+same credential across versions).
 
 Consider what this means for the non-banked people who live in countries unable to support their own
 credit history databases due to lack of money, corruption, etc. By using Cardano-Loans, the
@@ -1578,7 +1611,7 @@ to use oracles or enable liquidations (these are not meant to be margin loans). 
 risk for the value of the collateral to fall precipitously during the duration of the loan. If the
 collateral ever falls too low in value, **this is the lender's fault**. The lender either should
 have asked for a higher relative rate, or a different asset all together. It is up to the lender to
-use proper risk-management.  If people want to take back control from governments, they need to
+use proper risk-management. If people want to take back control from governments, they need to
 accept more responsibility. *Freedom isn't free.*
 
 ### Under-Collateralized Loans
@@ -1775,32 +1808,6 @@ market-driven interest-rate discovery.
 
 ## Future Considerations
 
-### Alternative Credit History Method
-
-Currently, defaults are identified by whether or not a Borrower ID was burned in isolation of other
-active beacons. This has the unfortunate consequence of leaving a residual Finished Active UTxO
-after every full payment. Koios is about to rollout an
-[update](https://github.com/cardano-community/koios-artifacts/pull/269) that will enable another
-method for identifying defaults.
-
-By querying Koios' `tx_info` [endpoint](https://preprod.koios.rest/#post-/tx_info), the
-`plutus_contracts` field can be used to see what redeemer was used on each loan input. For example,
-when a Borrower ID is burned in the transaction, if the `MakePayment` redeemer is used to pay 7 ADA
-on a loan with a current outstanding balance of 7 ADA, this is a full payment. Meanwhile, if a
-Borrower ID is burned in the transaction and the `Unlock` or `SpendWithKeyNFT` redeemers are used,
-these are defaults. This method would enable borrowers to burn all remaining beacons during a full
-payment which would entirely eliminate the step dedicated to cleaning up Finished Active UTxOs.
-
-> There is a [bug](https://github.com/cardano-community/koios-artifacts/issues/275) in the current
-> version of Koios which is why this method cannot be used yet. The patch is set to be released with
-> the new version of Koios.
-
-Unfortunately, this method was discovered late into the development process. Due to time contraints
-with the Project Catalyst grants and the uncertainty around when the new version of Koios will be
-released, the decision was made to leave the current method in place. After the other protocols are
-updated, Cardano-Loans will be updated to use the new method. Koios should have released the new
-version by then.
-
 ### DID Compatibility
 
 The current design may already be compatible with DIDs. If a government either allowed a user to
@@ -1828,10 +1835,10 @@ can link their personal credit history to their new business' to bootstrap a cre
 business.
 
 This should likely be a separate DeFi protocol. If Bob uses credential A and credential B, he can
-trustlessly link the two by creating a dedicated transaction with a beacon token. This link would be
-easily queryable off-chain, using the beacon token. When a lender wants to query the credit history,
-they would first look up all credentials linked to the target one. Then, they would query all of the
-credentials' credit histories. Nothing would need to change for Cardano-Loans.
+trustlessly link the two by creating a dedicated transaction with a dedicated beacon token. Because
+of the beacon token, this link would be easily queryable off-chain. When a lender wants to query the
+credit history, they would first look up all credentials linked to the target one. Then, they would
+query all of the credentials' credit histories. Nothing would need to change for Cardano-Loans.
 
 ### Version Compatibility for Negotiations
 

@@ -10,7 +10,7 @@ lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 lenderId="00623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zr265ke6yq0krxr5xuansyeggscxdem2w5rtk6s99deap6fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqlgq56x"
+borrowerLoanAddr="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -23,7 +23,9 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-offerUTxO='667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0'
+offerUTxO='677b9d48ad49cbbe6763bfea889ead8577219d6f3881eb4005372710c61f44d5#0'
+
+askUTxO='6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#2'
 
 ## Get the latest slot number.
 echo "Querying the latest slot..."
@@ -55,7 +57,7 @@ cardano-loans datums active new auto \
 #   --payment-address $lenderAddress \
 #   --loan-asset $loanAsset \
 #   --principal 10000000 \
-#   --loan-term '3600 slots' \
+#   --loan-term '10800 slots' \
 #   --interest '3602879701896397 / 36028797018963968' \
 #   --compound-frequency '1200 slots' \
 #   --minimum-payment 2000000 \
@@ -131,30 +133,30 @@ cardano-loans datums payment \
 ## Create and submit the transaction.
 cardano-cli transaction build \
   --tx-in $offerUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#2 \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --tx-in $askUTxO \
+  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#3 \
-  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#1 \
-  --tx-in 112f8c30d215dec261c468fa1451fdc36a3ff6d226de162eff8e668e7eb13012#0 \
+  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#3 \
+  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#0 \
+  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#1 \
   --tx-out "${lenderAddress} + ${offerDeposit} lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 4 ${collateral2}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 11 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 22 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 950 ${collateral2}" \
   --mint "-1 ${askBeacon} + -2 ${negotiationAssetBeacon} + -1 ${offerBeacon} + -1 ${lenderIdBeacon} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 1 ${borrowerId} + 2 ${loanId}" \
-  --mint-tx-in-reference 8fac9b184dc008243deccb3b812c1a13455ff7a34e22c2125ea3a303078d1c76#0 \
+  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $negotiationRedeemerFile \
   --policy-id $negotiationPolicyId \
-  --mint-tx-in-reference 5b8da34b6ed8b0bfbaa69fb7c6738f63e1011761f580287ee4792e231360d025#0 \
+  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

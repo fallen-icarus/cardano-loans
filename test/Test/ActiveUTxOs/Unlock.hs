@@ -13,7 +13,7 @@ import Test.ActiveUTxOs.Unlock.Failures qualified as Failures
 import Test.ActiveUTxOs.Unlock.Benchmarks qualified as Benchmarks
 
 tests :: TestTree
-tests = testGroup "Unlock Finished/Lost/Invalid UTxOs" $ mconcat
+tests = testGroup "Unlock Lost/Invalid UTxOs" $ mconcat
   [ Regressions.tests
   , Failures.tests
   , Benchmarks.tests

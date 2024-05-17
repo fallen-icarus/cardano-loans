@@ -14,6 +14,7 @@ import qualified PlutusLedgerApi.V2 as PV2
 import qualified Ledger.CardanoWallet as Mock 
 import Test.Tasty (TestTree)
 import Control.Monad (forM)
+import Data.Maybe (isJust)
 
 import CardanoLoans
 
@@ -3155,7 +3156,7 @@ beaconFailure10 = do
           }
       }
 
--- | Claim collateral for a finished loan (ie, it no longer has a BorrowerId).
+-- | Claim collateral for an invalid Active UTxO. The beacon script is not executed.
 beaconFailure11 :: MonadEmulator m => m ()
 beaconFailure11 = do
   let -- Borrower Info
@@ -3297,61 +3298,14 @@ beaconFailure11 = do
   -- Accept the offer.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
     emptyTxParams
-      { tokens = 
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",-1)
-                  , ("Ask",-1)
-                  , (_unAssetBeacon loanBeacon,-2)
-                  , (_unLenderId lenderBeacon,-1)
-                  ]
-              , mintRedeemer = toRedeemer BurnNegotiationBeacons
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          , TokenMint
-              { mintTokens = 
-                  [ ("Active",1)
-                  , (_unBorrowerId borrowerBeacon,1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLoanId loanIdBeacon,2)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = 
-          [ Input
-              { inputId = offerRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          , Input
-              { inputId = askRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          ]
+      { tokens = [ ]
+      , inputs = [ ]
       , outputs =
           [ Output
               { outputAddress = loanAddress
               , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 10
-                  ]
+                  [ ]
               , outputDatum = OutputDatum $ toDatum activeDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
-              , outputDatum = 
-                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
@@ -3363,92 +3317,7 @@ beaconFailure11 = do
           }
       }
 
-  activeUTxOs <-
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      loanAddress 
-      (activeBeaconCurrencySymbol,"Active")
-
-  let samplePayments acs = flip concatMap acs $ 
-        \(_,Just ad@ActiveDatum{..}) ->
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 11_000_000 mempty
-              , outputDatum = 
-                  OutputDatum $ toDatum $ 
-                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-
-  paymentSlot <- (1+) <$> currentSlot
-
-  -- Pay of the loan.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,-1)]
-              , mintRedeemer = toRedeemer BurnActiveBeacons
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
-          Input
-            { inputId = activeUtxoRef
-            , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 11_000_000)
-            }
-      , outputs = samplePayments activeUTxOs
-      , withdrawals =
-          [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
-              , withdrawalAmount = 0
-              , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer ObservePayment
-              }
-          ]
-      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentSlot
-          }
-      }
-
-  finishedUTxO <-
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      loanAddress 
-      (activeBeaconCurrencySymbol,"Active")
-
-  keyUTxOs <- fmap concat $ forM finishedUTxO $ \(_,Just ad@ActiveDatum{_loanId}) ->
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      (toCardanoApiAddress lenderAddr) 
-      (activeBeaconCurrencySymbol,_unLoanId _loanId)
-
-  let sampleKeyBurns acs = flip map acs $
-        \(_,Just ad@ActiveDatum{..}) ->
-          TokenMint
-            { mintTokens = 
-                [ ("Active",-1)
-                , (_unAssetBeacon _assetBeacon,-1)
-                , (_unLoanId _loanId,-2)
-                ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
-            , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-            , mintReference = Just activeRef
-            }
+  activeUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @ActiveDatum loanAddress 
 
   currentSlot >>= awaitTime . slotToPosixTime . (+3600)
   claimSlot <- currentSlot
@@ -3459,17 +3328,12 @@ beaconFailure11 = do
     [toCardanoApiAddress lenderAddr,loanAddress,refScriptAddress]
     [lenderPayPrivKey]
     emptyTxParams
-      { tokens = sampleKeyBurns activeUTxOs
-      , inputs = flip concatMap (zip finishedUTxO keyUTxOs) $ \((activeUtxoRef,_),(keyRef,_)) ->
+      { tokens = []
+      , inputs = flip concatMap activeUTxOs $ \(activeUtxoRef,_) ->
           [ Input
               { inputId = activeUtxoRef
               , inputWitness = 
                   SpendWithPlutusReference loanRef InlineDatum (toRedeemer SpendWithKeyNFT)
-              }
-          , Input
-              { inputId = keyRef
-              , inputWitness = 
-                  SpendWithPlutusReference proxyRef InlineDatum (toRedeemer ())
               }
           ]
       , referenceInputs = [activeRef,loanRef,proxyRef]
@@ -3480,7 +3344,8 @@ beaconFailure11 = do
           }
       }
 
--- | Use SpendWithKeyNFT to claim an invalid UTxO (ie, a UTxO missing beacons).
+-- | Use SpendWithKeyNFT to claim an invalid UTxO (ie, a UTxO missing beacons). The beacon script is
+-- executed to claim collateral for another valid Active UTxO.
 beaconFailure12 :: MonadEmulator m => m ()
 beaconFailure12 = do
   let -- Borrower Info
@@ -4173,70 +4038,6 @@ typeFailure1 = do
           }
       }
 
-  activeUTxOs <-
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      loanAddress 
-      (activeBeaconCurrencySymbol,"Active")
-
-  let samplePayments acs = flip concatMap acs $ 
-        \(_,Just ad@ActiveDatum{..}) ->
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 11_000_000 mempty
-              , outputDatum = 
-                  OutputDatum $ toDatum $ 
-                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-
-  paymentSlot <- (1+) <$> currentSlot
-
-  -- Pay of the loan.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = [(_unBorrowerId borrowerBeacon,-1)]
-              , mintRedeemer = toRedeemer BurnActiveBeacons
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
-          Input
-            { inputId = activeUtxoRef
-            , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 11_000_000)
-            }
-      , outputs = samplePayments activeUTxOs
-      , withdrawals =
-          [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
-              , withdrawalAmount = 0
-              , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer ObservePayment
-              }
-          ]
-      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentSlot
-          }
-      }
-
   finishedUTxO <-
     txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
       loanAddress 
@@ -4269,7 +4070,7 @@ typeFailure1 = do
     [toCardanoApiAddress lenderAddr,loanAddress,refScriptAddress]
     [lenderPayPrivKey]
     emptyTxParams
-      { tokens = sampleKeyBurns activeUTxOs
+      { tokens = sampleKeyBurns finishedUTxO
       , inputs = flip concatMap (zip finishedUTxO keyUTxOs) $ \((activeUtxoRef,_),(keyRef,_)) ->
           [ Input
               { inputId = activeUtxoRef
@@ -4341,7 +4142,7 @@ tests =
       "The wrong active beacons were burned"
       beaconFailure10
   , scriptMustFailWithError "beaconFailure11" 
-      "UTxO input is a finished loan"
+      "Active beacon script not executed with proper redeemer"
       beaconFailure11
   , scriptMustFailWithError "beaconFailure12" 
       "Invalid loan UTxO among inputs"

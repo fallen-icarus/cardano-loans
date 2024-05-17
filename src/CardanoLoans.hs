@@ -281,7 +281,7 @@ data LoanRedeemer
   | SpendWithKeyNFT
   -- | Update the address where loan payments must go. Optionally deposit additional ada if needed.
   | UpdateLenderAddress { _newAddress :: Address, _depositIncrease :: Integer }
-  -- | Clean up remaining beacons or claim "Lost" collateral.
+  -- | Claim "Lost" collateral.
   | Unlock
   deriving (Generic,Show)
 
@@ -326,8 +326,8 @@ data ActiveBeaconsRedeemer
   = CreateActive { _negotiationPolicyId :: CurrencySymbol }
   -- | Burn the lock and key NFT to claim expired collateral.
   | BurnKeyAndClaimExpired
-  -- Burn all remaining beacons and claim "Lost" collateral.
-  | BurnRemainderOrUnlockLost
+  -- Burn all beacons and claim "Lost" collateral.
+  | BurnAndUnlockLost
   -- | Burn any beacons.
   | BurnActiveBeacons
   deriving (Generic,Show)
