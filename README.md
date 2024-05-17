@@ -107,7 +107,7 @@ No, she shouldn't. Bob, her lender, knew the loan was going to be a year long lo
 concerned about the value of the collateral falling during the life of the loan, he could have asked
 for more collateral and/or asked for different collateral. The fact that cryptocurrency markets can
 be extremely volatile does not matter. Volatile assets also exist in TradFi (eg, small cap stocks,
-emerging market assets, etc), and this is one of methods TradFi uses to manages the risk. If the
+emerging market assets, etc), and this is one of the methods TradFi uses to manage the risk. If the
 collateral ever falls too low, relative to the outstanding loan, **it is the lender's fault**. The
 borrower should not be punished because the lender didn't properly manage the risk of a long-term
 loan.
