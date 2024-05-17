@@ -1612,9 +1612,19 @@ collateral ever falls too low in value, **this is the lender's fault**. The lend
 have asked for a higher relative rate, or a different asset all together. It is up to the lender to
 use proper risk-management. 
 
+For under-collateralized loans, lenders should require decent credit histories before even
+considering making an under-collateralized loan offer. Even with pseudonymous/anonymous identities,
+the more time/energy a person dedicates to a given identity, the less likely they are to abandon it
+for a quick score.
+
 *Be cautious of offering under-collateralized loans!* Without DIDs, it is much easier for borrowers
-to create and burn pseudonymous identities. However, there are ways to minimize the risk of a
-borrower deliberately defaulting on an under-collateralized loan.
+to create and burn pseudonymous identities. This easiness makes it feasible for malicious users to
+create one-time-use "burner identities". For example, consider an identity "farm" where a malicious
+user creates a bunch of burner identities and has them lend to each other in order to build up
+enough of a credit history to get offered an under-collateralized loan. When the identities are
+ready, they can be "harvested" and used to rip off the first under-collateralized loan offer they
+get. This identity farm is likely the biggest risk to under-collateralized loans on Cardano-Loans.
+However, there are ways to dramatically minimize the risk of these burner identities.
 
 One potential risk-reduction method is to lend to publicly linked identities. Even without DIDs,
 borrowers can connect their public lives with their on-chain identity. For example, a Cardano
@@ -1624,11 +1634,10 @@ it less risky for lenders to offer this podcaster an under-collateralized loan.
 
 Another potential risk-reduction method is to use data analysis on the public blockchain to identify
 burner identities *before* they are used. The process is very similar to trying to identify fake
-twitter accounts or fake github stars. To highlight this, consider how a malicious person might
-mass-produce burner identities. The most cost effective way to "farm" burner identities is to create
-a bunch of new identities and have them lend to each other in order to create credit histories for
-those identities. In other words, most burner identities will have only dealt with other burner
-identities. This characteristic creates a lot of possible red-flags to look for:
+twitter accounts or fake github stars. To highlight this, consider that the most cost effective way
+to farm burner identities is to create a bunch of new identities and have them lend to each other.
+In other words, most burner identities will have only dealt with other burner identities. This
+characteristic creates a lot of possible red-flags to look for:
 
 - Is this identity used for other DeFi activities, aside from just lending/borrowing? Most users
 will likely use the same staking credential across all DeFi DApps; this is especially true for the
