@@ -1626,9 +1626,9 @@ Another potential risk-reduction method is to use data analysis on the public bl
 burner identities *before* they are used. The process is very similar to trying to identify fake
 twitter accounts or fake github starts. To highlight this, consider how a malicious person might
 mass-produce burner identities. The most cost effective way to "farm" burner identities is to create
-a bunch of new identities and have them lend to each other. In other words, most burner identities
-will have only dealt with other burner identities. This characteristic creates a lot of possible
-red-flags to look for:
+a bunch of new identities and have them lend to each other in order to create credit histories for
+those identities. In other words, most burner identities will have only dealt with other burner
+identities. This characteristic creates a lot of possible red-flags to look for:
 
 - Is this identity used for other DeFi activities, aside from just lending/borrowing? Most users
 will likely use the same staking credential across all DeFi DApps; this is especially true for the
