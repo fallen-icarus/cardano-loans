@@ -178,7 +178,7 @@ or it needs to be popular enough to attract enough capital to start a new liquid
 gives incredible power to the gate keepers of new assets while the latter creates a chicken-or-egg
 problem: the new currency will only be popular if it is useful for DeFi but it won't be useful for
 DeFi unless it is actually listed from being popular. It shouldn't matter what any third-parties
-think about an asset. If Alice wants to borrower the new nation's currency and Bob is willing to
+think about an asset. If Alice wants to borrow the new nation's currency and Bob is willing to
 lend it to her, why can't they use this currency? It shouldn't matter how many other people are
 willing to use those assets.
 
@@ -1653,7 +1653,7 @@ under-collateralized loan market.
 
 While this protocol technically only allows one asset to be the loan asset for each loan, the fact
 that this protocol is composable with itself means you can effectively create "packaged" loans where
-each loan is for a different loan asset. For example, imagine if Alice wants to borrower 2000 ADA
+each loan is for a different loan asset. For example, imagine if Alice wants to borrow 2000 ADA
 worth of assets, but is concerned about the price volatility of ADA. Instead of doing a single loan
 for 2000 ADA, she can do 1 loan in ADA, 1 loan in DJED, and 1 loan in another asset; the total value
 borrowed would be equivalent to 2000 ADA. Since she can ask for them in one transaction, accept them
