@@ -1624,7 +1624,7 @@ it less risky for lenders to offer this podcaster an under-collateralized loan.
 
 Another potential risk-reduction method is to use data analysis on the public blockchain to identify
 burner identities *before* they are used. The process is very similar to trying to identify fake
-twitter accounts or fake github starts. To highlight this, consider how a malicious person might
+twitter accounts or fake github stars. To highlight this, consider how a malicious person might
 mass-produce burner identities. The most cost effective way to "farm" burner identities is to create
 a bunch of new identities and have them lend to each other in order to create credit histories for
 those identities. In other words, most burner identities will have only dealt with other burner
@@ -1643,7 +1643,7 @@ will use the money for other economic activities. On the other hand, a farmer wo
 the loan principal back into the farm which means it is always being used to just lend/borrow.
 
 There may be other other ways for lenders to minimize the risk of under-collateralized loans. As
-long as lenders do their due diligence, Cardano-Loans should be able to safely support a vibrant
+long as lenders do their due diligence, Cardano-Loans will be able to safely support a vibrant
 under-collateralized loan market. 
 
 > If people want to take back control from governments, they need to accept more responsibility.
