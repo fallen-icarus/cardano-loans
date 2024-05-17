@@ -1622,13 +1622,13 @@ podcaster can tell subscribers which Borrower ID is theirs. Then, if they ever d
 with that Borrower ID, their public reputation will be hurt as well. This extra incentive would make
 it less risky for lenders to offer this podcaster an under-collateralized loan.
 
-Another potential risk-reduction method is to use data analysis on the public blockchain to try and
-identify burner identities *before* they are used. The process is very similar to trying to identify
-fake twitter accounts or fake github starts. To highlight this, consider how a malicious person
-might mass-produce burner identities. The most cost effective way to "farm" burner identities is to
-create a bunch of new identities and have them lend to each other. In other words, most burner
-identities will have only dealt with other burner identities. This characteristic creates a lot of
-possible red-flags to look for:
+Another potential risk-reduction method is to use data analysis on the public blockchain to identify
+burner identities *before* they are used. The process is very similar to trying to identify fake
+twitter accounts or fake github starts. To highlight this, consider how a malicious person might
+mass-produce burner identities. The most cost effective way to "farm" burner identities is to create
+a bunch of new identities and have them lend to each other. In other words, most burner identities
+will have only dealt with other burner identities. This characteristic creates a lot of possible
+red-flags to look for:
 
 - Is this identity used for other DeFi activities, aside from just lending/borrowing? Most users
 will likely use the same staking credential across all DeFi DApps; this is especially true for the
