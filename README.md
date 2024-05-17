@@ -50,7 +50,6 @@ be found [here](./Benchmarks.md).
 - [Features Discussion](#features-discussion)
     - [On-Chain, Emergent Credit History](#on-chain-emergent-credit-history)
     - [Negotiable Collateralization](#negotiable-collateralization)
-    - [Under-Collateralized Loans](#under-collateralized-loans)
     - [Multi-Asset Loans](#multi-asset-loans)
     - [Staking Script Support](#staking-script-support)
     - [Endogenous Price and Interest Rate Discovery](#endogenous-price-and-interest-rate-discovery)
@@ -1606,165 +1605,49 @@ economic identity.
 
 ### Negotiable Collateralization
 
-Since the lenders explicitly set the relative values of each collateral asset used, there is no need
-to use oracles or enable liquidations (these are not meant to be margin loans). However, there is a
+Since lenders explicitly set the relative values of each collateral asset used, there is no need to
+use oracles or enable liquidations (these are not meant to be margin loans). However, there is a
 risk for the value of the collateral to fall precipitously during the duration of the loan. If the
 collateral ever falls too low in value, **this is the lender's fault**. The lender either should
 have asked for a higher relative rate, or a different asset all together. It is up to the lender to
-use proper risk-management. If people want to take back control from governments, they need to
-accept more responsibility. *Freedom isn't free.*
+use proper risk-management. 
 
-### Under-Collateralized Loans
+*Be cautious of offering under-collateralized loans!* Without DIDs, it is much easier for borrowers
+to create and burn pseudonymous identities. However, there are ways to minimize the risk of a
+borrower deliberately defaulting on an under-collateralized loan.
 
-*TL;DR: Cardano-Loans can easily support a healthy market of under-collateralized loans **as long as
-lenders properly manage the risks**. No DIDs are required.*
+One potential risk-reduction method is to lend to publicly linked identities. Even without DIDs,
+borrowers can connect their public lives with their on-chain identity. For example, a Cardano
+podcaster can tell subscribers which Borrower ID is theirs. Then, if they ever default on a loan
+with that Borrower ID, their public reputation will be hurt as well. This extra incentive would make
+it less risky for lenders to offer this podcaster an under-collateralized loan.
 
-Under-collateralized loans can be a hot topic in the crypto-ecosystem because there is wide spread
-belief that you cannot have secure under-collateralized loans with a pseudonymous/anonymous identity
-system. In a nut shell, the argument goes:
+Another potential risk-reduction method is to use data analysis on the public blockchain to try and
+identify burner identities *before* they are used. The process is very similar to trying to identify
+fake twitter accounts or fake github starts. To highlight this, consider how a malicious person
+might mass-produce burner identities. The most cost effective way to "farm" burner identities is to
+create a bunch of new identities and have them lend to each other. In other words, most burner
+identities will have only dealt with other burner identities. This characteristic creates a lot of
+possible red-flags to look for:
 
-> If Bob only needs to back a 1000 ADA loan with 800 ADA worth of collateral, he is incentivized to
-> just walk away with the 1000 ADA. He turned 800 ADA into 1000 ADA. Since the identity Bob used was
-> pseudonymous, he can just burn it, create a new one, and then repeat the process for another
-> under-collateralized loan. The only way to stop this is to use DIDs.
+- Is this identity used for other DeFi activities, aside from just lending/borrowing? Most users
+will likely use the same staking credential across all DeFi DApps; this is especially true for the
+p2p-DeFi protocols.
+- Has this identity borrowed from other identities that are likely real identities? If the lenders
+are real identities, the borrower must return more of the loan asset than what they borrowed (due to
+the interest). This is substantially less cost effective than an identity farm where the same 1000
+ADA can service 10,000 ADA worth of principal since it can keep getting recycled; the farmer never
+actually gives up any ada like they do if they deal with *real* lenders.
+- When the identity has borrowed money, what have they done with the loan principal? A real borrower
+will use the money for other economic activities. On the other hand, a farmer would try to recycle
+the loan principal back into the farm which means it is always being used to just lend/borrow.
 
-However, this scenario assumes that getting a new under-collateralized loan will be as easy as
-burning/creating new identities. *This is not a valid assumption.* Consider the dark web
-marketplaces. These transactions are criminal <--> criminal, but they very rarely rip each other
-off. These are among the most dishonest people in the world, and yet, they are behaving honestly
-depsite using pseudonymous, if not anonymous, identities. How? The answer is the reputation
-system.
-
-Imagine if you saw an item you wanted for sale on Amazon from two different brands, and both were
-selling it for the same price. One brand has 4.9 stars with 19 reviews while another has 4.8 stars
-with 10,000 reviews. Which brand would you rather buy from? You would probably prefer to buy the
-item from the latter one. Why? Because it is more impressive to have 4.8 stars with 10,000 reviews
-than 4.9 stars with only 19 reviews. Why is it more impressive? Because it is harder to achieve that
-reputation. The brand with the better reputation may have 1000x more revenue than the other brand,
-despite selling the same exact item for the same exact price.
-
-People factor in reputation whenever they decide who to interact with. It takes a very long time to
-build up a good enough reputation for people to want to do business with you.
-
-> It takes 20 years to build a reputation and five minutes to ruin it. If you think about that,
-> you'll do things differently.  
-> -- Warren Buffett
-
-A lot of people forget that *reputation is an asset*; it is just an intangible one. When a borrower
-takes out a loan, their reputation is also applied as collateral to the loan. So would Bob walk away
-from a loan where he only needed to back 80% of it with tangible assets? The answer depends on how
-much his reputation is worth to him. If his reputation is worth less than the remaining 20%, Bob
-will likely walk away. However, if his reputation is worth more than the remaining 20%, Bob will
-likely pay back the loan to protect the value of his reputation. And just like with all assets, the
-value of a reputation depends on its scarcity. **Whether the reputation is for a public,
-pseudonymous, or anonymous identity is irrelevant** - the dark web marketplaces are proof of this.
-
-The real factor for the security of under-collateralized loans is how hard it will be to build up
-enough of a reputation to get offered one. If it takes three weeks to get enough of a reputation to
-get offered one, that reputation can be easily replaced; it is way too likely this borrower will
-value the loan asset more than their reputation. However, what if it took 5 years to get offered an
-under-collateralized loan? This history is very hard to replace; it would require another 5 years to
-replace it. Would this reputation be worth more than the quick score Bob could get from walking
-away with the loan asset?
-
-Consider what would happen if Bob did walk away with the loan asset. That identity is burned and now
-he needs to wait another 5 years to get offered another under-collateralized loan. But what if Bob
-did not walk away, and instead paid back the loan? His 5 year reputation would still be in good
-health and he may be able to get another under-collateralized loan offer within a few months.
-Under-collateralized loans allow people to leverage their assets to do something only someone richer
-could do. This means under-collateralized loans are very economically valuable. **If it is hard to
-build up enough of a reputation to get offered an under-collateralized loan, the incentives actually
-favor paying back the loan.** You can think of it like Proof-of-Work, the more effort required to
-build up an identity, the less likely the person is to abandon that identity. So, how hard will it
-be to get an under-collateralized loan?
-
-In TradFi, a borrower isn't considered a good credit risk unless they have at least 5-7 years of
-good credit. This rule is fairly universal despite there being very few laws that mandate this
-length of time. Instead, this rule arose naturally from lenders learning the hard way. 
-
-TradFi isn't a perfect comparison, though, because government issued IDs are hard to burn and
-create. **This does not mean under-collateralized loans require DIDs**; it just means the
-requirements to get an under-collateralized loan in DeFi should be more strict than in TradFi to
-compensate for this difference. How much more strict should the requirements be?
-
-To answer this question, consider an identity farm attack. Mike is malicious and decides to "farm"
-identities: he has these identities lend to each other, he "nutures" them by keeping up with the
-loan payments, and after several years, he "harvests" them to use as burner identities. How
-practical is this attack? *The answer depends entirely on lenders.*
-
-Let's say it took at least 8 years of good credit for a lender to consider offering an
-under-collateralized loan. And let's say lenders only consider borrowers who had to consistently
-deal with compounding interest rates of 15% or more (8 years of credit with non-compounding or
-interest-free loans would be a red-flag). So, to trick Alice into offering him an
-under-collateralized loan, Mike would need to have his burner identity pay back 8 years worth of
-loans with at least a 15% compounding interest (compounding annually to keep it simple). If he gave
-his burner identity a single 8 year loan for 1000 ADA, it would require 1700 ADA in total to make all
-of the payments ([calculator](https://www.nerdwallet.com/calculator/loan-calculator)). The
-additional 700 ADA is due to the interest. This 1700 ADA is Mike's investment for an 8 year credit
-history of 1000 ADA.
-
-Mike needs to ask Alice for a loan of about 1000 ADA. It would be a red-flag if he suddenly asked
-for 10,000 ADA despite his history only dealing with loans 10x smaller than that. Even in TradFi,
-credit limits are slowly increased as a borrower's credit history matures. Let's be generous and say
-Alice agrees to a 1000 ADA loan where only 80% of the loan's value is backed by tangible assets.
-Therefore, if Mike walked away with the 1000 ADA, he would net 200 ADA. This 200 ADA is his return.
-In otherwords, his 1700 ADA investment yielded a total of 200 ADA over an 8 year time period. That
-equates to an average yearly return of 1.4% (`200 profit / 1700 investment / 8 years * 100`). Mike
-put in all that time and effort farming the identities for only a 1.4% APY. But remember, Mike did
-*not* get 1.4% APY each year for 8 years, he had to wait the full 8 years to see any return from
-this attack.
-
-Changing the requirements and the ultimate under-collateralized loan terms can dramatically decrease
-Mike's APY. If Alice required 95% of the 1000 ADA loan to be backed by tangible assets, Mike's APY
-drops to 0.36% (the profit drops to 50 ADA). Increasing the required credit history from 8 years to
-10 years, and/or increasing the required average interest rate over the credit history can also
-further drop Mikes potential APY. For example, if Alice required 10 years of 20% interest loans in
-order to get a 1000 ADA loan where only 95% was backed by tangible assets, Mike's APY would be 0.2%
-(`50 profit / 2300 investment / 10 years * 100`).
-
-What if Mike accepted multiple under-collateralized offers at the same time? This would multiply his
-APY, but this is very easy to prevent. Lenders can easily see all current offers made to this burner
-identity as well as all of its current active loans. It would be poor risk-management on the
-lender's part to give Mike another loan when he already as an outstanding loan for 1000 ADA; Mike's
-burner identity has no history of handling more than that amount at once. Likewise, if Mike already
-has an under-collateralized offer, giving him a second under-collateralized offer has the added risk
-of increasing the potential profit per burner identity since Mike could accept both in a single
-transaction. *This doesn't mean lenders can't compete on under-collateralized offers, it just means
-lenders also need to factor this in to their risk-management.*
-
-In order for under-collateralized loans to be secure on DeFi, you do not need to have *zero* burner
-identities. All that matters is that the majority of borrower identities are honest. If 1 out of 10
-borrower identities is a burner identity, that means the under-collateralized loan will be paid back
-90% of the time. It is just like with consensus protocols; you don't need 100% honesty, you just
-need the majority to be honest. The degree of honesty comes down to how strict lenders will be with
-giving out under-collateralized offers. If a lender's requirements allow Mike a 1% APY, perhaps
-there is a 1 in 10 chance the borrower he is negotiating with is a burner identity. Meanwhile, if
-another lender's requirements only allowed for a 0.3% APY, perhaps the probability the borrower is a
-burner identity drops to 1 in 1000. Lenders will need to factor this risk in to any
-under-collateralized offers they make. If lenders see a borrower already has under-collateralized
-offers, they will need to account for how another under-collateralized offer impacts a malicious
-person's potential APY. As long is it is hard for malicious people like Mike to make a good return,
-most people will not bother dedicating 8-10 years for such a small payout; after factoring in [time
-preference](https://en.wikipedia.org/wiki/Time_preference), most people will likely decide it just
-isn't worth the hassle. It is such a long time to wait for such a small return...
-
-There are other things lenders can use to further minimize this risk. Just because DIDs don't exist
-yet doesn't mean borrowers can't link their on-chain identities with their public life. A Cardano
-podcaster can deliberately announce which identity is theirs. Then, if they default on a loan, their
-public reputation will get hurt, too. This further incentivizes the Cardano podcaster to pay back
-their loans.
-
-> NOTE: There is a chance that a lender's offer *becomes* an under-collateralized loan after one of
-> the collateral assets experiences a volatile price movement. As discussed in the previous section,
-> this is just another risk lenders need to be cognisant of. If you want to accept volatile assets
-> as collateral, you need to properly manage the risks.
-
-If most lenders properly manage the risks of under-collateralized loans, Cardano-Loans can easily
-support a healthy under-collateralized loan market. **You do not need DIDs.**
+There may be other other ways for lenders to minimize the risk of under-collateralized loans. As
+long as lenders do their due diligence, Cardano-Loans should be able to safely support a vibrant
+under-collateralized loan market. 
 
 > If people want to take back control from governments, they need to accept more responsibility.
-> *Freedom isn't free.*  
-> -- quote from previous section
+> *Freedom isn't free.*
 
 ### Multi-Asset Loans
 
