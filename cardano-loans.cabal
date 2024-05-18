@@ -1,103 +1,174 @@
 cabal-version:      2.4
 name:               cardano-loans
-version:            0.1.0.0
+version:            1.0.0.0
 
-synopsis: A distributed Cardano P2P Lending dApp PoC.
+synopsis: A distributed Cardano P2P Lending/Borrowering protocol.
 license: Apache-2.0
 author: fallen-icarus
 maintainer: modern.daidalos+git@gmail.com
 copyright: 2023 fallen-icarus
-extra-source-files: CHANGELOG.md
+extra-source-files: 
+  CHANGELOG.md,
+  aiken/plutus.json
 
 common lang
-  build-depends: base ^>=4.14
+  build-depends: base
   default-language: Haskell2010
   ghc-options: -Wall -Wredundant-constraints
+  default-extensions:
+    DeriveGeneric
+    FlexibleContexts
+    ImportQualifiedPost
+    NamedFieldPuns
+    NumericUnderscores
+    TupleSections
+    TypeApplications
+
+common internals
+  build-depends:
+      cardano-api
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-core
+    , plutus-script-utils
+    , containers
+    , aeson
+    , text
+    , bytestring
+    , prettyprinter
 
 library
-  import: lang
-  exposed-modules: CardanoLoans
+  import:
+      lang
+    , internals
+  exposed-modules: 
+      CardanoLoans
+    , CardanoLoans.Blueprints
+    , CardanoLoans.Types
+    , CardanoLoans.Utils
   build-depends:
-    plutus-ledger,
-    plutus-ledger-api,
-    plutus-core,
-    plutus-tx-plugin,
-    plutus-tx,
-    plutus-script-utils,
-    cardano-api,
-    bytestring,
-    serialise,
-    aeson,
-    plutonomy,
-    text
+      serialise
+    , file-embed
+    , base16-bytestring
+    , relude
+    , microlens
   hs-source-dirs: src
-  ghc-options: 
-    -fobject-code 
-    -fno-ignore-interface-pragmas 
-    -fno-omit-interface-pragmas 
-    -fno-specialise
 
 test-suite cardano-loans-tests
-  import: lang
+  import: 
+    lang,
+    internals
   type: exitcode-stdio-1.0
   main-is: Test.hs
   hs-source-dirs: test
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
-    -Wno-unused-local-binds -Wno-unused-top-binds -Wno-unused-matches
+    -Wno-unused-matches -Wno-unused-local-binds 
   other-modules:
-    Test.Common,
-    Test.Ask,
-    Test.Offer,
-    Test.AcceptOffer,
-    Test.CloseAsk,
-    Test.CloseOffer,
-    Test.RepayLoan,
-    Test.Claim
+    Test.ActiveUTxOs,
+    Test.ActiveUTxOs.AcceptOffer,
+    Test.ActiveUTxOs.AcceptOffer.Benchmarks,
+    Test.ActiveUTxOs.AcceptOffer.Failures,
+    Test.ActiveUTxOs.AcceptOffer.Regressions,
+    Test.ActiveUTxOs.ApplyInterest,
+    Test.ActiveUTxOs.ApplyInterest.Benchmarks,
+    Test.ActiveUTxOs.ApplyInterest.Failures,
+    Test.ActiveUTxOs.ApplyInterest.Regressions,
+    Test.ActiveUTxOs.ClaimExpiredCollateral,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Benchmarks,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Failures,
+    Test.ActiveUTxOs.ClaimExpiredCollateral.Regressions,
+    Test.ActiveUTxOs.MakePayment,
+    Test.ActiveUTxOs.MakePayment.Benchmarks,
+    Test.ActiveUTxOs.MakePayment.Failures,
+    Test.ActiveUTxOs.MakePayment.Regressions,
+    Test.ActiveUTxOs.Misc,
+    Test.ActiveUTxOs.Unlock,
+    Test.ActiveUTxOs.Unlock.Benchmarks,
+    Test.ActiveUTxOs.Unlock.Failures,
+    Test.ActiveUTxOs.Unlock.Regressions,
+    Test.ActiveUTxOs.UpdateLenderAddress,
+    Test.ActiveUTxOs.UpdateLenderAddress.Benchmarks,
+    Test.ActiveUTxOs.UpdateLenderAddress.Failures,
+    Test.ActiveUTxOs.UpdateLenderAddress.Regressions,
+    Test.AskUTxOs,
+    Test.AskUTxOs.CloseAsk,
+    Test.AskUTxOs.CloseAsk.Benchmarks,
+    Test.AskUTxOs.CloseAsk.Failures,
+    Test.AskUTxOs.CloseAsk.Regressions,
+    Test.AskUTxOs.CreateAsk,
+    Test.AskUTxOs.CreateAsk.Benchmarks,
+    Test.AskUTxOs.CreateAsk.Failures,
+    Test.AskUTxOs.CreateAsk.Regressions,
+    Test.AskUTxOs.Misc,
+    Test.AskUTxOs.UpdateAsk,
+    Test.AskUTxOs.UpdateAsk.Benchmarks,
+    Test.AskUTxOs.UpdateAsk.Failures,
+    Test.AskUTxOs.UpdateAsk.Regressions,
+    Test.Beacons
+    Test.OfferUTxOs,
+    Test.OfferUTxOs.CloseOffer,
+    Test.OfferUTxOs.CloseOffer.Benchmarks,
+    Test.OfferUTxOs.CloseOffer.Failures,
+    Test.OfferUTxOs.CloseOffer.Regressions,
+    Test.OfferUTxOs.CreateOffer,
+    Test.OfferUTxOs.CreateOffer.Benchmarks,
+    Test.OfferUTxOs.CreateOffer.Failures,
+    Test.OfferUTxOs.CreateOffer.Regressions,
+    Test.OfferUTxOs.Misc,
+    Test.OfferUTxOs.UpdateOffer,
+    Test.OfferUTxOs.UpdateOffer.Benchmarks,
+    Test.OfferUTxOs.UpdateOffer.Failures,
+    Test.OfferUTxOs.UpdateOffer.Regressions,
+    Test.Prelude,
+    Test.Proxy
   build-depends:
-    cardano-loans,
-    cardano-api,
-    plutus-contract,
-    plutus-tx,
-    plutus-ledger-api,
-    plutus-ledger,
-    plutus-ledger-constraints,
-    plutus-tx-plugin,
-    aeson,
-    plutus-script-utils,
-    text,
-    playground-common,
-    containers,
-    data-default,
-    tasty,
-    lens,
-    tasty-hunit,
-    plutus-core
+      cardano-loans
+    , data-default
+    , tasty
+    , tasty-hunit
+    , microlens
+    , mtl
+    , cardano-node-emulator
 
 executable cardano-loans
-    import: lang
-    main-is:          Main.hs
-
-    -- Modules included in this executable, other than Main.
+    import: 
+      lang,
+      internals
+    main-is: Main.hs
     other-modules:
-      CLI.Types,
+      CLI.Data.ApiService,
+      CLI.Data.Asset,
+      CLI.Data.Bech32Address,
+      CLI.Data.Commands,
+      CLI.Data.CreditHistory,
+      CLI.Data.LoanHistory,
+      CLI.Data.LoanUTxO,
+      CLI.Data.Network,
+      CLI.Data.Output,
+      CLI.Data.PersonalUTxO,
+      CLI.Data.Transaction,
+      CLI.Data.TxCBOR,
       CLI.Parsers,
-      CLI.Run,
-      CLI.BlockfrostApi,
-      CLI.Query
+      CLI.Query,
+      CLI.Query.Koios,
+      CLI.Run
     build-depends:    
       cardano-loans,
+      cardano-addresses,
       optparse-applicative,
       servant,
-      aeson,
       servant-client,
       http-client,
       http-client-tls,
-      text,
-      containers,
       vector,
       aeson-pretty,
-      bytestring,
-      utf8-string
-    ghc-options: -O2
-    hs-source-dirs:   app
+      file-embed,
+      prettyprinter-ansi-terminal,
+      relude
+    hs-source-dirs: app
+    default-extensions:
+      OverloadedStrings
+      RecordWildCards
+      NoImplicitPrelude

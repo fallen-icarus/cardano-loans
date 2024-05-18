@@ -1,1411 +1,1615 @@
 # Getting Started
 
-:warning: Assumes a local PreProduction Testnet node running locally and `cardano-cli` installed since it is used to actually build and sign transactions.
+The `cardano-loans` CLI assumes that all transactions are built and signed using `cardano-cli`.
+**Access to a local node is not necessary**, although it does simplify things. Koios can be used for
+all steps that require access to a node.
 
-Template bash scripts that follow these steps are available [here](scripts/).
+Template bash scripts that follow these steps are available [here](scripts/). There are only
+examples using a local node. Using a remote node requires extra steps since the transaction must be
+manually balanced. If you would like to use a remote node, the `cardano-loans` CLI supports
+everything you need. You can cross-reference these local node template scripts with the
+[cardano-swaps](https://github.com/fallen-icarus/cardano-swaps/tree/main/scripts) remote node
+template scripts to come up with your own remote node template scripts for cardano-loans.
 
-When integration testing, it is highly recommended that you change the string passed to the mkBeaconPolicy function [here](src/CardanoLoans.hs#L168). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, this extra parameter was added. Change the string to something unique to you. You should remember to change it to the desired string for mainnet.
-
-**Make this change before building the executable in the next section.**
-
-The `cardano-loans` CLI uses the Blockfrost API endpoints for the Preproduction Testnet (Koios does not have endpoints for the Preproduction Testnet). You will need an api key to query the beacon tokens. You can go [here](https://blockfrost.io/#pricing) to get one for free; only an email address is required.
-
-If a specific beacon token has never been minted before, querying the Blockfrost endpoints will return "The requested component has not been found." This is due to the beacon name being part of the Blockfrost api url like:
-
-``` Url
-https://cardano-preprod.blockfrost.io/api/v0/assets/{beacon_name}/addresses
-```
-
-If the beacon has not been minted before, this URL does not exist yet. Once the beacon is minted, the URL is generated. If the beacons have been minted before but there are currently no beacons in circulation, then the API will return an empty list. This is relevant when querying a borrower's credit history. If the borrower has never taken out a loan before, then you will get "The requested component hash not been found." A future version can make this error more user friendly.
-
----
 ## Table of Contents
 - [Installing](#installing)
+- [Aiken For Developers](#aiken-for-developers)
+- [Overspent Budget](#overspent-budget)
+- [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
-- [Borrower Actions](#borrower-actions)
-  - [Asking for a loan](#asking-for-a-loan)
-  - [Checking all own asks](#checking-all-own-asks)
-  - [Checking all offers](#checking-all-offers)
-  - [Accepting a loan offer](#accepting-a-loan-offer)
-  - [Checking all current loans](#checking-all-current-loans)
-  - [Making a loan payment](#making-a-loan-payment)
-  - [Closing an ask](#closing-an-ask)
-- [Lender Actions](#lender-actions)
-  - [Checking all current asks](#checking-all-current-asks)
-  - [Checking a borrower's credit history](#checking-a-borrowers-credit-history)
-  - [Creating an offer](#creating-an-offer)
-  - [Checking all current offers](#checking-all-current-offers)
-  - [Checking all current loans](#checking-all-current-loans-1)
-  - [Claiming an expired/paid loan](#claiming-an-expiredpaid-loan)
-  - [Closing an offer](#closing-an-offer)
-  - [Check competing offers](#check-competing-offers)
-  - [Check loan history](#check-loan-history)
-- [Convert POSIX time <--> Slot](#convert-posix-time----slot)
+- [Registering Scripts - DEVELOPERS ONLY](#registering-the-scripts-for-staking-execution---developers-only)
+- [Creating Reference Scripts](#creating-reference-scripts)
+- [Creating an Ask UTxO](#creating-an-ask-utxo)
+- [Closing an Ask UTxO](#closing-an-ask-utxo)
+- [Creating an Offer UTxO](#creating-an-offer-utxo)
+- [Closing an Offer UTxO](#closing-an-offer-utxo)
+- [Accepting an Offer](#accepting-an-offer)
+- [Making a Loan Payment](#making-a-loan-payment)
+- [Applying Interest](#applying-interest)
+- [Updating a Lender Address](#updating-a-lender-address)
+- [Claiming Expired Collateral](#claiming-expired-collateral)
+- [Unlocking Lost Collateral](#unlocking-lost-collateral)
+- [Time Conversions](#time-conversions)
+- [Queries](#queries)
+  - [Querying Personal Addresses](#querying-personal-addresses)
+  - [Querying Ask UTxOs](#querying-ask-utxos)
+  - [Querying Offer UTxOs](#querying-offer-utxos)
+  - [Querying Active UTxOs](#querying-active-utxos)
+  - [Querying the Current Time](#querying-the-current-time)
+  - [Querying a Borrower's Credit History](#querying-a-borrowers-credit-history)
+  - [Querying a Loan's History](#querying-a-loans-history)
 
----
 ## Installing
-Instructions are adapted from the [plutus-pioneers-program](https://github.com/input-output-hk/plutus-pioneer-program/tree/third-iteration) iteration 3, week 1 exercise.
 
-1. Install NixOS cross-referencing the following resources.
-     - https://nixos.org/download.html
-     - https://docs.plutus-community.com
-     - A few resources to understand the what and why regarding NixOS
-       - https://nixos.org/manual/nix/stable
-       - https://serokell.io/blog/what-is-nix
-2. Set-up IOHK binary caches [How to set up the IOHK binary caches](https://github.com/input-output-hk/plutus-apps#iohk-binary-cache). "If you do not do this, you will end up building GHC, which takes several hours. If you find yourself building GHC, *stop* and fix the cache."
+Make sure `cardano-cli` is also installed. You can get the most up-to-date copy from IOG's
+cardano-node repo [here](https://github.com/IntersectMBO/cardano-node/releases). It will be in the
+cardano-node tarball under the latest release.
 
-3. After adding the cache, you will need to restart the nix service. This can be done by executing `sudo systemctl restart nix` or by restarting your machine. If the cache was configured properly, you should see a lot of `copying path ... from 'https://cache.iog.io'` when you execute `nix-shell` in the next step.
-
-4. Execute the following:
+### Install the necessary packages - similar to cardano-node
+```bash
+sudo apt update
+sudo apt upgrade
+sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
 ```
+
+### Install GHC and Cabal
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+```
+
+- Prepend or append the required PATH variable.
+- You do not need to install the haskell-langauge-server.
+- You do not need to install stack.
+- Install the required packages. You can keep this terminal window open and install from another
+window.
+- Press ENTER to proceed.
+
+```bash
+source $HOME/.bashrc
+ghcup install ghc 9.6.5
+```
+
+### Install libsodium, scep256k1, and blst
+```bash
+git clone https://github.com/intersectmbo/libsodium
+cd libsodium
+git checkout dbb48cc
+./autogen.sh
+./configure
+make
+sudo make install
+
+cd ../ # Leave the libsodium directory.
+git clone https://github.com/bitcoin-core/secp256k1
+cd secp256k1
+git checkout ac83be33
+./autogen.sh
+./configure --enable-module-schnorrsig --enable-experimental
+make
+make check
+sudo make install
+sudo ldconfig
+
+cd ../ # Leave the secp256k1 directory.
+git clone https://github.com/supranational/blst
+cd blst
+git checkout v0.3.10
+./build.sh
+cat > libblst.pc << EOF # This command extends until the next EOF
+prefix=/usr/local
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: libblst
+Description: Multilingual BLS12-381 signature library
+URL: https://github.com/supranational/blst
+Version: 0.3.10
+Cflags: -I\${includedir}
+Libs: -L\${libdir} -lblst
+EOF
+sudo cp libblst.pc /usr/local/lib/pkgconfig/
+sudo cp bindings/blst_aux.h bindings/blst.h bindings/blst.hpp  /usr/local/include/
+sudo cp libblst.a /usr/local/lib
+sudo chmod u=rw,go=r /usr/local/{lib/{libblst.a,pkgconfig/libblst.pc},include/{blst.{h,hpp},blst_aux.h}}
+```
+
+You need to execute the following to make the new packages usable:
+```bash
+echo '' >> $HOME/.bashrc # Add a newline to your .bashrc file.
+echo 'export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"' >> $HOME/.bashrc
+echo 'export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"' >> $HOME/.bashrc
+source $HOME/.bashrc
+```
+
+### Build the executable - this may take about 30 minutes
+```bash
+cd ../ # Leave the blst directory.
 git clone https://github.com/fallen-icarus/cardano-loans
-git clone https://github.com/input-output-hk/plutus-apps
-cd plutus-apps
-git checkout v1.0.0
-nix-shell           # this may take a while the first time
-
-# Your terminal should now have a nix-shell prompt
-
-cd ../cardano-loans
+cd cardano-loans
 cabal clean
 cabal update
-cabal build all
+cabal build exe:cardano-loans
 ```
-The `cardano-loans` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-loans-0.1.0.0/x/cardano-loans/build/cardano-loans/cardano-loans`. Move the program to somewhere in your $PATH.
 
-You can now exit the nix-shell with `exit`.
+The `cardano-loans` CLI program should now be at
+`dist-newstyle/build/x86_64-linux/ghc-9.6.5/cardano-loans-1.0.0.0/x/cardano-loans/build/cardano-loans/cardano-loans`.
+Move the program to somewhere in your `$PATH`.
 
-All `cardano-loans` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
+All `cardano-loans` subcommands have an associated `--help` option. The functionality is meant to
+feel like `cardano-cli`.
 
---- 
-## Minting test tokens
-An always succeeding minting policy as well as the required redeemer are included [here](scripts/mint-test-tokens/). In that directory is also the template bash script that uses them. These can be used to create as many native tokens as needed to test this lending dApp.
+The smart contracts are compiled *into* the created `cardano-loans` CLI. The executable has
+everything you need for using the protocol. It is a batteries included CLI.
 
----
-## Borrower Actions
+## Aiken For Developers
 
-### Asking for a loan
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
+The aiken smart contracts come precompiled but if you would like to make changes or wish to confirm
+the compiled scripts yourself, you will also need to install `aiken`. You can install `aiken` using
+cargo like this:
+
+```bash
+cargo install aiken --version 1.0.26-alpha
+```
+
+Make sure you instal verison 1.0.26-alpha. Newer versions may change some things and so the source
+code may not compile or may result in a different script. As aiken stabilizes, the code will be
+updated to the latest version.
+
+When building the protocol's blueprints, make sure to use
+
+```bash
+aiken build -f user-defined -t verbose
+```
+
+or else the user friendly error messages will be stripped from the smart contracts and the resulting
+beacons will be different.
+
+If you would like to use the `cardano-loans` CLI after making your changes, you will need to
+rebuild it with `cabal bulid exe:cardano-loans`. As long as you did not make any breaking changes,
+the CLI should still work for you.
+
+If you would like to test your changes, you can run the tests using `cabal run tests`. As long
+as you did not make any breaking changes, the tests should quickly give you feedback. There are
+four kinds of tests:
+
+1) Regression tests - tests for features that should work.
+2) Failure tests - tests for scenarios that are supposed to fail.
+3) Bench tests - tests to check for degraded performance in specific scenarios.
+4) Performance Increase tests - tests to check for improved performance in specific scenarios; these
+tests will fail if performance increases to alert you of the change.
+
+To see the documentation for the tests, you can build the haddocks for the tests using `cabal
+haddock tests`. The documentation may be easier to read than the source code. You can view the
+documentation in any browser.
+
+## Overspent Budget
+
+While `cardano-cli` is able to auto-balance transactions, the auto-balancer does not always work
+when scripts are executed in a transaction where native tokens must go to the change address. It
+does not properly add the change *before* estimating the execution budgets for the transaction which
+always results in it under-estimating the required execution units needed by the scripts. There are
+open issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
+[here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
+confusing error message while using `cardano-cli transaction build`, this is probably the issue.
+
+As a work around, whenever you build a transaction using `cardano-cli transaction build` where
+scripts are being executed, you must manually create an output that has all of the native tokens
+that would normally go into the change output. You can let the auto-balancer balance the ada.
+
+## Using Remote Nodes
+
+`cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
+used to build a transaction for a remote node. Instead, the `cardano-cli transaction build-raw` 
+command is required. This command requires the following steps:
+1. Build a temporary transaction that is missing the execution units and transaciton fee but is
+   properly balanced. You can assume a fee of zero for this transaction.
+2. Submit the temporary transaction for execution budget estimations.
+3. Rebuild the transaction with the proper execution budgets. The fee is still set to zero.
+4. Calculate the required fee for this new temporary transaction.
+5. Create the final transaction with the required fee and properly balanced outputs (subtract off
+   the fee from the change).
+6. Sign the transaction and submit to a remote node.
+
+The `cardano-loans` CLI uses [Koios](https://koios.rest/) in all scenarios where a node is required.
+
+#### Exporting protocol parameters
+
+Some of the above steps will require the current protocol parameters. The `cardano-loans` CLI had
+the preproduction testnet and mainnet protocol parameters compiled into the executable when it was
+built with `cabal build exe:cardano-loans`. The parameters are already formatted in the way
+`cardano-cli` requires. To export the parameters, you can use:
+```bash
+cardano-loans protocol-params \
+  --testnet \
+  --out-file protocolParams.json
+```
+
+#### Estimating execution budgets
+
+Submitting a transaction for execution budget estimations can be done with this command:
+```bash
+cardano-loans evaluate-tx \
+  --testnet \
+  --tx-file tx.body
+```
+
+This action uses Koios. The returned budgets will be indexed by the input order, policy id order,
+and withdrawal credential order. **This may not be the same order you specified when building the
+temporary transaction.** The node will reorder them based on lexicographical ordering. If you are
+not sure of the proper ordering, you can view the transaction file that is created with
+`cardano-cli` using `cardano-cli transaction view`; the inputs, policy ids, and withdrawal
+credentials will be properly ordered.
+
+#### Submitting the final transaction
+
+Submitting the final transaction for addition to the blockchain can be done with this command:
+```bash
+cardano-loans submit \
+  --testnet \
+  --tx-file tx.signed
+```
+
+The transaction will be submitted through Koios.
+
+## Minting Test Tokens
+
+An always succeeding minting policy as well as the required redeemer are included with template bash
+scripts for a local node. These can be used to create as many native tokens as needed to test this
+protocol.
+
+To see how to mint test tokens using a local node, refer
+[here](scripts/local-node/mint-test-tokens/)
+
+## Registering the scripts for staking execution - DEVELOPERS ONLY
+
+**This action only needs to be done once per network for the entire protocol. It does not need to be
+done by any users.** These instructions are for completeness as they may be needed by developers.
+
+The plutus scripts cannot be executed as staking scripts until after they are registered. Once the
+scripts are registered, they can be used as staking scripts immediately by all users. Registering
+the scripts does not require executing the scripts (this may change in the future). Once they are
+registered, *they cannot be deregistered*.
+
+**Registration has already been done for all scripts for the preproduction testnet.**
+
+The following protocol scripts requires staking executions, and therefore, require registration:
+- Negotiation Beacon Script
+- Payment Observer Script
+- Interest Observer Script
+- Address Update Observer Script
+
+Registering the scripts involve:
+1. Exporting each script from the `cardano-loans` CLI.
+2. Creating a registration certificate for each script.
+3. Submitting a transaction that also pays the registration deposit (2 ADA per registration).
+
+All scripts can be registered in a single transaction (this may change if registration eventually
+requires executing each script).
+
+#### Exporting the scripts
+```bash
+cardano-loans scripts \
+  --negotiation-script \
+  --out-file negotiation_beacons.plutus
+
+cardano-loans scripts \
+  --payment-script \
+  --out-file payment_observer.plutus
+
+cardano-loans scripts \
+  --interest-script \
+  --out-file interest_observer.plutus
+
+cardano-loans scripts \
+  --address-update-script \
+  --out-file address_update_observer.plutus
+```
+
+#### Create the registration certificates
+```bash
+cardano-cli stake-address registration-certificate \
+  --stake-script-file negotiation_beacons.plutus \
+  --out-file negotiation_beacons.cert
+
+cardano-cli stake-address registration-certificate \
+  --stake-script-file payment_observer.plutus \
+  --out-file payment_observer.cert
+
+cardano-cli stake-address registration-certificate \
+  --stake-script-file interest_observer.plutus \
+  --out-file interest_observer.cert
+
+cardano-cli stake-address registration-certificate \
+  --stake-script-file address_update_observer.plutus \
+  --out-file address_update_observer.cert
+```
+
+#### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local-node/create-reference-scripts/register-scripts.sh)
+
+## Creating Reference Scripts
+
+**Do not skip this step!** While beacon tokens can be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
+
+Creating reference scripts involves the following steps:
+1. Export the scripts from the `cardano-loans` CLI.
+2. Submit a transaction with the reference script stored in the outputs.
+
+Due to the sizes of the scripts, each script will require its own transaction.
+
+You can see examples [here](scripts/local-node/create-reference-scripts/).
+
+## Creating an Ask UTxO
+
+Creating an Ask UTxO involves the following steps:
+1. Create your borrower address.
+2. Calculate the hash of the staking credential used in your borrower address.
+2. Calculate the required beacon names to mint.
+3. Create the required beacon script redeemer.
+4. Create the required AskDatum for each Ask UTxO you wish to create.
+5. Submit a transaction that creates the Ask UTxOs.
+
+#### Creating your borrower address
+```bash
+# Export the spending script.
+cardano-loans scripts loan-script \
   --out-file loan.plutus
-```
 
-2. Calculate the hash for the borrower's staking verification key.
-``` Bash
-borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
-  --stake-verification-key-file borrowerStake.vkey)
-```
-
-Borrowers must use their staking pubkey for signing everything.
-
-3. Create the borrower's loan address.
-``` Bash
+# Create the borrower address.
 cardano-cli address build \
   --payment-script-file loan.plutus \
-  --stake-verification-key-file borrowerStake.vkey \
+  --stake-verification-key-file borrower_stake.vkey \
   --testnet-magic 1 \
-  --out-file loan.addr
+  --out-file borrower_loan.addr
 ```
 
-4. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
+Cardano-Loans also supports using staking scripts for the address. To use a staking script, use
+the `--stake-script-file` flag instead of the `--stake-verification-key-file` flag.
+
+For a mainnet address, just use the `--mainnet` flag instead of `--testnet-magic 1` when creating
+the address.
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
 ```
 
-5. Get the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus) 
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
 ```
 
-6. Create the AskDatum.
-``` Bash
-cardano-loans loan-datum ask-datum \
-  --beacon-policy-id $beaconPolicyId \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
-  --loan-asset-is-lovelace \
-  --principle 10000000 \
-  --loan-term 3600 \
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --out-file askDatum.json
-```
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
 
-The `principle` is in units of the loan asset. **When the loan asset is lovelace, make sure the `principle` is also in lovelace.**
+#### Calculate the required beacon names to mint
+Ask UTxOs require two negotiation beacons: the "Ask" beacon and the loan asset beacon.
 
-The `loan-term` option is the number of slots the loan will be valid for once started. The CLI program will convert this to POSIX time (1 slot = 1000 POSIXTime).
+```bash
+# Get the policy id for the negotiation beacons.
+beaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --negotiation-beacons \
+  --stdout) 
 
-The `collateral-asset` fields are where you state what assets you are willing to put up as collateral for the loan. You can suggest more than one asset by repeating the two fields like:
+# Get the required "Ask" beacon name. It is just the hexidecimal encoding of "Ask".
+askTokenName=$(cardano-loans beacon-name asset-name \
+  --ask-beacon \
+  --stdout)
 
-``` Bash
-  --collateral-asset-policy-id ... \
-  --collateral-asset-token-name ... \
-  --collateral-asset-policy-id ... \
-  --collateral-asset-token-name ... \
-```
+# Get the required loan asset beacon name.
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
 
-The lender will tell you what collateral rates they want for each asset.
-
-7. Create the `MintAskToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer mint-ask \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
-  --out-file mintAsk.json
-```
-
-8. Create a helper beacon variable.
-``` Bash
-askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
+# Create the required full beacon names.
 askBeacon="${beaconPolicyId}.${askTokenName}"
+assetBeacon="${beaconPolicyId}.${assetTokenName}"
 ```
 
-9. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
+The above beacons are for an Ask UTxO where ada would be the loan asset. If you would like to ask
+for a native asset instead, replace `'lovelace'` with `'<policy_id>.<asset_name>'`. For example:
 
-cardano-cli transaction build \
-  --tx-in <borrower_utxo> \
-  --tx-out "$(cat loan.addr) + 2000000 lovelace + 1 ${askBeacon}" \
-  --tx-out-inline-datum-file askDatum.json \
-  --mint "1 ${askBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file mintAsk.json \
-  --required-signer-hash $borrowerPubKeyHash \
-  --change-address <borrower_personal_addr> \
-  --tx-in-collateral <borrower_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file borrowerPayment.skey \
-  --signing-key-file borrowerStake.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
+```bash
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --stdout)
 ```
 
-The borrower must sign with both their payment and stake keys since the beacon policy checks for the staking key signature while spending the UTxOs requires the payment key signature.
-
-### Checking all own asks
-This option makes it easy for a borrower to see his/her own asks inside their loan address.
-
-``` Bash
-cardano-loans query own-asks \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --loan-address $(cat loan.addr) \
-  --stdout
+#### Create the required negotiation beacon script redeemer
+```bash
+cardano-loans redeemers negotiation-script manage-asks \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --out-file negotiation_redeemer.json
 ```
 
-Here is an example response when piped to `jq`:
+If you are using a staking script, use `borrower-staking-script-hash` instead.
 
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateral": [
-        "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a"
-      ],
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "output_index": "0",
-    "tx_hash": "3aa90ec234b31c11f1346c3fdc04f2ab6b5279b893519f0545cbb013b53af7bd",
-    "type": "Ask",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 2000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.41736b",
-        "quantity": 1
-      }
-    ]
-  }
-]
-```
-This borrower only has one open ask. This returns all of the information necessary for the borrower to act on. If the borrower would like to change something, this Ask must be closed and a new one must be opened.
-
-### Checking all offers
-``` Bash
-cardano-loans query all-offers \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --loan-address $(cat loan.addr) \
-  --stdout
+#### Creating the required AskDatum
+```bash
+cardano-loans datums ask \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --loan-asset 'lovelace' \
+  --principal 10000000 \
+  --loan-term '3600 slots' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --out-file ask_datum.json
 ```
 
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "output_index": "0",
-    "tx_hash": "7b025d0b57dccf535f9eff36c377b83bbcbb2753314604d17136bea84d2183ab",
-    "type": "Offer",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 13000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.4f66666572",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
+`loan-term` can either be in terms of slots (like above) or in terms of days. If you would like to
+specify days, you can use `--loan-term '2 days'`.
+
+The `collateral-asset` fields *must* be in lexicographical order. If you reverse the order of the two
+collateral assets above, the negotiation beacon script will crash with an error saying your
+collateral assets are wrong.
+
+#### Building the transaction
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/create-ask.sh).
+
+## Closing an Ask UTxO
+
+Closing an Ask UTxO requires the following steps:
+1. Calculate the hash of the borrower's staking credential.
+2. Create the required spending script redeemer.
+3. Calculate the required negotiation beacon names to burn.
+4. Create the required negotiation beacon script redeemer.
+5. Submit the transaction.
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
 ```
 
-Only one offer was made. Lender `ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2` has made this offer. This returns all of the information necessary for the borrower to decide on and accept the offer. The loan amount of 10 ADA is present in this Offer UTxO.
+#### Calculate the required beacon names to burn
+Ask UTxOs have two negotiation beacons: the "Ask" beacon and the loan asset beacon.
 
-The `collateralization` field shows a list of the ratios the lender would like for the collateral you mentioned in your Ask. This lender would like 2 of your collateral asset for every 1 ADA you borrow.
+```bash
+# Get the policy id for the negotiation beacons.
+beaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --negotiation-beacons \
+  --stdout) 
 
-The non-compounding interest being offered is 10%.
+# Get the required "Ask" beacon name. It is just the hexidecimal encoding of "Ask".
+askTokenName=$(cardano-loans beacon-name asset-name \
+  --ask-beacon \
+  --stdout)
 
-The other fields should match what you asked for. In order to accept the loan, all the other fields **must** match what you asked for. Also, the collateralization list must appear in the same order (based on the asset name) as your collateral list in order for acceptance to succeed.
+# Get the required loan asset beacon name.
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
 
-### Accepting a loan offer
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
-  --out-file loan.plutus
-```
-
-2. Calculate the hash for the borrower's staking verification key.
-``` Bash
-borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
-  --stake-verification-key-file borrowerStake.vkey)
-```
-
-3. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
-
-4. Get the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
-
-5. Create the `AcceptOffer` spending redeemer.
-``` Bash
-cardano-loans loan-redeemer \
-  --accept-offer \
-  --out-file acceptOffer.json
-```
-
-6. Create the active datum.
-``` Bash
-cardano-loans loan-datum accept-datum \
-  --beacon-policy-id $beaconPolicyId \
-  --lender-payment-pubkey-hash <lender_id> \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
-  --loan-asset-is-lovelace \
-  --principle 10000000 \
-  --loan-term 3600 \
-  --interest-numerator 1 \
-  --interest-denominator 10 \
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --rate-numerator 1 \
-  --rate-denominator 500000 \
-  --expiration $((<invalid_before_slot_number> + 3600)) \
-  --out-file activeDatum.json
-```
-
-You must make sure to calculate the proper expiration slot based off the `loan-term` and the invalid-before slot number used for the transaction. The fields in the datum should match what is in the offer and ask datums.
-
-7. Create the `MintActiveToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer mint-active \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
-  --lender-payment-pubkey-hash <lender_id> \
-  --out-file mintActive.json
-```
-
-8. Create helper beacon variables.
-``` Bash
-activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
-askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
-offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
-
+# Create the required full beacon names.
 askBeacon="${beaconPolicyId}.${askTokenName}"
+assetBeacon="${beaconPolicyId}.${assetTokenName}"
+```
+
+#### Create the required negotiation beacon script redeemer
+```bash
+cardano-loans redeemers negotiation-script manage-asks \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --out-file negotiation_redeemer.json
+```
+
+If you are using a staking script for the borrower's address, use `borrower-staking-script-hash`
+instead.
+
+#### Create the required spending script redeemer
+```bash
+cardano-loans redeemers loan-script manage-ask \
+  --out-file spending_redeemer.json
+```
+
+#### Building the transaction
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/close-ask.sh).
+
+## Creating an Offer UTxO
+
+Creating an Offer UTxO involves the following steps:
+1. Calculate the hash of the staking credential used for your Lender ID.
+2. Calculate the required beacon names to mint.
+3. Create the required beacon script redeemer.
+4. Create the required OfferDatum for each Offer UTxO you wish to create.
+5. Submit a transaction that creates the Offer UTxOs.
+
+*Offer UTxOs do not need to agree with the Ask UTxO you are responding to!* You can make a
+counter-offer that can be immediately accepted by the borrower.
+
+#### Calculate the hash of the staking credential used in the Lender ID
+```bash
+lenderCredentialHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file lender_stake.vkey)
+```
+
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+lenderCredentialHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
+```
+
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
+
+#### Calculate the required beacon names to mint
+Offer UTxOs require three negotiation beacons: the "Offer" beacon, the Lender ID, and the loan 
+asset beacon.
+
+```bash
+# Get the policy id for the negotiation beacons.
+beaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --negotiation-beacons \
+  --stdout) 
+
+# Get the required "Offer" beacon name. It is just the hexidecimal encoding of "Offer".
+offerTokenName=$(cardano-loans beacon-name asset-name \
+  --offer-beacon \
+  --stdout)
+
+# Get the required loan asset beacon name.
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
+
+# Create the required full beacon names.
 offerBeacon="${beaconPolicyId}.${offerTokenName}"
-lenderBeacon="${beaconPolicyId}.<lender_id>"
-activeBeacon="${beaconPolicyId}.${activeTokenName}"
-borrowerBeacon="${beaconPolicyId}.${borrowerPubKeyHash}"
+assetBeacon="${beaconPolicyId}.${assetTokenName}"
+lenderIdBeacon="${beaconPolicyId}.${lenderCredentialHash}"
 ```
 
-9. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
+The above beacons are for an Offer UTxO where ada would be the loan asset. If you would like to
+offer a native asset instead, replace `'lovelace'` with `'<policy_id>.<asset_name>'`. For
+example:
 
-cardano-cli transaction build \
-  --tx-in <borrower_utxo_with_loan_collateral_and_fee> \
-  --tx-in <ask_utxo> \
-  --tx-in-script-file loan.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file acceptOffer.json \
-  --tx-in <offer_utxo> \
-  --tx-in-script-file loan.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file acceptOffer.json \
-  --tx-out "$(cat loan.addr) + 3000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon} + 1 ${borrowerBeacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file activeDatum.json \
-  --mint "1 ${activeBeacon} + 1 ${borrowerBeacon} + -1 ${askBeacon} + -1 ${offerBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file mintActive.json \
-  --required-signer-hash $borrowerPubKeyHash \
-  --change-address <borrowers_personal_addr> \
-  --tx-in-collateral <borrower_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --invalid-before <slot_where_loan_starts> \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file borrowerPayment.skey \
-  --signing-key-file borrowerStake.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
+```bash
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --stdout)
 ```
 
-Since 10 ADA was borrowed, 20 of the collateral asset needed to be deposited.
-
-### Checking all current loans
-This option is for the convenience of checking the loan information in the borrower's address.
-
-``` Bash
-cardano-loans query borrower-loans \
-  --borrower-stake-pubkey-hash <borrower_stake_pubkey_hash> \
-  --loan-address $(cat loan.addr) \
-  --preprod-testnet $(cat api.txt) \
-  --stdout
+#### Create the required negotiation beacon script redeemer
+```bash
+cardano-loans redeemers negotiation-script manage-offers \
+  --lender-staking-pubkey-hash $lenderCredentialHash \
+  --out-file negotiation_redeemer.json
 ```
 
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 11000000
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26655777,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 600
-    },
-    "output_index": "0",
-    "tx_hash": "9f7143d32545ac4c2c1ce0833b3f75a0a2969279cfc855f44ee5442417c99b18",
-    "type": "Loan",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 3000000
-      },
-      {
-        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-        "quantity": 20
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
+If you are using a staking script for the Lender ID, use `lender-staking-script-hash`
+instead.
+
+#### Creating the required OfferDatum
+```bash
+cardano-loans datums offer \
+  --lender-staking-pubkey-hash $lenderCredentialHash \
+  --loan-asset 'lovelace' \
+  --principal 100000000 \
+  --loan-term '3600 slots' \
+  --interest '0.1' \
+  --compound-frequency '1200 slots' \
+  --minimum-payment 2000000 \
+  --fixed-penalty 500000 \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --relative-rate '1 / 1000000' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --relative-rate '2 / 1000000' \
+  --claim-period '3600 slots' \
+  --offer-deposit 4000000 \
+  --offer-expiration 1712752992000 \
+  --payment-address lender_personal.addr \
+  --out-file offer_datum.json
 ```
 
-Only one loan was found. Some of the information is there for the credit history. The `balance_owed` field and the `expiration_slot` field are the most important fields for an active loan. The starting `balance_owed` for a loan is always:
-```
-principle * (1 + interest)
-```
+The `lender-staking-pubkey-hash` is the hash of your staking pubkey you wish to use as your
+Lender ID. If you wish to use a staking script instead, you can use `lender-staking-script-hash`.
+The negotiation script will check that you correctly identify whether your credential hash is for
+a pubkey or a script.
 
-### Making a loan payment
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
-  --out-file loan.plutus
-```
+The `loan-term` can either be in terms of slots (like above) or in terms of days. If you would like to
+specify days, you can use `--loan-term '2 days'`.
 
-2. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
+The `interest` can be expressed as either a decimal (like above) or a fraction: `--interest '1 /
+10'`. If you use decimals, the ultimate fraction will look off since floating point numbers do not
+have arbitrary precision. The approximation is good enough, though.
 
-3. Calculate the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
+The `compound-frequency` is optional. If you do use it, you can specify the frequency in either
+slots or days. The interest/penalties must be applied at the frequency set by this field. The
+borrower has this time period to satisfy the minimum payment in order to avoid the penalty.
 
-4. Calculate the hash of the borrower's staking verification key.
-``` Bash
-borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
-  --stake-verification-key-file borrowerStake.vkey)
-```
+The penalty field can either be: `--no-penalty`, `--fixed-penalty INT`, `--percent-penalty PERCENT`.
+The `PERCENT` can be specified as either a decimal or a fraction. This penalty will be applied
+whenever the `minimum-payment` is missed in a given compounding period. *It is possible to enforce a
+penalty on an interest-free loan.* Just set the interest to zero while still setting a
+compound-frequency and penalty. There is no way to enforce a penalty on a non-compounding interest
+loan since a non-compounding loan requires omitting a compound-frequency.
 
-5. Create the active datum with the updated outstanding balance.
-``` Bash
-cardano-loans loan-datum payment-datum \
-  --beacon-policy-id $beaconPolicyId \
-  --lender-payment-pubkey-hash <lender_id> \
-  --borrower-stake-pubkey-hash $borrowerPubKeyHash \
-  --loan-asset-is-lovelace \
-  --principle 10000000 \
-  --loan-term 3600 \
-  --interest-numerator 1 \
-  --interest-denominator 10 \
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --rate-numerator 1 \
-  --rate-denominator 500000 \
-  --expiration <expiration_slot_number> \
-  --balance-numerator 11000000 \
-  --balance-denominator 1 \
-  --payment-amount 5000000 \
-  --out-file repayDatum.json
-```
+The `collateral-asset` fields *must* be in lexicographical order. If you reverse the order of the two
+collateral assets above, the negotiation beacon script will crash with an error saying your
+collateral assets are wrong. The `relative-rate` fields must be paired with the corresponding 
+`collateral-asset` field. The `relative-rate` can be specified as either a decimal or a fraction,
+just like with the `interest` field. If you do not want a specific collateral to be used, you can
+either omit that collateral from the OfferDatum or you can set its `relative-rate` to zero.
 
-Everything should be the same as the current active datum. The new `payment-amount` flag is the amount of the loan asset that will be repaid this transaction. **This field must be exact.**
+The `claim-period` is how long you will have to claim expired collateral after the borrower defaults
+on the loan. Once this time period passes, you will still be able to claim the collateral, but so
+will the borrower. It will be a race to get the collateral. This is required to prevent permanent
+locking of assets in the event the Key NFT is lost.
 
-6. Create helper beacon variables.
-``` Bash
-activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
-activeBeacon="${beaconPolicyId}.${activeTokenName}"
-lenderBeacon="${beaconPolicyId}.<lender_id>"
-borrowerBeacon="${beaconPolicyId}.${borrowerPubKeyHash}"
-```
+The `offer-deposit` is how much ada you used to satisfy the minUTxOValue of this Offer UTxO. It will
+be returned to you when the borrower accepts the offer.
 
-7. Create the `RepayLoan` spending redeemer.
-``` Bash
-cardano-loans loan-redeemer \
-  --repay \
-  --out-file repayLoan.json
+The `offer-expiration` is optional. If you set it, the borrower will only have until the specified
+POSIX time (in milliseconds) to accept your offer. You can use the `cardano-loans convert-time`
+command to convert between slot numbers and POSIX time.
+
+The `payment-address` must either be a payment pubkey address or a proxy script address with a valid
+staking credential. When the offer is accepted, the `offer-deposit` and the new Key NFT will be
+deposited to this address.
+
+#### Building the transaction
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/create-offer.sh).
+
+## Closing an Offer UTxO
+
+Closing an Offer UTxO requires the following steps:
+1. Calculate the hash of the lender's staking credential.
+2. Create the required spending script redeemer.
+3. Calculate the required negotiation beacon names to burn.
+4. Create the required negotiation beacon script redeemer.
+5. Submit the transaction.
+
+#### Calculate the hash of the staking credential used in the Lender ID
+```bash
+lenderCredentialHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file lender_stake.vkey)
 ```
 
-8. If the loan is being fully paid off, you will also need the `BurnBeaconToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer burn-beacons \
-  --out-file burnBeacons.json
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+lenderCredentialHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
 ```
 
-9. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
 
-cardano-cli transaction build \
-  --tx-in <borrower_utxo_with_loan_asset_to_repay_and_fee> \
-  --tx-in <loan_utxo> \
-  --tx-in-script-file loan.addr \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file repayLoan.json \
-  --tx-out "<loan_address> + 8000000 lovelace + 1 ${activeBeacon} + 1 ${lenderBeacon} + 1 ${borrowerBeacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file repaymentActiveDatum.json \
-  --required-signer-hash $borrowerPubKeyHash \
-  --change-address <borrower_personal_addr> \
-  --tx-in-collateral <borrower_colalteral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --invalid-hereafter <any_slot_between_now_and_expiration> \
-  --out-file tx.body
+#### Calculate the required beacon names to burn
+Offer UTxOs have three negotiation beacons: the "Offer" beacon, the Lender ID, and the loan 
+asset beacon.
 
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file borrowerPayment.skey \
-  --signing-key-file borrowerStake.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
+```bash
+# Get the policy id for the negotiation beacons.
+beaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --negotiation-beacons \
+  --stdout) 
 
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
-```
+# Get the required "Offer" beacon name. It is just the hexidecimal encoding of "Offer".
+offerTokenName=$(cardano-loans beacon-name asset-name \
+  --offer-beacon \
+  --stdout)
 
-The amount actually repaid must exactly match that specified in the `payment-amount` field when creating the new active datum.
+# Get the required loan asset beacon name.
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
 
-If the borrower is making a partial payment, they can reclaim collateral proportionally to what they repay.
-
-If the borrower is fully paying off the loan, then he/she must also burn the `borrowerBeacon` and withdraw the collateral in this transaction. **There are no checks to make sure the collateral is taken. If the borrower misses this opportunity to take his/her collateral, custody of the collateral will be transferred to the lender.**
-
-For convenience, the `invalid-hereafter` option can always be set to the slot where the loan expires. This is only used to tell the script that the slot has not passed yet.
-
-### Closing an ask
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
-  --out-file loan.plutus
-```
-
-2. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
-
-3. Calculate the hash for the borrower's staking pubkey.
-``` Bash
-borrowerPubKeyHash=$(cardano-cli stake-address key-hash \
-  --stake-verification-key-file borrowerStake.vkey)
-```
-
-4. Create the `BurnBeaconToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer burn-beacons \
-  --out-file burnBeacons.json
-```
-
-5. Create the `CloseAsk` spending redeemer.
-``` Bash
-cardano-loans loan-redeemer \
-  --close-ask \
-  --out-file closeAsk.json
-```
-
-6. Calculate the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
-
-7. Create a helper beacon variable.
-``` Bash
-askTokenName="41736b" # This is the hexidecimal encoding for 'Ask'.
-askBeacon="${beaconPolicyId}.${askTokenName}"
-```
-
-8. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <ask_utxo> \
-  --tx-in-script-file loan.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file closeAsk.json \
-  --mint "-1 ${askBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file burnBeacons.json \
-  --required-signer-hash $borrowerPubKeyHash \
-  --change-address <borrower_personal_addr> \
-  --tx-in-collateral <borrower_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file borrowerPayment.skey \
-  --signing-key-file borrowerStake.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
-```
-
----
-## Lender Actions
-
-### Checking all current asks
-``` Bash
-cardano-loans query all-asks \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --stdout
-```
-
-Here is an example response when piped to `jq`:
-
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateral": [
-        "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a"
-      ],
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "output_index": "0",
-    "tx_hash": "3aa90ec234b31c11f1346c3fdc04f2ab6b5279b893519f0545cbb013b53af7bd",
-    "type": "Ask",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 2000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.41736b",
-        "quantity": 1
-      }
-    ]
-  }
-]
-```
-
-Only one ask was found. Borrower `3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa` is asking to borrower 10 ADA for 3600 slots. They are willing to use the following asset as collateral:
-`c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a`
-
-### Checking a borrower's credit history
-``` Bash
-cardano-loans query borrower-history \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --borrower-stake-pubkey-hash <borrower_id> \
-  --stdout
-```
-
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "default": true,
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 11000000
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26655777,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 600
-    }
-  },
-  {
-    "default": false,
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 6000000
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26668590,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    }
-  }
-]
-```
-
-Two previous loans were found. This borrower successfully paid back the second loan but defaulted on the first. This query also returns the loan terms for each loan as well as loan's outstanding balance at the time of the default / final payment. The terms come from the input in the transaction where the `BorrowerID` beacon was burned.
-
-The lender is also able to see the borrower's current loans using the following command:
-``` Bash
-cardano-loans query borrower-loans \
-  --borrower-stake-pubkey-hash <borrower_stake_pubkey_hash> \
-  --loan-address <borrower_loan_addr> \
-  --preprod-testnet $(cat api.txt) \
-  --stdout
-```
-
-While this is technically a command for the borrower, it is designed in such a way that the lender can also use it. The `loan-address` would be the address returned in the `all-asks` query.
-
-### Creating an offer
-1. Calculate the lender's pubkey hash.
-``` Bash
-lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
-  --payment-verification-key-file lenderPayment.vkey)
-```
-
-2. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
-
-3. Get the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
-
-4. Create the offer datum.
-``` Bash
-cardano-loans loan-datum offer-datum \
-  --beacon-policy-id $beaconPolicyId \
-  --lender-payment-pubkey-hash $lenderPaymentPubKeyHash \
-  --loan-asset-is-lovelace \
-  --principle 10000000 \
-  --loan-term 3600 \
-  --interest-numerator 1 \
-  --interest-denominator 10 \
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --rate-numerator 1 \
-  --rate-denominator 500000 \
-  --out-file offerDatum.json
-```
-
-The following part should be repeated for every asset being used as collateral:
-``` Bash
-  --collateral-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --collateral-asset-token-name 4f74686572546f6b656e0a \
-  --rate-numerator 1 \
-  --rate-denominator 500000 \
-```
-
-Make sure the collateral order matches the order in the borrower's ask datum.
-
-The `rate-numerator` and the `rate-denominator` fields set the relative price between this collateral asset and the loan asset. So the above example is saying the lender thinks 2 units of this collateral asset is equivalent to 1 ADA. 
-
-If you do not want a given asset to be used for collateral, set the relative price to something unreasonable so that the borrower will be incentivized not to use it. A future version of the dApp can allow for the lender to disqualify certain assets.
-
-By setting the relative prices above/below market value, the lender can offer an over-collateralized loan or under-collateralized loan, respectively.
-
-5. Create the `MintOfferToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer mint-offer \
-  --lender-payment-pubkey-hash $lenderPaymentPubKeyHash \
-  --out-file mintOffer.json
-```
-
-6. Create helper beacon variables.
-``` Bash
-offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
+# Create the required full beacon names.
 offerBeacon="${beaconPolicyId}.${offerTokenName}"
-lenderBeacon="${beaconPolicyId}.${lenderPaymentPubKeyHash}"
+assetBeacon="${beaconPolicyId}.${assetTokenName}"
+lenderIdBeacon="${beaconPolicyId}.${lenderCredentialHash}"
 ```
 
-7. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <lender_utxo> \
-  --tx-out "<borrower_loan_addr> + 13000000 lovelace + 1 ${offerBeacon} + 1 ${lenderBeacon}" \
-  --tx-out-inline-datum-file offerDatum.json \
-  --mint "1 ${offerBeacon} + 1 ${lenderBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file mintOffer.json \
-  --required-signer-hash $lenderPaymentPubKeyHash \
-  --change-address <lender_personal_addr> \
-  --tx-in-collateral <lender_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file lenderPayment.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
+#### Create the required negotiation beacon script redeemer
+```bash
+cardano-loans redeemers negotiation-script manage-offers \
+  --lender-staking-pubkey-hash $lenderCredentialHash \
+  --out-file negotiation_redeemer.json
 ```
 
-Remember that the lender must store the offer information with the offered loan amount. If lovelace is the offered asset, then an additional 3 ADA is required (due to the minimum UTxO limits after the borrower accepts the loan).
+If you are using a staking script for the Lender ID, use `lender-staking-script-hash`
+instead.
 
-### Checking all current offers
-This returns all open offers that belong to the lender. This allows the lender to keep track of all their offers despite the UTxOs being located in other addresses.
+#### Create the required spending script redeemer
+```bash
+cardano-loans redeemers loan-script manage-offer \
+  --out-file spending_redeemer.json
+```
+
+#### Building the transaction
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/close-offer.sh).
+
+## Accepting an Offer
+
+*You will also need to close an Ask UTxO using the `AcceptOffer` redeemer.* You need to close one
+Ask UTxO for every Offer UTxO accepted. The Ask UTxO and Offer UTxO do not need to have the same
+terms; they do not even need to use the same loan assets. If they use different loan assets, make
+sure you burn the loan asset beacon from both the Ask UTxO and the Offer UTxO.
+
+Accepting an Offer requires the following steps:
+1. Get the current slot time and convert it to POSIX time.
+2. Calculate the hash of the borrower's staking credential.
+3. Create the required spending script redeemer.
+4. Create the new ActiveDatum for each offer accepted.
+5. Calculate the required negotiation beacon names to burn.
+6. Calculate the required active beacon names to mint.
+7. Create the required negotiation beacon script redeemer.
+8. Create the required active beacon script redeemer.
+9. Create the required datum for the output to the lender.
+10. Submit the transaction.
+
+#### Get the latest slot number.
+```bash
+startSlot=$(cardano-loans query current-slot \
+  --testnet)
+```
+
+#### Convert the slot number to the required posix time.
+```bash
+startTime=$(cardano-loans convert-time \
+  --slot $startSlot \
+  --testnet)
+```
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
+```
+
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
+```
+
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
+
+#### Calculate the required beacon names to burn
+You must burn all negotiation beacons attached to the Ask and Offer UTxOs. If the UTxOs are using
+different loan assets, make sure to burn both loan asset beacons.
+
+```bash
+# Get the policy id for the negotiation beacons.
+negotiationBeaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --negotiation-beacons \
+  --stdout) 
+
+# Get the required "Ask" beacon name. It is just the hexidecimal encoding of "Ask".
+askTokenName=$(cardano-loans beacon-name asset-name \
+  --ask-beacon \
+  --stdout)
+
+# Get the required "Offer" beacon name. It is just the hexidecimal encoding of "Offer".
+offerTokenName=$(cardano-loans beacon-name asset-name \
+  --offer-beacon \
+  --stdout)
+
+# Get the required loan asset beacon name.
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
+
+# Create the required full beacon names.
+askBeacon="${negotiationBeaconPolicyId}.${askTokenName}"
+negotiationAssetBeacon="${negotiationBeaconPolicyId}.${assetTokenName}"
+offerBeacon="${negotiationBegotiationPolicyId}.${offerTokenName}"
+```
+
+#### Calculate the required beacon names to mint
+Active UTxOs require four beacons: an "Active" beacon, a loan asset beacon, a Borrower ID, and a
+Loan ID. The loan asset beacon will have the same token name as the loan asset beacon attached to
+the Offer being accepted; it will just have a different policy id.
+
+```bash
+# Get the policy id for the active beacons.
+activeBeaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --active-beacons \
+  --stdout) 
+
+# Get the required "Active" beacon name. It is just the hexidecimal encoding of "Active".
+activeTokenName=$(cardano-loans beacon-name asset-name \
+  --active-beacon \
+  --stdout)
+
+# Get the Loan ID name from the target Offer UTxO's output reference.
+loanIdTokenName=$(cardano-loans beacon-name asset-name \
+  --offer-id '667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0' \
+  --stdout)
+
+# Create the required full beacon names.
+activeBeacon="${activeBeaconPolicyId}.${activeTokenName}"
+activeAssetBeacon="${activeBeaconPolicyId}.${assetTokenName}"
+borrowerId="${activeBeaconPolicyId}.${borrowerStakePubKeyHash}"
+loanId="${activeBeaconPolicyId}.${loanIdTokenName}"
+```
+
+#### Creating the required ActiveDatum
+There are two ways to create the required ActiveDatum: manually or automatically.
+
+You can create the ActiveDatum automatically with this command:
+```bash
+cardano-loans datums active new auto \
+  --testnet \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --offer-id '667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0' \
+  --start-time $startTime \
+  --out-file active_datum.json
+```
+
+This command will query Koios to find that Offer UTxO. It will create the new ActiveDatum based on
+the Offer UTxO's OfferDatum.
+
+If you would like to create the ActiveDatum manually (without requiring internet), you can do so 
+with this command:
+```bash
+cardano-loans datums active new manual \
+  --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
+  --loan-asset 'lovelace' \
+  --principal 10000000 \
+  --loan-term '3600 slots' \
+  --interest '3602879701896397 / 36028797018963968' \
+  --compound-frequency '1200 slots' \
+  --minimum-payment 2000000 \
+  --fixed-penalty 500000 \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --relative-rate '1 / 1000000' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --relative-rate '1 / 500000' \
+  --claim-period '3600 slots' \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --offer-id '667c6a5bf9eb86f97ab5f2f2dbd66a484d32795cd244397dfec7953ee8cb2ff3#0' \
+  --start-time $startTime \
+  --out-file active_datum.json
+```
+
+*All fields must match the OfferDatum exactly*. While the fields that accept fractions can also
+accept decimals, it is more accurate to use fractions directly. Converting decimals to fractions is
+subject to the imprecision of floating-point numbers.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers negotiation-script burn-all \
+  --out-file negotiation_redeemer.json
+
+cardano-loans redeemers active-script accept-offers \
+  --out-file active_redeemer.json
+
+cardano-loans redeemers loan-script accept-offer \
+  --out-file accept_offer.json
+```
+
+#### Create the payment datum.
+```bash
+cardano-loans datums payment \
+  --loan-id $loanIdTokenName \
+  --out-file lender_datum.json
+```
+
+#### Building the transaction
+You will need to set invalid-before of this transaction to the `$startSlot` variable.
+
+When accepting mulitple offers, make sure the required outputs are in the same order as the offer
+inputs!
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/accept-offer.sh).
+
+## Making a Loan Payment
+
+Making a loan payment requires:
+1. Calculate the invalid-hereafter slot number based on the next deadline (either compounding or
+   expiration).
+1. Calculate the hash of the borrower's staking credential.
+2. Create the required spending script redeemer.
+3. Create the post-payment ActiveDatum for each payment made.
+4. If making a full payment, calculate the required active beacon names to burn.
+5. Create the required active beacon script redeemer.
+3. Create the required observer script redeemer.
+6. Create the required datum for the output to the lender.
+7. Create the required staking address for the payment observer script.
+8. Submit the transaction.
+
+#### Convert the next deadline (in POSIX time) to a slot number
+```bash
+deadlineSlot=$(cardano-loans convert-time \
+  --posix-time 1712768154000 \
+  --testnet)
+```
+
+You need to prove to the script that the next deadline has not passed yet so you need to set the
+invalid-hereafter of the transaction to the next deadline. The next deadline is either the next
+compounding time or the loan's expiration, whichever is first. When making payments on multiple
+loans, the invalid-hereafter should be set to the earliest time.
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
+```
+
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
+```
+
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
+
+#### If making a full payment, get the required beacon names to burn
+All active beacons attached to the input must be burned.
+
+```bash
+# Get the policy id for the active beacons.
+activeBeaconPolicyId=$(cardano-loans beacon-name policy-id \
+  --active-beacons \
+  --stdout) 
+
+# Get the required "Active" beacon name. It is just the hexidecimal encoding of "Active".
+activeTokenName=$(cardano-loans beacon-name asset-name \
+  --active-beacon \
+  --stdout)
+
+# Get the Loan ID name from the input's ActiveDatum.
+loanIdTokenName='0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced'
+
+# Create the required full beacon names.
+activeBeacon="${activeBeaconPolicyId}.${activeTokenName}"
+activeAssetBeacon="${activeBeaconPolicyId}.${assetTokenName}"
+borrowerId="${activeBeaconPolicyId}.${borrowerStakePubKeyHash}"
+loanId="${activeBeaconPolicyId}.${loanIdTokenName}"
+```
+
+#### Create the payment observer's staking address
+This address is needed to execute the script as a staking script.
+
+```bash
+cardano-loans scripts \
+  --payment-script \
+  --out-file payment_observer.plutus
+
+observerAddress=$(cardano-cli stake-address build \
+  --testnet-magic 1 \
+  --stake-script-file payment_observer.plutus)
+```
+
+#### Creating the required ActiveDatum
+There are two ways to create the required ActiveDatum: manually or automatically.
+
+You can create the ActiveDatum automatically with this command:
+```bash
+cardano-loans datums active post-payment auto \
+  --testnet \
+  --loan-ref '234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#0' \
+  --payment-amount 2000000 \
+  --out-file post_payment_active_datum.json
+```
+
+This command will query Koios to find that Active UTxO. It will create the new ActiveDatum based on
+the current Active UTxO's ActiveDatum.
+
+If you would like to create the ActiveDatum manually (without requiring internet), you can do so 
+with this command:
+```bash
+cardano-loans datums active post-payment manual \
+  --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
+  --loan-asset 'lovelace' \
+  --principal 10000000 \
+  --loan-term '3600 slots' \
+  --interest '3602879701896397 / 36028797018963968' \
+  --compound-frequency '1200 slots' \
+  --minimum-payment 2000000 \
+  --fixed-penalty 500000 \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --relative-rate '1 / 1000000' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --relative-rate '1 / 500000' \
+  --claim-expiration '1712756592000' \
+  --loan-expiration '1712752992000' \
+  --last-compounding '1712749392000' \
+  --total-epoch-payments 0 \
+  --outstanding-balance '3096224743817216015625 / 281474976710656' \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
+  --payment-amount 2000000 \
+  --out-file post_payment_active_datum.json
+```
+
+*All fields must match the current ActiveDatum exactly*. While the fields that accept fractions can
+also accept decimals, it is more accurate to use fractions directly. Converting decimals to
+fractions is subject to the imprecision of floating-point numbers.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers payment-script observe-payment \
+  --out-file observer_payment.json
+
+# If you are making a full payment, you will also need this redeemer to burn the Borrower IDs.
+cardano-loans redeemers active-script accept-offers \
+  --out-file active_redeemer.json
+
+cardano-loans redeemers loan-script make-payment \
+  --payment-amount 2000000 \
+  --out-file make_payment.json
+```
+
+The `payment-amount` field must exactly match the corresponding field in the datums command *and*
+the amount actually paid to the lender.
+
+#### Create the payment datum.
+```bash
+cardano-loans datums payment \
+  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
+  --out-file lender_datum.json
+```
+
+#### Building the transaction
+You need to set the invalid-hereafter of this transaction to the `$deadlineSlot` variable.
+
+When making payments on multiple loans, make sure the required outputs are in the same order as the
+payment inputs!
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/make-payment.sh). There is an example `cardano-cli transaction build` for
+both full payments and partial payments.
+
+## Applying Interest
+
+Applying interest to a loan requires:
+1. Calculate the invalid-hereafter slot number based on the loan's expiration.
+1. Calculate the hash of the borrower's staking credential.
+2. Create the required spending script redeemer.
+3. Create the post-interest ActiveDatum for each payment made.
+3. Create the required observer script redeemer.
+7. Create the required staking address for the interest observer script.
+8. Submit the transaction.
+
+#### Convert the next deadline (in POSIX time) to a slot number
+```bash
+deadlineSlot=$(cardano-loans convert-time \
+  --posix-time 1712768154000 \
+  --testnet)
+```
+
+You need to prove to the script that the loan's expiration has not passed yet so you need to set the
+invalid-hereafter of the transaction to the loan expiration time. When applying interest to multiple
+loans, the invalid-hereafter should be set to the earliest time.
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
+```
+
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
+```
+
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
+
+#### Create the interest observer's staking address
+This address is needed to execute the script as a staking script.
+
+```bash
+cardano-loans scripts \
+  --interest-script \
+  --out-file payment_observer.plutus
+
+observerAddress=$(cardano-cli stake-address build \
+  --testnet-magic 1 \
+  --stake-script-file interest_observer.plutus)
+```
+
+#### Creating the required ActiveDatum
+There are two ways to create the required ActiveDatum: manually or automatically.
+
+You can create the ActiveDatum automatically with this command:
+```bash
+cardano-loans datums active post-interest auto \
+  --testnet \
+  --loan-ref '234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#0' \
+  --times-applied 1 \
+  --out-file $activeDatumFile
+  --out-file post_interest_active_datum.json
+```
+
+This command will query Koios to find that Active UTxO. It will create the new ActiveDatum off of
+the current Active UTxO's ActiveDatum.
+
+If you would like to create the ActiveDatum manually (without requiring internet), you can do so 
+with this command:
+```bash
+cardano-loans datums active post-interest manual \
+  --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
+  --loan-asset 'lovelace' \
+  --principal 10000000 \
+  --loan-term '3600 slots' \
+  --interest '3602879701896397 / 36028797018963968' \
+  --compound-frequency '1200 slots' \
+  --minimum-payment 2000000 \
+  --fixed-penalty 500000 \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --relative-rate '1 / 1000000' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --relative-rate '1 / 500000' \
+  --claim-expiration '1712756592000' \
+  --loan-expiration '1712752992000' \
+  --last-compounding '1712749392000' \
+  --total-epoch-payments 0 \
+  --outstanding-balance '3096224743817216015625 / 281474976710656' \
+  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
+  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
+  --times-applied 1 \
+  --out-file post_interest_active_datum.json
+```
+
+*All fields must match the current ActiveDatum exactly*. While the fields that accept fractions can
+also accept decimals, it is more accurate to use fractions directly. Converting decimals to
+fractions is subject to the imprecision of floating-point numbers.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers interest-script observe-interest \
+  --out-file observer_interest.json
+
+cardano-loans redeemers loan-script apply-interest \
+  --deposit-increase 0 \
+  --times-applied 1 \
+  --out-file make_payment.json
+```
+
+If you need to increase the amount of ada stored in the Active UTxO, you must specify the increase
+with the `deposit-increase` field.
+
+The `times-aplied` field tells the script how many times to apply the interest. If you need to apply
+the interest several times to catch up to the current compounding period, you can use this field to
+do them all in one transaction.
+
+#### Building the transaction
+You need to set the invalid-hereafter of this transaction to the `$deadlineSlot` variable.
+
+When applying interest to multiple loans, make sure the required outputs are in the same order as
+the inputs!
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/apply-interest.sh). 
+
+## Updating a Lender Address
+
+Updating the lender address requires the following steps:
+1. Calculate the invalid-hereafter slot number based on the loan's expiration.
+1. The Key NFT must be sent to the new address in this transaction. If updating multiple UTxOs, each
+   Key NFT must get their own output.
+3. Create the required spending script redeemer.
+3. Create the required observer script redeemer.
+3. Create the post-payment ActiveDatum for each update made.
+6. Create the required datum for the output to the lender.
+7. Create the required staking address for the address update observer script.
+8. Submit the transaction.
+
+#### Convert the loan's expiration (in POSIX time) to a slot number
+```bash
+deadlineSlot=$(cardano-loans convert-time \
+  --posix-time 1712768154000 \
+  --testnet)
+```
+
+You need to prove to the script that the loan has not expired so you need to set the
+invalid-hereafter of the transaction to the expiration time. When updating multiple
+loans, the invalid-hereafter should be set to the earliest time.
+
+#### Create the address update observer's staking address
+This address is needed to execute the script as a staking script.
+
+```bash
+cardano-loans scripts \
+  --address-update-script \
+  --out-file address_update_observer.plutus
+
+observerAddress=$(cardano-cli stake-address build \
+  --testnet-magic 1 \
+  --stake-script-file address_update_observer.plutus)
+```
+
+#### Creating the required ActiveDatum
+There are two ways to create the required ActiveDatum: manually or automatically.
+
+You can create the ActiveDatum automatically with this command:
+```bash
+cardano-loans datums active post-address-update auto \
+  --testnet \
+  --loan-ref '234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#0' \
+  --payment-address addr_test1vpz6g5ecxv6mc036lckg6w06wmj7vr073j73llzpsn5t0pguw7m5u \
+  --out-file post_update_active_datum.json
+```
+
+This command will query Koios to find that Active UTxO. It will create the new ActiveDatum off of
+the current Active UTxO's ActiveDatum.
+
+If you would like to create the ActiveDatum manually (without requiring internet), you can do so 
+with this command:
+```bash
+cardano-loans datums active post-payment manual \
+  --payment-address addr_test1vpz6g5ecxv6mc036lckg6w06wmj7vr073j73llzpsn5t0pguw7m5u \
+  --loan-asset 'lovelace' \
+  --principal 10000000 \
+  --loan-term '3600 slots' \
+  --interest '3602879701896397 / 36028797018963968' \
+  --compound-frequency '1200 slots' \
+  --minimum-payment 2000000 \
+  --fixed-penalty 500000 \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --relative-rate '1 / 1000000' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
+  --relative-rate '1 / 500000' \
+  --claim-expiration '1712756592000' \
+  --loan-expiration '1712752992000' \
+  --last-compounding '1712749392000' \
+  --total-epoch-payments 0 \
+  --outstanding-balance '3096224743817216015625 / 281474976710656' \
+  --borrower-staking-pubkey-hash '3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa' \
+  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
+  --out-file post_payment_active_datum.json
+```
+
+*All fields must match the current ActiveDatum exactly*. While the fields that accept fractions can
+also accept decimals, it is more accurate to use fractions directly. Converting decimals to
+fractions is subject to the imprecision of floating-point numbers.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers address-update-script observe-address-update \
+  --out-file observer_payment.json
+
+cardano-loans redeemers loan-script update-lender-address \
+  --deposit-increase 0 \
+  --payment-address addr_test1vpz6g5ecxv6mc036lckg6w06wmj7vr073j73llzpsn5t0pguw7m5u \
+  --out-file make_payment.json
+```
+
+If you need to increase the amount of ada stored in the Active UTxO, you must specify the increase
+with the `deposit-increase` field.
+
+The `payment-adress` field must exactly match the corresponding field in the datums command *and*
+the destination of the corresponding Key NFT.
+
+#### Create the payment datum.
+```bash
+cardano-loans datums payment \
+  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
+  --out-file key_datum.json
+```
+
+The Key NFT must be stored with this datum.
+
+#### Building the transaction
+You need to set the invalid-hereafter of this transaction to the `$deadlineSlot` variable.
+
+When updating the outputs for mulitple loans, make sure the required outputs are in the same order
+as the associated inputs!
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/update-lender-address.sh). 
+
+## Claiming Expired Collateral
+
+Claiming expired collateral requires the following steps:
+1. Calculate the invalid-before slot number based on the current chain tip.
+3. Create the required spending script redeemer.
+3. Create the required active beacon script redeemer.
+3. Create the required beacon names to burn.
+8. Submit the transaction.
+
+#### Get the current chain tip.
+```bash
+tipSlot=$(cardano-loans query current-slot --testnet)
+```
+
+The invalid-before of the transaction must be at least the loan expiration time + one slot.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers active-script claim-expired \
+  --out-file burn_and_claim_expired.json
+
+cardano-loans redeemers loan-script claim-expired-collateral \
+  --out-file spend_with_key.json
+```
+
+#### Get the required beacon names.
+```bash
+activePolicyId=$(cardano-loans beacon-name policy-id \
+  --active-beacons \
+  --stdout) 
+
+activeTokenName=$(cardano-loans beacon-name asset-name \
+  --active-beacon \
+  --stdout)
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
+
+# These names come from the current ActiveDatum.
+loanIdTokenName='a07d02e5a58f6714075dad0476d7a627e12d93ce54e05f0c5ed26099a239e532'
+borrowerIdTokenName='3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa'
+
+activeBeacon="${activePolicyId}.${activeTokenName}"
+activeAssetBeacon="${activePolicyId}.${assetTokenName}"
+borrowerId="${activePolicyId}.${borrowerIdTokenName}"
+loanId="${activePolicyId}.${loanIdTokenName}"
+```
+
+#### Building the transaction
+You need to set the invalid-before flag to the `$tipSlot` variable.
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/claim-expired.sh). 
+
+## Unlocking Lost Collateral
+
+Unlocking lost collateral requires the following steps:
+1. Calculate the invalid-before slot number based on the current chain tip.
+1. Calculate the borrower's staking credential hash.
+3. Create the required spending script redeemer.
+3. Create the required active beacon script redeemer.
+3. Create the required beacon names to burn.
+8. Submit the transaction.
+
+#### Get the current chain tip.
+```bash
+tipSlot=$(cardano-loans query current-slot --testnet)
+```
+
+The invalid-before of the transaction must be at least the claim expiration time + one slot.
+
+#### Calculate the hash of the staking credential used in the borrower address
+```bash
+borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file borrower_stake.vkey)
+```
+
+If you are using a staking script credential, you can create the credential hash with this command:
+```bash
+borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+  --script-file stake_script.plutus)
+```
+
+While the above command is technically meant for minting policies, it works for generating the hash
+of any script.
+
+#### Create the required redeemers.
+```bash
+cardano-loans redeemers active-script unlock \
+  --out-file burn_remainder_and_unlock.json
+
+cardano-loans redeemers loan-script unlock-active \
+  --out-file unlock.json
+```
+
+#### Get the required beacon names.
+```bash
+activePolicyId=$(cardano-loans beacon-name policy-id \
+  --active-beacons \
+  --stdout) 
+
+activeTokenName=$(cardano-loans beacon-name asset-name \
+  --active-beacon \
+  --stdout)
+assetTokenName=$(cardano-loans beacon-name asset-name \
+  --loan-asset 'lovelace' \
+  --stdout)
+
+# This name comes from the curennt ActiveDatum.
+loanIdTokenName='a07d02e5a58f6714075dad0476d7a627e12d93ce54e05f0c5ed26099a239e532'
+
+activeBeacon="${activePolicyId}.${activeTokenName}"
+activeAssetBeacon="${activePolicyId}.${assetTokenName}"
+borrowerId="${activePolicyId}.${borrowerStakePubKeyHash}"
+loanId="${activePolicyId}.${loanIdTokenName}"
+```
+
+#### Building the transaction
+You need to set the invalid-before flag to the `$tipSlot` variable.
+
+To see how to build the transaction using a local node, refer
+[here](scripts/local-node/unlock-lost.sh). 
+
+## Time Conversions
+Since plutus scripts use POSIX time (in milliseconds) while cardano-cli uses slot numbers for the
+transaction validity intervals, you need a way to convert between the two units.
 
 ``` Bash
-cardano-loans query own-offers \
-  --lender-payment-pubkey-hash <lender_payment_pubkey_hash> \
-  --beacon-policy-id <beacon_policy_id> \
-  --preprod-testnet $(cat api.txt) \
+cardano-loans convert-time --testnet --slot 26668590
+
+cardano-loans convert-time --testnet --posix-time 1682351790000
+```
+
+## Queries
+
+- All queries use Koios.
+- All query commands are capable of saving results to a file or printing to stdout. 
+- Results can be formatted as JSON, pretty, or plain. 
+
+The pretty and plain formats are meant for printing to the stdout, but both can also be saved to a
+file. The only difference between the pretty format and the plain format is the pretty format uses
+ansii escape sequences to highlight certain items with color. The plain format is there as a
+fallback in case the ansii escape sequences are causing issues for a user.
+
+The JSON response to stdout can be directly piped into `jq` for a more human-friendly format.
+
+> Note: Currently, the `cardano-loans` CLI will only get the first 1000 UTxOs that satisfy a query.
+> This could be 1000 personal UTxOs or 1000 loan UTxOs, depending on the query. For the beta
+> release, 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
+
+### Querying Personal Addresses
+
+In order to facilitate the use of remote nodes, `cardano-loans` is capable of querying personal
+addresses.
+
+The command is simply:
+```bash
+cardano-loans query personal-address \
+  --testnet \
+  --address $(cat personal.addr) \
+  --pretty \
   --stdout
 ```
 
-Here is an example response when piped to `jq`:
+The UTxOs will be returned in lexicographical order based on the transaction hash.
 
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "output_index": "0",
-    "tx_hash": "7b025d0b57dccf535f9eff36c377b83bbcbb2753314604d17136bea84d2183ab",
-    "type": "Offer",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 13000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.4f66666572",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
+For the pretty and plain formats, UTxOs that contain a reference script and/or a datum will show the
+script hash or datum hash, respectively. For the pretty format, each type of hash will have a color
+associated with it: Blue for script hashes and Green for datum hashes. UTxO assets are always shown.
+
+There is an optional `--keys` flag. If used, it will only return UTxOs that contain Key NFTs for
+Cardano-Loans. This could be helpful for managing these Key NFTs.
+
+This query can also work on plutus script addresses.
+
+### Querying Ask UTxOs
+
+All possible queries for Ask UTxOs are organized under the `cardano-loans query asks` command.
+
+The `loan-asset` field is optional. If you use it, the query will only return Ask UTxOs using that
+asset as the loan asset.
+
+The `collateral-asset` field is optional. If you use it, the query will only return Ask UTxOs using that
+asset as one of the collateral assets. You can specify many collateral assets to only return Ask
+UTxOs using all of the specified collateral assets.
+
+The `borrower-staking-pubkey-hash` and `borrower-staking-script-hash` fields are optional. If you
+use it, *only one needs to be specified*. When used, the query will only return Ask UTxOs for the
+borrower address using that credential.
+
+The three above fields can be combined to create more complicated queries. For example, this query
+will only return Ask UTxOs located at the borrower address using the staking pubkey credential
+`623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c`, that are asking for ada, and are
+offering *both* `c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a`
+`c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31` as collateral:
+
+```bash
+cardano-loans query asks \
+  --testnet \
+  --stdout \
+  --pretty \
+  --loan-asset 'lovelace' \
+  --borrower-staking-pubkey-hash 623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 ```
 
-This lender only has one open offer at this time. There is enough information here for the lender to close the offer if desired.
+Using `cardano-loans query asks` without any of the optional fields will return *all* Ask UTxOs.
 
-The lender can also check if the ask is still present by taking the `offer_address` from this response and using it in the following command:
+### Querying Offer UTxOs
 
-``` Bash
-cardano-loans query own-asks \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --loan-address <offer_address> \
-  --stdout
+All possible queries for Offer UTxOs are organized under the `cardano-loans query offers` command.
+
+The `loan-asset` field is optional. If you use it, the query will only return Offer UTxOs using that
+asset as the loan asset.
+
+The `collateral-asset` field is optional. If you use it, the query will only return Offer UTxOs
+using that asset as one of the collateral assets. You can specify many collateral assets to only
+return Offer UTxOs using all of the specified collateral assets.
+
+The `borrower-staking-pubkey-hash` and `borrower-staking-script-hash` fields are optional. If you
+use it, *only one needs to be specified*. When used, the query will only return Offer UTxOs made to
+the borrower address using that credential.
+
+The `lender-staking-pubkey-hash` and `lender-staking-script-hash` fields are optional. If you
+use it, *only one needs to be specified*. When used, the query will only return Offer UTxOs that
+belong to the specified lender staking credential.
+
+The four above fields can be combined to create more complicated queries. For example, this query
+will only return Offer UTxOs located at the borrower address using the staking pubkey credential
+`623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c`, that are offering ada, are allowing
+*both* `c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a`
+`c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31` as collateral, and
+belong to the lender using staking pubkey `3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa`
+as their Lender ID:
+
+```bash
+cardano-loans query offers \
+  --testnet \
+  --stdout \
+  --pretty \
+  --loan-asset 'lovelace' \
+  --borrower-staking-pubkey-hash 623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c \
+  --lender-staking-pubkey-hash 3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
+  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 ```
 
-If the borrower still has the ask open, it will be returned by this command.
+Using `cardano-loans query offers` without any of the optional fields will return *all* Offer UTxOs.
 
-### Checking all current loans
-This command allows the lender to easily keep track of all their opens loans.
+### Querying Active UTxOs
 
-``` Bash
-cardano-loans query lender-loans \
-  --lender-payment-pubkey-hash <lender_payment_pubkey_hash> \
-  --beacon-policy-id <beacon_policy_id> \
-  --preprod-testnet $(cat api.txt) \
-  --stdout
+All possible queries for Active UTxOs are organized under the `cardano-loans query actives` command.
+
+The `loan-asset` field is optional. If you use it, the query will only return Offer UTxOs using that
+asset as the loan asset.
+
+The `borrower-staking-pubkey-hash` and `borrower-staking-script-hash` fields are optional. If you
+use it, *only one needs to be specified*. When used, the query will only return Active UTxOs located
+at the borrower address using that credential. This can be useful for checking if a borrower
+currently has any open loans.
+
+The `loan-id` field is optional. If you use it, the query will only return the Active UTxO with that
+Loan ID. When this field is used, there can never be more than one result. It can return nothing if
+there is no Active UTxO with that Loan ID.
+
+The above fields can be combined to create more complicated queries. For example, this query
+will only return Active UTxOs located at the borrower address using the staking pubkey credential
+`623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c` that are for ada loans:
+
+```bash
+cardano-loans query actives \
+  --testnet \
+  --stdout \
+  --pretty \
+  --loan-asset 'lovelace' \
+  --borrower-staking-pubkey-hash 623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c \
 ```
 
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 11000000
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26655777,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 600
-    },
-    "output_index": "0",
-    "tx_hash": "9f7143d32545ac4c2c1ce0833b3f75a0a2969279cfc855f44ee5442417c99b18",
-    "type": "Loan",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 3000000
-      },
-      {
-        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-        "quantity": 20
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
-```
+Using `cardano-loans query actives` without any of the optional fields will return *all* Active UTxOs.
 
-Only one loan was found for this lender. In order for the loan to be claimable by the lender either the `expiration_slot` must have passed or the loan must have been fully repaid, signified by the absence of the borrower's BorrowerID token. In this case, the BorrowerID token (`f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa`) is still present so it can only be reclaimed if the expiration has passed.
+### Querying the Current Time
 
-### Claiming an expired/paid loan
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
-  --out-file loan.plutus
-```
+Certain actions require knowing the current slot number. You can query the most recent slot number
+using the `cardano-loans query current-slot` command.
 
-2. Calculate the hash of the lender's payment verification key.
-``` Bash
-lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
-  --payment-verification-key-file lenderPayment.vkey)
-```
+### Querying a Borrower's Credit History
 
-3. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
+The borrower's credit history can be queried using the `cardano-loans query borrower-history`
+command. The `borrower-id` field is the target borrower address' staking credential hash (whether
+the hash is for a pubkey or a script is irrelevent).
 
-4. Get the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
+The response will have all loans the borrower ever took out as well as whether they defaulted or
+successfully repaid it. The loan information returned is either the state of the loan at the time of
+the default or the borrower's final payment.
 
-5. Create the `BurnBeaconToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer burn-beacons \
-  --out-file burnBeacons.json
-```
+### Querying a Loan's History
 
-6. Create the `Claim` spending redeemer.
-``` Bash
-cacardano-loans loan-redeemer \
-  --claim \
-  --out-file claimLoan.json
-```
+The loan's event history can be queried using the `cardano-loans query loan-history`
+command. The `loan-id` field is the target loan's Loan ID.
 
-7. Create helper beacon variables.
-``` Bash
-activeTokenName="416374697665" # This is the hexidecimal encoding for 'Active'.
-activeBeacon="${beaconPolicyId}.${activeTokenName}"
-borrowerBeacon="${beaconPolicyId}.<borrower_id>"
-lenderBeacon="${beaconPolicyId}.${lenderPaymentPubKeyHash}"
-```
+The response will have every action taken against that loan's Active UTxO. For example, you can see:
+- What payments were made, when, and for how much?
+- When was interest applied, and how many times?
+- When was the lender's address updated?
 
-8. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
+The loan information attached to each event is the state *at the time of the event*; the information
+does not show the results of the event.
 
-cardano-cli transaction build \
-  --tx-in <lender_utxo_for_fee> \
-  --tx-in <loan_utxo> \
-  --tx-in-script-file loan.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file claimLoan.json \
-  --required-signer-hash $lenderPaymentPubKeyHash \
-  --mint "-1 ${activeBeacon} + -1 ${borrowerBeacon} + -1 ${lenderBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file burnBeacons.json \
-  --change-address <lender_personal_addr> \
-  --tx-in-collateral <lender_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --invalid-before <expiration_slot_plus_one> \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file lenderPayment.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-```
-
-If the loan was fully paid off, the `borrowerBeacon` was already burned and doesn't need to be burned here. 
-
-When claiming an expired loan, make sure to add one to the expiration slot (the script uses `>=` to determine if the loan is not expired). If the loan is fully paid, the `invalid-before` flag can be set to the current slot number.
-
-### Closing an offer
-1. Export the loan validator script.
-``` Bash
-cardano-loans export-script \
-  --loan-script \
-  --out-file loan.plutus
-```
-
-2. Export the beacon policy script.
-``` Bash
-cardano-loans export-script \
-  --beacon-policy \
-  --out-file beacons.plutus
-```
-
-3. Get the beacon policy id.
-``` Bash
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file beacons.plutus)
-```
-
-4. Create the `BurnBeaconToken` redeemer.
-``` Bash
-cardano-loans beacon-redeemer burn-beacons \
-  --out-file burnBeacons.json
-```
-
-5. Calculate the hash of the lender's payment pubkey.
-``` Bash
-lenderPaymentPubKeyHash=$(cardano-cli address key-hash \
-  --payment-verification-key-file lenderPayment.vkey)
-```
-
-6. Create the `CloseOffer` redeemer.
-``` Bash
-cardano-loans loan-redeemer \
-  --close-offer \
-  --out-file closeOffer.json
-```
-
-7. Create helper beacon variables.
-``` Bash
-offerTokenName="4f66666572" # This is the hexidecimal encoding for 'Offer'.
-offerBeacon="${beaconPolicyId}.${offerTokenName}"
-lenderBeacon="${beaconPolicyId}.${lenderPaymentPubKeyHash}"
-```
-
-8. Create and submit the transaction.
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <offer_utxo> \
-  --tx-in-script-file loan.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file closeOffer.json \
-  --mint "-1 ${offerBeacon} + -1 ${lenderBeacon}" \
-  --mint-script-file beacons.plutus \
-  --mint-redeemer-file burnBeacons.json \
-  --required-signer-hash $lenderPaymentPubKeyHash \
-  --change-address <lender_personal_addr> \
-  --tx-in-collateral <lender_collateral_utxo> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file lenderPayment.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
-```
-
-### Check competing offers
-This feature allows the lender to see what other lenders are offering.
-
-``` Bash
-cardano-loans query all-offers \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --loan-address <target_borrower_addr> \
-  --stdout
-```
-
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "address": "addr_test1zq749l3erdr67mmukh3mct038q5et2lkpgnqszgsx4n6n5eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0tg2ct",
-    "loan_info": {
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "output_index": "0",
-    "tx_hash": "7b025d0b57dccf535f9eff36c377b83bbcbb2753314604d17136bea84d2183ab",
-    "type": "Offer",
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 13000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.4f66666572",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
-```
-
-Only one offer has been made so far. The lender can choose whether to try offering a better rate.
-
-### Check loan history
-This query allows the lender to easily track their performance history.
-
-``` Bash
-cardano-loans query lender-history \
-  --preprod-testnet $(cat api.txt) \
-  --beacon-policy-id <beacon_policy_id> \
-  --lender-payment-pubkey-hash <lender_payment_pubkey_hash> \
-  --stdout
-```
-
-Here is an example response when piped to `jq`:
-``` JSON
-[
-  {
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 11000000
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26655777,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 600
-    },
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 3000000
-      },
-      {
-        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-        "quantity": 20
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  },
-  {
-    "loan_info": {
-      "balance_owed": {
-        "denominator": 1,
-        "numerator": 0
-      },
-      "borrower_id": "3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa",
-      "collateralization": [
-        [
-          "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-          {
-            "denominator": 500000,
-            "numerator": 1
-          }
-        ]
-      ],
-      "expiration_slot": 26668590,
-      "interest": {
-        "denominator": 10,
-        "numerator": 1
-      },
-      "lender_id": "ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-      "loan_asset": "lovelace",
-      "loan_beacon": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e",
-      "principle": 10000000,
-      "term": 3600
-    },
-    "utxo_assets": [
-      {
-        "asset": "lovelace",
-        "quantity": 14000000
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.416374697665",
-        "quantity": 1
-      },
-      {
-        "asset": "f5ba317f03ff0868a6067f3b3a3f98199b037184ad4eaecafdf1d79e.ae0d001455a855e6c00f98fa9061028f5c00d297926383bc501be2d2",
-        "quantity": 1
-      }
-    ]
-  }
-]
-```
-
-By comparing the `principle` to what assets were actually in the UTxO, the lender can see whether they profited from the loan or lost money.
-
----
-## Convert POSIX time <--> Slot
-``` Bash
-cardano-loans convert --slot 26668590
-
-cardano-loans convert --posix-time 1682351790000
-```
+This query can complement the borrower's credit history query.

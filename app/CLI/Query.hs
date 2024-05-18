@@ -1,120 +1,184 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module CLI.Query
-(
-  runQueryAllAsks,
-  runQueryOwnAsks,
-  runQueryAllOffers,
-  runQueryOwnOffers,
-  runQueryAllBorrowerLoans,
-  runQueryAllLenderLoans,
-  runQueryBorrowerHistory,
-  runQueryLenderHistory,
-) where
+  (
+    runQuerySlotTip
+  , runQueryPersonalAddress
+  , runQueryAsks
+  , runQueryOffers
+  , runQueryActives
+  , runQuerySpecificLoanUTxO
+  , runQueryBorrowerHistory
+  , runQueryLoanHistory
+  , runSubmitTx
+  , runEvaluateTx
+  ) where
 
-import Servant.Client
-import Network.HTTP.Client
+import Relude
+import Servant.Client 
+import Network.HTTP.Client hiding (responseBody)
 import Network.HTTP.Client.TLS
 import Control.Exception
+import qualified Data.ByteString.Lazy as LBS
+import Data.Aeson
 
-import CLI.BlockfrostApi as Blockfrost
-import CLI.Types
-import CardanoLoans (CurrencySymbol(),PaymentPubKeyHash())
+import CLI.Query.Koios as Koios
+import CLI.Data.Bech32Address
+import CLI.Data.Network
+import CLI.Data.ApiService
+import CLI.Data.PersonalUTxO
+import CLI.Data.LoanUTxO
+import CLI.Data.CreditHistory
+import CLI.Data.LoanHistory
+import CLI.Data.TxCBOR
 
-runQueryAllAsks :: Network -> CurrencySymbol -> IO [LoanInfo]
-runQueryAllAsks (PreProdTestnet apiKey) currSym = do
+import CardanoLoans
+
+runQuerySlotTip :: Network -> ApiService -> IO Integer
+runQuerySlotTip network api = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM (Blockfrost.queryAllAsks apiKey' (show currSym)) env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM Koios.querySlotTip env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM Koios.querySlotTip env
 
-runQueryOwnAsks :: Network -> CurrencySymbol -> LoanAddress -> IO [LoanInfo]
-runQueryOwnAsks (PreProdTestnet apiKey) currSym addr = do
+runQueryPersonalAddress :: Network -> ApiService -> PaymentAddress -> Bool -> IO [PersonalUTxO]
+runQueryPersonalAddress network api addr keysOnly = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM (Blockfrost.queryOwnAsks apiKey' (show currSym) (show addr)) env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryPersonalAddress addr keysOnly) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryPersonalAddress addr keysOnly) env
 
-runQueryAllOffers :: Network -> CurrencySymbol -> LoanAddress -> IO [LoanInfo]
-runQueryAllOffers (PreProdTestnet apiKey) currSym addr = do
+runQueryAsks 
+  :: Network 
+  -> ApiService
+  -> Maybe AssetBeacon 
+  -> Collateral 
+  -> Maybe PaymentAddress 
+  -> IO [LoanUTxO]
+runQueryAsks network api mAssetBeacon collateral mBorrowerAddr = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM (Blockfrost.queryAllOffers apiKey' (show currSym) (show addr)) env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryAsks mAssetBeacon collateral mBorrowerAddr) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryAsks mAssetBeacon collateral mBorrowerAddr) env
 
-runQueryOwnOffers :: Network -> CurrencySymbol -> PaymentPubKeyHash -> IO [LoanInfo]
-runQueryOwnOffers (PreProdTestnet apiKey) currSym lenderPubKeyHash = do
+runQueryOffers 
+  :: Network 
+  -> ApiService 
+  -> Maybe AssetBeacon 
+  -> Maybe PaymentAddress 
+  -> Maybe LenderId 
+  -> IO [LoanUTxO]
+runQueryOffers network api mAssetBeacon mBorrowerAddr mLenderId = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM (Blockfrost.queryOwnOffers apiKey' (show currSym) (show lenderPubKeyHash)) env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryOffers mAssetBeacon mBorrowerAddr mLenderId) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryOffers mAssetBeacon mBorrowerAddr mLenderId) env
 
-runQueryAllBorrowerLoans :: Network -> CurrencySymbol -> PaymentPubKeyHash -> LoanAddress -> IO [LoanInfo]
-runQueryAllBorrowerLoans (PreProdTestnet apiKey) currSym borrowerStakeKeyHash addr = do
+runQueryActives
+  :: Network 
+  -> ApiService 
+  -> Maybe AssetBeacon 
+  -> Maybe PaymentAddress 
+  -> Maybe LoanId
+  -> IO [LoanUTxO]
+runQueryActives network api mAssetBeacon mBorrowerAddr mLoanId = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM 
-            (Blockfrost.queryAllBorrowerLoans apiKey' 
-              (show currSym) 
-              (show borrowerStakeKeyHash) 
-              (show addr)
-            ) 
-            env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryActives mAssetBeacon mBorrowerAddr mLoanId) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryActives mAssetBeacon mBorrowerAddr mLoanId) env
 
-runQueryAllLenderLoans :: Network -> CurrencySymbol -> PaymentPubKeyHash -> IO [LoanInfo]
-runQueryAllLenderLoans (PreProdTestnet apiKey) currSym lenderPubKeyHash = do
+runQuerySpecificLoanUTxO :: Network -> ApiService -> TxOutRef -> IO [LoanUTxO]
+runQuerySpecificLoanUTxO network api outRef = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM (Blockfrost.queryAllLenderLoans apiKey' (show currSym) (show lenderPubKeyHash)) env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.querySpecificLoanUTxO outRef) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.querySpecificLoanUTxO outRef) env
 
-runQueryBorrowerHistory :: Network -> CurrencySymbol -> PaymentPubKeyHash -> IO [LoanHistory]
-runQueryBorrowerHistory (PreProdTestnet apiKey) currSym borrowerPubKeyHash = do
+runQueryBorrowerHistory :: Network -> ApiService -> BorrowerId -> IO [CreditHistory]
+runQueryBorrowerHistory network api borrowerId = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM ( Blockfrost.queryBorrowerHistory 
-                        apiKey' 
-                        (show currSym) 
-                        (show borrowerPubKeyHash)
-                    ) 
-                    env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryBorrowerHistory borrowerId) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryBorrowerHistory borrowerId) env
 
-runQueryLenderHistory :: Network -> CurrencySymbol -> PaymentPubKeyHash -> IO [LenderHistory]
-runQueryLenderHistory (PreProdTestnet apiKey) currSym lenderPubKeyHash = do
+runQueryLoanHistory :: Network -> ApiService -> LoanId -> IO [LoanHistory]
+runQueryLoanHistory network api loanId = do
   manager' <- newManager tlsManagerSettings
-  let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
-      apiKey' = BlockfrostApiKey apiKey
-  res <- runClientM ( Blockfrost.queryLenderHistory 
-                        apiKey' 
-                        (show currSym) 
-                        (show lenderPubKeyHash)
-                    ) 
-                    env
-  case res of
-    Right r -> return r
-    Left err -> throw err
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryLoanHistory loanId) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryLoanHistory loanId) env
+
+runSubmitTx :: Network -> ApiService -> FilePath -> IO Value
+runSubmitTx network api txFile = do
+  tx' <- decode @TxCBOR <$> LBS.readFile txFile
+  case tx' of
+    Nothing -> return "Failed to deserialise transaction file"
+    Just tx -> do
+      manager' <- newManager tlsManagerSettings
+      res <- case (network,api) of
+        (PreProdTestnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.submitTx tx) env
+        (Mainnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.submitTx tx) env
+      case res of
+        Right r -> return r
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
+        Left err -> throw err
+
+runEvaluateTx :: Network -> ApiService -> FilePath -> IO Value
+runEvaluateTx network api txFile = do
+  tx' <- decode @TxCBOR <$> LBS.readFile txFile
+  case tx' of
+    Nothing -> return "Failed to deserialise transaction file"
+    Just tx -> do
+      manager' <- newManager tlsManagerSettings
+      res <- case (network,api) of
+        (PreProdTestnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.evaluateTx tx) env
+        (Mainnet,Koios) -> do
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
+          runClientM (Koios.evaluateTx tx) env
+      case res of
+        Right r -> return r
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
+        Left err -> throw err

@@ -1,23 +1,20 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Test.Tasty
 
-import Test.Ask as Ask
-import Test.Offer as Offer
-import Test.AcceptOffer as AcceptOffer
-import Test.CloseAsk as CloseAsk
-import Test.CloseOffer as CloseOffer
-import Test.RepayLoan as RepayLoan
-import Test.Claim as Claim
+import Test.AskUTxOs qualified as AskUTxOs
+import Test.OfferUTxOs qualified as OfferUTxOs
+import Test.ActiveUTxOs qualified as ActiveUTxOs
+import Test.Beacons qualified as Beacons
+import Test.Proxy as Proxy
 
 main :: IO ()
 main = defaultMain $ testGroup "Cardano-Loans"
-  [
-    Ask.tests
-  , Offer.tests
-  , AcceptOffer.tests
-  , CloseAsk.tests
-  , CloseOffer.tests
-  , RepayLoan.tests
-  , Claim.tests
+  [ AskUTxOs.tests
+  , OfferUTxOs.tests
+  , ActiveUTxOs.tests
+  , Beacons.tests
+  , Proxy.tests
   ]
