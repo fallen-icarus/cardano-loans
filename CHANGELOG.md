@@ -1,5 +1,13 @@
 # Revision history for cardano-loans
 
+## 1.0.0.1rc
+
+#### Bug Fixes
+
+- [Off-Chain] Fixed bug in CLI executable where the `lastCompounding` field in the datum was not
+being set properly when multiple interest payments were made in the same transaction. The protocol
+would properly reject this transaction.
+
 ## 1.0.0.0rc
 
 #### New Features

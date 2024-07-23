@@ -824,7 +824,7 @@ unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
 createPostInterestActiveDatum :: Integer -> ActiveDatum -> ActiveDatum
 createPostInterestActiveDatum numberOfTimes activeDatum@ActiveDatum{..} =
   activeDatum
-    { _lastCompounding = _lastCompounding + fromMaybe 0 _compoundFrequency
+    { _lastCompounding = _lastCompounding + maybe 0 (fromInteger numberOfTimes *) _compoundFrequency
     , _loanOutstanding = 
         applyInterestNTimes 
           (_minPayment > _totalEpochPayments) 
