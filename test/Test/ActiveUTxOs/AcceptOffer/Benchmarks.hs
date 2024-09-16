@@ -64,9 +64,10 @@ benchTest1 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -274,9 +275,10 @@ benchTest2 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = 
@@ -534,9 +536,10 @@ benchTest3 number = do
             , _lenderAddress = lenderAddr
             , _loanAsset = loanAsset
             , _loanPrincipal = 10_000_000
-            , _compoundFrequency = Nothing
+            , _epochDuration = Nothing
             , _loanTerm = 3600
             , _loanInterest = Fraction (1,10)
+            , _compoundingInterest = True
             , _minPayment = 0
             , _penalty = NoPenalty
             , _collateralization = 
@@ -757,9 +760,10 @@ benchTest4 number = do
             , _lenderAddress = lenderAddr
             , _loanAsset = _loanAsset
             , _loanPrincipal = 10
-            , _compoundFrequency = Nothing
+            , _epochDuration = Nothing
             , _loanTerm = 3600
             , _loanInterest = Fraction (1,10)
+            , _compoundingInterest = True
             , _minPayment = 0
             , _penalty = NoPenalty
             , _collateralization = 
@@ -907,13 +911,13 @@ benchTest4 number = do
 -- | A `TestTree` containing all benchmark scenarios for accepting Offer UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 10
+  [ mustSucceed "benchTest1" $ benchTest1 9
   , mustSucceed "benchTest2" $ benchTest2 9
   , mustSucceed "benchTest3" $ benchTest3 8
-  , mustSucceed "benchTest4" $ benchTest4 8
+  , mustSucceed "benchTest4" $ benchTest4 7
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 11
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 10
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 10
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 9
-  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 9
+  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 8
   ]

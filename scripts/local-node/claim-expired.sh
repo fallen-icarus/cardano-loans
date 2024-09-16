@@ -56,9 +56,9 @@ borrowerId="${activePolicyId}.${borrowerIdTokenName}"
 loanId="${activePolicyId}.${loanIdTokenName}"
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
+cardano-cli conway transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
+  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
@@ -67,7 +67,7 @@ cardano-cli transaction build \
   --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 8 ${collateral1}" \
   --tx-out "$(cat ${walletDir}02.addr) + 3000000 lovelace + 4 ${collateral2}" \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -2 ${loanId}" \
-  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
+  --mint-tx-in-reference 03d6221ffb7a85284a8871a18b6276788f99ec5caff69af098d7e9b4a6e14dec#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

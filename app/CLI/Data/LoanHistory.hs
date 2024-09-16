@@ -51,12 +51,12 @@ prettyLoanHistory network LoanHistory{..} =
                annotate (colorDull Cyan) "loan_term:" 
                  <+> pretty (time `div` 1000) <+> "slots"
                  <+> tupled [pretty time <+> "milliseconds"]
-           , annotate (colorDull Cyan) "compound_frequency:" <+> (flip (maybe "none") _compoundFrequency $ 
+           , annotate (colorDull Cyan) "epoch_duration:" <+> (flip (maybe "none") _epochDuration $ 
                \(POSIXTime time) ->
                  pretty (time `div` 1000) <+> "slots" <+> tupled [pretty time <+> "milliseconds"])
-           , let time = getPOSIXTime _lastCompounding in
-               annotate (colorDull Cyan) "last_compounding:" 
-                 <+> pretty (posixTimeToSlot config _lastCompounding)
+           , let time = getPOSIXTime _lastEpochBoundary in
+               annotate (colorDull Cyan) "last_epoch_boundary:" 
+                 <+> pretty (posixTimeToSlot config _lastEpochBoundary)
                  <+> tupled [pretty time <+> "POSIXTime"]
            , annotate (colorDull Cyan) "minimum_payment:" <+> pretty _minPayment <+> pretty _loanAsset
            , annotate (colorDull Cyan) "penalty:" <+> case _penalty of

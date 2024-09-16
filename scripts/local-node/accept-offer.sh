@@ -10,7 +10,7 @@ lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 lenderId="00623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
+borrowerLoanAddr="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -23,14 +23,19 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-offerUTxO='677b9d48ad49cbbe6763bfea889ead8577219d6f3881eb4005372710c61f44d5#0'
+offerUTxO='005a659339f221cbb3ee05c6290a835753d57050f7a18382b4c36398b11db099#0'
 
-askUTxO='6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#2'
+askUTxO='6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#0'
 
 ## Get the latest slot number.
+### IMPORTANT: A local node may trail behind the actual blockchain by a few slots. So Koios may
+### return a slot that your local node hasn't seen yet; this can cause transaction submission to
+### fail. If this is an issue, you can get the current slot from you local node with: `cardano-cli
+### query tip --testnet-magic 1`.
 echo "Querying the latest slot..."
-startSlot=$(cardano-loans query current-slot \
-  --testnet)
+# startSlot=$(cardano-loans query current-slot \
+#   --testnet)
+startSlot=70723379
 
 ## Convert the slot number to the required posix time.
 echo "Calculating the slot's posix time..."
@@ -59,7 +64,8 @@ cardano-loans datums active new auto \
 #   --principal 10000000 \
 #   --loan-term '10800 slots' \
 #   --interest '3602879701896397 / 36028797018963968' \
-#   --compound-frequency '1200 slots' \
+#   --compounding-interest \
+#   --epoch-duration '1200 slots' \
 #   --minimum-payment 2000000 \
 #   --fixed-penalty 500000 \
 #   --collateral-asset $collateral1 \
@@ -131,32 +137,32 @@ cardano-loans datums payment \
   --out-file $paymentDatumFile
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
+cardano-cli conway transaction build \
   --tx-in $offerUTxO \
-  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
+  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
   --tx-in $askUTxO \
-  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
+  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#3 \
-  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#0 \
-  --tx-in 6fc9e482959befc6928d2691caa62c8a52a5abce167bd5fce8874cc315bb346d#1 \
+  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#1 \
+  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#2 \
+  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#3 \
   --tx-out "${lenderAddress} + ${offerDeposit} lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 22 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 950 ${collateral2}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 1 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 75 ${collateral2}" \
   --mint "-1 ${askBeacon} + -2 ${negotiationAssetBeacon} + -1 ${offerBeacon} + -1 ${lenderIdBeacon} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 1 ${borrowerId} + 2 ${loanId}" \
-  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
+  --mint-tx-in-reference a3ae17130ddbf4ce3117e218c920d219599ff935d024fac0d3ca4ef9ad6e4fde#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $negotiationRedeemerFile \
   --policy-id $negotiationPolicyId \
-  --mint-tx-in-reference 9620379842501763c80c3737d219ee10b25f00a0449fd2a35457d1fb5dc08bb7#0 \
+  --mint-tx-in-reference 03d6221ffb7a85284a8871a18b6276788f99ec5caff69af098d7e9b4a6e14dec#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

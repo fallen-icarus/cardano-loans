@@ -251,10 +251,11 @@ fn process_input(
       loan_asset,
       asset_beacon,
       loan_principal,
-      compound_frequency,
-      last_compounding,
+      epoch_duration,
+      last_epoch_boundary,
       loan_term,
       loan_interest: (interest_num,_) as loan_interest,
+      compounding_interest: compounding_interest,
       min_payment,
       penalty,
       collateralization,
@@ -278,12 +279,16 @@ fn process_input(
         )
       )
 
+      let requires_interest = compounding_interest && interest_num > 0
+
       expect True = error_if_false(
         @"Next interest and/or penalty application required",
-        // If the interest is set to zero and penalty is NoPenalty, the compound_frequency is irrelevant.
-        (interest_num == 0 && penalty == NoPenalty) || when compound_frequency is {
+        // If the interest is non-compounding or the interest is set to zero, and penalty is 
+        // NoPenalty, the epoch_duration is irrelevant. No rollover is required in this situation.
+        // Also, no rollover is required when epoch_duration is None.
+        (!requires_interest && penalty == NoPenalty) || when epoch_duration is {
           None -> True
-          Some(freq) -> upper <= last_compounding + freq
+          Some(freq) -> upper <= last_epoch_boundary + freq
         }
       )
 
@@ -345,10 +350,11 @@ fn process_input(
             loan_asset: loan_asset,
             asset_beacon: asset_beacon,
             loan_principal: loan_principal,
-            compound_frequency: compound_frequency,
-            last_compounding: last_compounding,
+            epoch_duration: epoch_duration,
+            last_epoch_boundary: last_epoch_boundary,
             loan_term: loan_term,
             loan_interest: loan_interest,
+            compounding_interest: compounding_interest,
             min_payment: min_payment,
             penalty: penalty,
             collateralization: collateralization,

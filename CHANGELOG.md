@@ -1,5 +1,16 @@
 # Revision history for cardano-loans
 
+## 2.0.0.0rc
+
+#### Bug Fixes
+
+- [On-Chain] Fixed a bug where non-compounding loans could not have incentivized minimum payments.
+The previous design required `compoundFrequency` to be `Nothing` in order to enable
+non-compounding, but this would also disable the required minimum payments. Now, a separate boolean
+flag is used in the datum to toggle compounding of the interest. `compoundFrequency` was renamed
+to `epochDuration` and `lastCompounding` was renamed to `lastEpochBoundary` in order to make the
+names more representative of their functionality.
+
 ## 1.0.0.1rc
 
 #### Bug Fixes

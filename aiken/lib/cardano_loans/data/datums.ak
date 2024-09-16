@@ -47,16 +47,21 @@ pub type LoanDatum {
     asset_beacon: AssetName, 
     // The size of the loan. It must be > 0.
     loan_principal: Int, 
-    // The frequency at which interest must be applied. Either None or Some(x) where x > 0.
-    compound_frequency: Option<PosixTime>, 
+    // The length of a payment period. Each loan is divided into periods of length specified
+    // by this parameter. If interest is compounding, it must be applied at this frequency.
+    // Furthermore, if a penalty is set, the minimum payment must be satisfied for each epoch.
+    // This parameter can be either None or Some(x), where x > 0.
+    epoch_duration: Option<PosixTime>, 
     // How long the loan is active once accepted. It must be > 0.
     loan_term: PosixTime, 
-    // The interest that must be periodically applied. The numerator must be >= 0 and the
-    // denominator must be > 0. Interest free loans can be created by setting this field to
-    // 0, and non-compounding loans can be created by specifying an interest rate while setting
-    // compound_frequency to None. Setting an interest rate with a compound_frequency of Some(x)
-    // results in a compounding loan where x is the compounding period.
+    // The interest that must be applied either periodically or just once. The numerator must be >=
+    // 0 and the denominator must be > 0. Interest free loans can be created by setting this field
+    // to 0, and non-compounding loans can be created by specifying an interest rate > 0 while
+    // setting compounding_interest to False. Setting an interest rate with compounding_interest
+    // as True results in a compounding loan where the epoch_duration is the compounding period.
     loan_interest: Fraction, 
+    // Whether the interest is compounding interest.
+    compounding_interest: Bool,
     // The minimum loan payment that must be paid each loan epoch. It must be >= 0.
     min_payment: Int, 
     // The penalty that gets applied if the minimum payment has not been met this loan epach.
@@ -100,14 +105,18 @@ pub type LoanDatum {
     asset_beacon: AssetName, 
     // The initial size of the loan.
     loan_principal: Int, 
-    // The frequency at which interest must be applied.
-    compound_frequency: Option<PosixTime>, 
-    // The last time interest was applied.
-    last_compounding: PosixTime, 
+    // The amount of time between interest compounding. If min_payment is > 0, then each epoch
+    // must have total_epoch_payments >= min_payment in order to avoid penalties.
+    epoch_duration: Option<PosixTime>, 
+    // The last epoch boundary.
+    last_epoch_boundary: PosixTime, 
     // The duration of the loan.
     loan_term: PosixTime, 
-    // The interest that must be periodically applied..
+    // The interest that must be periodically applied or just once, depending on whether the
+    // interest is compounding.
     loan_interest: Fraction, 
+    // Whether the interest is compounding interest.
+    compounding_interest: Bool,
     // The minimum loan payment that must be paid each loan epoch. It must be >= 0.
     min_payment: Int, 
     // The penalty that gets applied if the minimum payment has not been met this loan epach.

@@ -136,12 +136,14 @@ data OfferDatum = OfferDatum
   , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
   , _loanPrincipal :: Integer
-  -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  -- | The frequency at which interest must be applied and/or penalties applied.
+  , _epochDuration :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest  :: Bool
   -- | The minimum loan payment that must be made each loan epoch.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -167,9 +169,10 @@ instance ToJSON OfferDatum where
            , "loan_asset" .= _loanAsset
            , "asset_beacon" .= _assetBeacon
            , "principal" .= _loanPrincipal
-           , "compound_frequency" .= _compoundFrequency
+           , "epoch_duration" .= _epochDuration
            , "loan_term" .= _loanTerm
            , "loan_interest" .= _loanInterest
+           , "compounding_interest" .= _compoundingInterest
            , "minimum_payment" .= _minPayment
            , "penalty" .= _penalty
            , "collateralization" .= _collateralization
@@ -198,14 +201,16 @@ data ActiveDatum = ActiveDatum
   , _assetBeacon :: AssetBeacon
   -- | The size of the loan.
   , _loanPrincipal :: Integer
-  -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
-  -- | The last time interest was applied.
-  , _lastCompounding :: POSIXTime
+  -- | The frequency at which interest must be applied and/or penalties applied.
+  , _epochDuration :: Maybe POSIXTime
+  -- | The last time interest/penalty was applied.
+  , _lastEpochBoundary :: POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest  :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -237,10 +242,11 @@ instance ToJSON ActiveDatum where
            , "loan_asset" .= _loanAsset
            , "asset_beacon" .= _assetBeacon
            , "principal" .= _loanPrincipal
-           , "compound_frequency" .= _compoundFrequency
-           , "last_compounding" .= _lastCompounding
+           , "epoch_duration" .= _epochDuration
+           , "last_epoch_boundary" .= _lastEpochBoundary
            , "loan_term" .= _loanTerm
            , "loan_interest" .= _loanInterest
+           , "compounding_interest" .= _compoundingInterest
            , "minimum_payment" .= _minPayment
            , "penalty" .= _penalty
            , "collateralization" .= _collateralization
@@ -546,11 +552,13 @@ data NewOfferInfo = NewOfferInfo
   -- | The size of the loan.
   , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  , _epochDuration :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -578,9 +586,10 @@ unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = Collateralization _collateralization
@@ -598,11 +607,13 @@ data NewActiveInfo = NewActiveInfo
   -- | The size of the loan.
   , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  , _epochDuration :: Maybe POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -633,14 +644,15 @@ unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
-  , _lastCompounding = _startTime
+  , _lastEpochBoundary = _startTime
   , _claimExpiration = _startTime + _loanTerm + _claimPeriod
   , _loanExpiration = _startTime + _loanTerm
   , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
@@ -661,14 +673,15 @@ createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = A
   , _loanAsset = _loanAsset
   , _assetBeacon = _assetBeacon
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
-  , _lastCompounding = startTime
+  , _lastEpochBoundary = startTime
   , _claimExpiration = startTime + _loanTerm + _claimPeriod
   , _loanExpiration = startTime + _loanTerm
   , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
@@ -686,13 +699,15 @@ data NewPaymentInfo = NewPaymentInfo
   -- | The size of the loan.
   , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  , _epochDuration :: Maybe POSIXTime
   -- | The last time interest was applied.
-  , _lastCompounding :: POSIXTime
+  , _lastEpochBoundary :: POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -727,14 +742,15 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} = ActiveDatum
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
-  , _lastCompounding = _lastCompounding
+  , _lastEpochBoundary = _lastEpochBoundary
   , _claimExpiration = _claimExpiration
   , _loanExpiration = _loanExpiration
   , _loanOutstanding = subtractPayment _paymentAmount _loanOutstanding
@@ -759,13 +775,15 @@ data NewInterestInfo = NewInterestInfo
   -- | The size of the loan.
   , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  , _epochDuration :: Maybe POSIXTime
   -- | The last time interest was applied.
-  , _lastCompounding :: POSIXTime
+  , _lastEpochBoundary :: POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -800,14 +818,15 @@ unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
-  , _lastCompounding = _lastCompounding + fromMaybe 0 _compoundFrequency
+  , _lastEpochBoundary = _lastEpochBoundary + fromMaybe 0 _epochDuration
   , _claimExpiration = _claimExpiration
   , _loanExpiration = _loanExpiration
   , _loanOutstanding = 
@@ -815,7 +834,7 @@ unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
           (_minPayment > _totalEpochPayments) 
           _penalty 
           _numberOfTimes 
-          _loanInterest 
+          (if _compoundingInterest then _loanInterest else Fraction(0,1))
           _loanOutstanding
   , _totalEpochPayments = 0
   , _loanId = _loanId
@@ -824,13 +843,13 @@ unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
 createPostInterestActiveDatum :: Integer -> ActiveDatum -> ActiveDatum
 createPostInterestActiveDatum numberOfTimes activeDatum@ActiveDatum{..} =
   activeDatum
-    { _lastCompounding = _lastCompounding + maybe 0 (fromInteger numberOfTimes *) _compoundFrequency
+    { _lastEpochBoundary = _lastEpochBoundary + maybe 0 (fromInteger numberOfTimes *) _epochDuration
     , _loanOutstanding = 
         applyInterestNTimes 
           (_minPayment > _totalEpochPayments) 
           _penalty 
           numberOfTimes 
-          _loanInterest 
+          (if _compoundingInterest then _loanInterest else Fraction(0,1))
           _loanOutstanding
     , _totalEpochPayments = 0
     }
@@ -845,13 +864,15 @@ data NewAddressInfo = NewAddressInfo
   -- | The size of the loan.
   , _loanPrincipal :: Integer
   -- | The frequency at which interest must be applied.
-  , _compoundFrequency :: Maybe POSIXTime
+  , _epochDuration :: Maybe POSIXTime
   -- | The last time interest was applied.
-  , _lastCompounding :: POSIXTime
+  , _lastEpochBoundary :: POSIXTime
   -- | How long the loan is active once accepted.
   , _loanTerm :: POSIXTime
   -- | The interest that must be periodically applied.
   , _loanInterest :: Fraction
+  -- | Whether the interest is compounding.
+  , _compoundingInterest :: Bool
   -- | The minimum loan partial payment that can be made.
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
@@ -884,14 +905,15 @@ unsafeCreatePostAddressUpdateActiveDatum NewAddressInfo{..} = ActiveDatum
   , _loanAsset = _loanAsset
   , _assetBeacon = genLoanAssetBeaconName _loanAsset
   , _loanPrincipal = _loanPrincipal
-  , _compoundFrequency = _compoundFrequency
+  , _epochDuration = _epochDuration
   , _loanTerm = _loanTerm
   , _loanInterest = _loanInterest
+  , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
-  , _lastCompounding = _lastCompounding
+  , _lastEpochBoundary = _lastEpochBoundary
   , _claimExpiration = _claimExpiration
   , _loanExpiration = _loanExpiration
   , _loanOutstanding = _loanOutstanding
