@@ -489,7 +489,7 @@ validator(loan_script_hash: ScriptHash) {
       ObserveInterest -> {
         // This redeemer is used to have the loan accrue interest. It involves evolving this Active
         // UTxO into an new Active UTxO where everything is the same except for the updated
-        // loan_outstanding, total_epoch_payments, and last_compounding in the datum. Ada can be
+        // loan_outstanding, total_epoch_payments, and last_epoch_boundary in the datum. Ada can be
         // deposited in case the minUTxOValue increased due to a larger datum. The LoanIds guarantee
         // no double satisfaction occurs during this step.
         //
@@ -508,7 +508,7 @@ validator(loan_script_hash: ScriptHash) {
         //      e) There must be a corresponding Active UTxO output to the borrower's address with:
         //         1) The value must be starting value + ada deposit_increase
         //         2) loan_outstanding == input's balance with interest and penalties applied.
-        //         3) last_compounding == last_compounding + compound_frequency
+        //         3) last_epoch_boundary == last_epoch_boundary + epoch_duration
         //         4) total_epoch_payments == 0
         //
         // Penalties are always applied _before_ the interest.
@@ -804,8 +804,8 @@ validator(
         //         - loan_asset == loan_asset from the Offer UTxO.
         //         - asset_beacon == asset_beacon from the Offer UTxO.
         //         - loan_principal == loan_principal from the Offer UTxO.
-        //         - compound_frequency == compound_frequency from the Offer UTxO.
-        //         - last_compounding == invalid-before of this tx
+        //         - epoch_duration == epoch_duration from the Offer UTxO.
+        //         - last_epoch_boundary == invalid-before of this tx
         //         - loan_term == loan_term from the Offer UTxO.
         //         - loan_interest == loan_interest from the Offer UTxO.
         //         - min_payment == min_payment from the Offer UTxO.
@@ -864,7 +864,7 @@ validator(
         //
         // The interest is applied for the first time upon immediately accepting the loan. This is
         // so that the protocol can support non-compounding interest on loans. For non-compounding
-        // interest, set an loan_interest > 0 and set the compound_frequency to None.
+        // interest, set an loan_interest > 0 and set the epoch_duration to None.
         //
         // This redeemer does not need to check any other output. All it needs to focus on are where
         // the newly minted beacons end up. The other redeemers will check all continuing Active
@@ -1190,7 +1190,7 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //       with a valid staking credential
         //    e) loan_asset == asset that corresponds to the Asset beacon in the output
         //    f) loan_principal > 0
-        //    g) compound_frequency > 0 if used
+        //    g) epoch_duration > 0 if used
         //    h) loan_term > 0
         //    i) loan_interest must have a denominator > 0 and a numerator >= 0
         //    j) min_payment >= 0
@@ -1211,22 +1211,22 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         // Prefixing the LenderId with either "00" or "01" allows the scripts to know whether the 
         // lender_id is for a pubkey or script just from its asset name.
         //
-        // The compound_frequency field determines how often interest must be applied. If the
-        // compound_frequency is set to None but the interest is > 0, then the loan would have
-        // non-compounding interest. The interest can be set to 0 to allow interest-free loans (the
-        // compound_frequency will always be ingored in this scenario, but it is preferable to still
-        // set it to None to keep the UTxOs small). 
+        // The epoch_duration field determines how often interest must be applied and/or how often
+        // the min_payment must be met to avoid penalties. Setting interest to 0 will enable
+        // interest interest-free loans. An interest > 0 with compounding_interest set to False
+        // will result in a non-compounding interest loan.
         //
         // If the lender does not want a particular collateral asset used, the relative value
         // for that asset can be set to 0 to prevent it from counting as collateral. The undesired
         // asset can also be omitted from the list, instead.
         //
-        // The min_payment is the minimum required payment a borrower must make each compound
+        // The min_payment is the minimum required payment a borrower must make each epoch
         // period. If the minimum payment has not been met by the time the next interest payment
         // is required, the penalty will be applied to the outstanding balance. This field
         // incentivizes the borrower to make regular payments on the loan. It can be set to zero
         // to make the lender's offer more competitive against other offers. Penalties can still
-        // be applied even if the loan's interest is set to zero.
+        // be applied even if the loan's interest is set to zero, or if the interest is
+        // non-compounding.
         //
         // The collateral_is_swappable field does not need to be checked since the only possible
         // values are true and false; anything else will cause the script to crash when the datum is

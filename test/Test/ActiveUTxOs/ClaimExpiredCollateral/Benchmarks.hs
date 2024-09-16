@@ -64,9 +64,10 @@ benchTest1 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -326,9 +327,10 @@ benchTest2 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -695,9 +697,10 @@ benchTest3 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -997,9 +1000,10 @@ benchTest4 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -1247,9 +1251,10 @@ benchTest5 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -1525,9 +1530,10 @@ benchTest6 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = 
@@ -1793,15 +1799,15 @@ benchTest6 number = do
 -- | A `TestTree` containing all benchmark scenarios for claiming expired collateral.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 15
-  , mustSucceed "benchTest2" $ benchTest2 20
+  [ mustSucceed "benchTest1" $ benchTest1 16
+  , mustSucceed "benchTest2" $ benchTest2 19
   , mustSucceed "benchTest3" $ benchTest3 17
   , mustSucceed "benchTest4" $ benchTest4 14
   , mustSucceed "benchTest5" $ benchTest5 10
   , mustSucceed "benchTest6" $ benchTest6 10
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 16
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 21
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 17
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 18
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 15
     -- It is hard to test loans from different borrowers since the emulator only has ten keys.

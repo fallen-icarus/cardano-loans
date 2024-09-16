@@ -149,9 +149,10 @@ pCreateNewOfferInfo =
         <*> pPaymentAddress
         <*> pAsset "loan"
         <*> pPrincipal
-        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> (pEpochDuration <|> pure Nothing)
         <*> pLoanTerm
         <*> pInterest
+        <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
         <*> pCollateralization
@@ -192,9 +193,10 @@ pCreateNewActiveInfoManual =
         <$> pPaymentAddress
         <*> pAsset "loan"
         <*> pPrincipal
-        <*> (pCompoundFrequency <|> pure Nothing)
+        <*> (pEpochDuration <|> pure Nothing)
         <*> pLoanTerm
         <*> pInterest
+        <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
         <*> pCollateralization
@@ -242,10 +244,11 @@ pCreatePostPaymentActiveManual =
         <*> pPaymentAddress
         <*> pAsset "loan"
         <*> pPrincipal
-        <*> (pCompoundFrequency <|> pure Nothing)
-        <*> pLastCompounding
+        <*> (pEpochDuration <|> pure Nothing)
+        <*> pLastEpochBoundary
         <*> pLoanTerm
         <*> pInterest
+        <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
         <*> pCollateralization
@@ -294,10 +297,11 @@ pCreatePostInterestActiveManual =
         <*> pPaymentAddress
         <*> pAsset "loan"
         <*> pPrincipal
-        <*> (pCompoundFrequency <|> pure Nothing)
-        <*> pLastCompounding
+        <*> (pEpochDuration <|> pure Nothing)
+        <*> pLastEpochBoundary
         <*> pLoanTerm
         <*> pInterest
+        <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
         <*> pCollateralization
@@ -346,10 +350,11 @@ pCreatePostAddressUpdateActiveManual =
         <*> pPaymentAddress
         <*> pAsset "loan"
         <*> pPrincipal
-        <*> (pCompoundFrequency <|> pure Nothing)
-        <*> pLastCompounding
+        <*> (pEpochDuration <|> pure Nothing)
+        <*> pLastEpochBoundary
         <*> pLoanTerm
         <*> pInterest
+        <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
         <*> pCollateralization
@@ -909,11 +914,11 @@ pOfferExpiration = Just . POSIXTime <$> option auto
     <> help "The time when this offer expires in posix time (in milliseconds)."
     )
 
-pCompoundFrequency :: Parser (Maybe POSIXTime)
-pCompoundFrequency = Just <$> option (maybeReader readDuration)
-    (  long "compound-frequency"
+pEpochDuration :: Parser (Maybe POSIXTime)
+pEpochDuration = Just <$> option (maybeReader readDuration)
+    (  long "epoch-duration"
     <> metavar "DURATION"
-    <> help "The length of a compound period. '# days' or '# slots'"
+    <> help "The length of a loan epoch. '# days' or '# slots'"
     )
 
 pOfferDeposit :: Parser Integer
@@ -927,6 +932,12 @@ pIsSwappable :: Parser Bool
 pIsSwappable = flag False True
   (  long "collateral-is-swappable"
   <> help "Collateral can be swapped out during payments."
+  )
+
+pIsCompounding :: Parser Bool
+pIsCompounding = flag False True
+  (  long "compounding-interest"
+  <> help "The interest is compounding."
   )
 
 pCollateralization :: Parser [(Asset,Fraction)]
@@ -966,7 +977,7 @@ pMinPayment :: Parser Integer
 pMinPayment = option auto
   (  long "minimum-payment"
   <> metavar "INT"
-  <> help "The minimum amount that must be paid each compound period."
+  <> help "The minimum amount that must be paid each loan epoch."
   )
 
 pInterest :: Parser Fraction
@@ -1074,7 +1085,7 @@ pTotalEpochPayments :: Parser Integer
 pTotalEpochPayments = option auto
   (  long "total-epoch-payments"
   <> metavar "INT"
-  <> help "The total payments made this compound period so far."
+  <> help "The total payments made this loan epoch so far."
   )
 
 pLoanOutstanding :: Parser Fraction
@@ -1098,11 +1109,11 @@ pClaimExpiration = POSIXTime <$> option auto
   <> help "The expiration time for the lender claim period in POSIX time (milliseconds)."
   )
 
-pLastCompounding :: Parser POSIXTime
-pLastCompounding = POSIXTime <$> option auto
-  (  long "last-compounding"
+pLastEpochBoundary :: Parser POSIXTime
+pLastEpochBoundary = POSIXTime <$> option auto
+  (  long "last-epoch-boundary"
   <> metavar "TIME"
-  <> help "The last time the interest was applied. In POSIX time (milliseconds)."
+  <> help "The last time the interest/penalty was applied. In POSIX time (milliseconds)."
   )
 
 pLoanRef :: Parser TxOutRef

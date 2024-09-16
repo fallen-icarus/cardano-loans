@@ -8,7 +8,7 @@ tmpDir="${mainDir}tmp/"
 
 addressUpdateObserverScript="${loanDir}address_update_observer.plutus"
 
-borrowerLoanAddr="addr_test1zr265ke6yq0krxr5xuansyeggscxdem2w5rtk6s99deap6fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqlgq56x"
+borrowerLoanAddr="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -19,13 +19,18 @@ loanAsset='lovelace'
 collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a'
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
-loanUTxO='097505df366d4695ee8a445b9337a2cdb2b45f22f55d43d075ad56a76d9581de#0'
-updateTime=$((1712768154000)) # The loan expiration.
-loanIdTokenName='4fe883a427bd96128e0fcfdbe94865c41ce92187d252f0ec45f261255f693c8f'
+loanUTxO='03b077252ffa635ff08f89b844dc3480b184fa8344089868eddaf22a12f9a2c6#0'
+updateTime=$((1726417379000)) # The loan expiration.
+loanIdTokenName='9d364a309553f27e02028d0cef816bfcb3cfdd6ae60556c15e49eb557f52a368'
 borrowerIdTokenName='3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa'
 newAddress=$(cat "${walletDir}03.addr")
 
 ## Convert the posix time to a slot number for invalid-hereafter.
+### IMPORTANT: The invalid-hereafter can be set to a maximum of 1.5 days (129600 slots) passed the 
+### current slot. If the loan expiration is beyond this "horizon", the node will reject the
+### transaction. This is because hardforks can change slot lengths and, therefore, the node doesn't
+### want to make guarantees about time too far into the future. If the loan's expiration is more
+### than 1.5 days away, set the invalid-hereafter to be: `current_slot + 129600`.
 echo "Calculating the required slot number..."
 updateSlot=$(cardano-loans convert-time \
   --posix-time $updateTime \
@@ -56,20 +61,21 @@ cardano-loans datums active post-address-update auto \
 #   --payment-address $newAddress \
 #   --loan-asset $loanAsset \
 #   --principal 10000000 \
-#   --loan-term '3600 slots' \
+#   --loan-term '10800 slots' \
 #   --interest '3602879701896397 / 36028797018963968' \
-#   --compound-frequency '1200 slots' \
+#   --compounding-interest \
+#   --epoch-duration '1200 slots' \
 #   --minimum-payment 2000000 \
 #   --fixed-penalty 500000 \
 #   --collateral-asset $collateral1 \
 #   --relative-rate '1 / 1000000' \
 #   --collateral-asset $collateral2 \
 #   --relative-rate '1 / 500000' \
-#   --claim-expiration '1712756592000' \
-#   --loan-expiration '1712752992000' \
-#   --last-compounding '1712749392000' \
+#   --claim-expiration '1726420979000' \
+#   --loan-expiration '1726417379000' \
+#   --last-epoch-boundary '1726407779000' \
 #   --total-epoch-payments 0 \
-#   --outstanding-balance '3096224743817216015625 / 281474976710656' \
+#   --outstanding-balance '128286240743096816698103759582003203125 / 10141204801825835211973625643008' \
 #   --borrower-staking-pubkey-hash $borrowerIdTokenName \
 #   --loan-id $loanIdTokenName \
 #   --out-file $activeDatumFile
@@ -111,20 +117,23 @@ cardano-loans datums payment \
   --out-file $paymentDatumFile
 
 # Create and submit the transaction.
-cardano-cli transaction build \
+### IMPORTANT: Make sure to send the key NFT to the new address being used to recieve payments.
+### You can find the key NFT within your address using:
+### `cardano-loans query personal-address --address <old_address> --keys --testnet --stdout --pretty`
+cardano-cli conway transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 09166e4f77c701c0607c4edaad2abf7b24a7a46d9f7ca38beead51ac8845a729#0 \
+  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#0 \
-  --tx-in fde2b2d830ce58e43eb2e32f7b0e111df707632757e7230b89ff79f88b3d0984#3 \
+  --tx-in c543a5bd46d6e0edfc145f97641100b36d40be15d19c669f07f2ccb2bd76a0fd#0 \
+  --tx-in ed97e918a37391e2c1722d2f1f757f3ddd0601d47e531908fd82fd1f56384cb4#0 \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
   --tx-out "${newAddress} + 2000000 lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference 583e99294417bd271444d89021523c8f9762f96009113e8a02f69914f9e2ee73#0 \
+  --withdrawal-tx-in-reference fd9a97914e3553996c6cf631c53f9077bdd4289ca06e1eb34fcbb4d0e4c351ff#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --change-address "$(cat ${walletDir}02.addr)" \

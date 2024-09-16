@@ -11,7 +11,7 @@ interestObserverScript="${loanDir}interest_observer.plutus"
 lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zrv3ff2vrjj3rujdnggeap27r69w763dkauumks70jngey3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqe70yty"
+borrowerLoanAddr="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
 
 activeDatumFile="${loanDir}activeDatum.json"
 observerRedeemerFile="${loanDir}observeInterest.json"
@@ -22,11 +22,16 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 numberOfApplications=1
-loanUTxO='af3e17004877cb9ec8025c0c2e3540ce4dce0c2774ba66f3962b5e358c88f41e#1'
-expirationTime=$((1715804120000)) # The loan expiration.
-loanIdTokenName='01ccf3dc6904b2cb3d6507f02e7cb52b575826f4962791e32bef0d60101fa86c'
+loanUTxO='292ccf2bc14d685258bf0d3f070d4319eca74889269c962451ccb1ef6462084d#0'
+expirationTime=$((1726417379000)) # The loan expiration.
+loanIdTokenName='9d364a309553f27e02028d0cef816bfcb3cfdd6ae60556c15e49eb557f52a368'
 
 ## Convert the posix time to a slot number for invalid-hereafter.
+### IMPORTANT: The invalid-hereafter can be set to a maximum of 1.5 days (129600 slots) passed the 
+### current slot. If the loan expiration is beyond this "horizon", the node will reject the
+### transaction. This is because hardforks can change slot lengths and, therefore, the node doesn't
+### want to make guarantees about time too far into the future. If the loan's expiration is more
+### than 1.5 days away, set the invalid-hereafter to be: `current_slot + 129600`.
 echo "Calculating the required slot number..."
 expirationSlot=$(cardano-loans convert-time \
   --posix-time $expirationTime \
@@ -62,18 +67,19 @@ cardano-loans datums active post-interest auto \
 #   --payment-address $lenderAddress \
 #   --loan-asset $loanAsset \
 #   --principal 10000000 \
-#   --loan-term '3600 slots' \
+#   --loan-term '10800 slots' \
 #   --interest '3602879701896397 / 36028797018963968' \
-#   --compound-frequency '1200 slots' \
+#   --compounding-interest \
+#   --epoch-duration '1200 slots' \
 #   --minimum-payment 2000000 \
 #   --fixed-penalty 500000 \
 #   --collateral-asset $collateral1 \
 #   --relative-rate '1 / 1000000' \
 #   --collateral-asset $collateral2 \
 #   --relative-rate '1 / 500000' \
-#   --claim-expiration '1712756592000' \
-#   --loan-expiration '1712752992000' \
-#   --last-compounding '1712749392000' \
+#   --claim-expiration '1726420979000' \
+#   --loan-expiration '1726417379000' \
+#   --last-epoch-boundary '1726406579000' \
 #   --total-epoch-payments 0 \
 #   --outstanding-balance '3096224743817216015625 / 281474976710656' \
 #   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
@@ -88,7 +94,7 @@ cardano-loans redeemers interest-script observe-interest \
 
 echo "Creating the loan spending redeemer..."
 cardano-loans redeemers loan-script apply-interest \
-  --deposit-increase 0 \
+  --deposit-increase 51400 \
   --times-applied $numberOfApplications \
   --out-file $loanRedeemerFile
 
@@ -112,17 +118,17 @@ borrowerId="${activePolicyId}.${borrowerStakePubKeyHash}"
 loanId="${activePolicyId}.${loanIdTokenName}"
 
 # Create and submit the transaction.
-cardano-cli transaction build \
+cardano-cli conway transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 292f25c6594169502c71ee82cd5285bba9a887a60a3b447bade71284acb172db#0 \
+  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 0094644ca620e01f8d9594f6b2ce6a4186ffcc09ff6f4d6fe72fbe99b850ae41#1 \
-  --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 3 ${collateral2}" \
+  --tx-in 95de5a789ccedbf1444b8668e5724aa4ed95d799d616aae1e4d408d56c2c3485#0 \
+  --tx-out "${borrowerLoanAddr} + 4051400 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference 146f833828ae3e29ae8460847eaf5ce32102ebb9a23614d9ced7e48000f29a1b#0 \
+  --withdrawal-tx-in-reference afb8696b7025e9cea04bd7a51834d6a18af2936ffd8c7947ebf673631a9dbb3d#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --required-signer-hash $borrowerStakePubKeyHash \

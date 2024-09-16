@@ -714,7 +714,7 @@ must be inline datums.
 -- | A type synonym for an asset's full name.
 type Asset = (CurrencySymbol,TokenName)
 
--- | The penalty to apply whenever the minimum payment is not met in a given compounding period.
+-- | The penalty to apply whenever the minimum payment is not met in a given loan epoch.
 data Penalty
   = NoPenalty
   | FixedFee Integer
@@ -754,14 +754,15 @@ data LoanDatum
       , assetBeacon :: TokenName
       -- | The size of the loan.
       , loanPrincipal :: Integer
-      -- | The frequency at which interest must be applied and the time the borrower has to meet the
-      -- minimum payment requirement.
-      , compoundFrequency :: Maybe POSIXTime
+      -- | The frequency at which interest must be applied and/or penalties applied.
+      , epochDuration :: Maybe POSIXTime
       -- | The duration of the loan.
       , loanTerm :: POSIXTime
       -- | The interest that must be periodically applied.
       , loanInterest :: Rational
-      -- | The minimum amount that must be paid each loan epoch (ie, compounding period).
+      -- | Whether the interest is compounding.
+      , compoundingInterest  :: Bool
+      -- | The minimum amount that must be paid each loan epoch.
       , minPayment :: Integer
       -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
       , penalty :: Penalty
@@ -798,16 +799,17 @@ data LoanDatum
       , assetBeacon :: TokenName
       -- | The size of the loan.
       , loanPrincipal :: Integer
-      -- | The frequency at which interest must be applied and the time the borrower has to meet the
-      -- minimum payment requirement.
-      , compoundFrequency :: Maybe POSIXTime
-      -- | The last time interest and/or penalties were applied.
-      , lastCompounding :: POSIXTime
+      -- | The frequency at which interest must be applied and/or penalties applied.
+      , epochDuration :: Maybe POSIXTime
+      -- | The last time interest/penalty was applied.
+      , lastEpochBoundary :: POSIXTime
       -- | The duration of the loan.
       , loanTerm :: POSIXTime
       -- | The interest that must be periodically applied.
       , loanInterest :: Rational
-      -- | The minimum amount that must be paid each loan epoch (ie, compounding period).
+      -- | Whether the interest is compounding.
+      , compoundingInterest  :: Bool
+      -- | The minimum amount that must be paid each loan epoch.
       , minPayment :: Integer
       -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
       , penalty :: Penalty
@@ -997,9 +999,10 @@ the Lender ID.
     - `loanAsset` == asset that corresponds to the loan asset beacon in this output
     - `assetBeacon` == this output's loan asset beacon's token name
     - `loanPrincipal` > 0
-    - `compoundFrequency` == `Nothing` or `Just x` where `x` > 0
+    - `epochDuration` == `Nothing` or `Just x` where `x` > 0
     - `loanTerm` > 0
     - `loanInterest` denominator > 0 and numerator >= 0
+    - `compoundingInterest` must be `True` or `False`
     - `minPayment` >= 0
     - `penalty` must either be `FixedFee x` where `x` > 0, `PercentFee fee` where the numerator
     for `fee` is > 0 and the denominator is > 0, or `NoPenalty`. If `minPayment` is set to 0, then
@@ -1009,6 +1012,7 @@ the Lender ID.
     - `claimPeriod` > 0
     - `offerDeposit` > 0
     - `offerExpiration` == `Nothing` or `Just x` where `x` > 0
+    - `collateralIsSwappable` must be `True` or `False`
 - All outputs with beacons must contain exactly the principal for the loan + the offer deposit
 amount of ADA. No extraneous assets are allowed.
 - All outputs with beacons must go to a loan address using a valid staking credential.
@@ -1026,41 +1030,43 @@ Prefixing the Lender ID with either "00" or "01" allows the protocol to know whe
 pubkey or script just from its asset name. Plus, it guarantees that Lender IDs and Borrower IDs are
 always unique, even if the same staking credential is used for both IDs.
 
-The `compoundFrequency` field determines how often interest must be applied and/or the amount of
-time a borrower has to meet the `minPayment` requirement. If the `compoundFrequency` is set to
-`Nothing` but the interest is > 0, then the loan would have non-compounding interest. The interest
-can be set to 0 to allow interest-free loans. When `compoundFrequency` is set to `Nothing`, the
-borrower will never need to apply interest or penalties; they can continue making payments until the
-loan expires.
+The `epochDuration` field, `loanInterest` field, `compoundingInterest` field, `minPayment` field,
+and `penalty` field work together to determine the behavior of the loan:
+- `epochDuration` divides the loan into periods of time specified by this field. In other words, it
+divides the loan into epochs.
+- `minPayment` specifies the minimum amount of the loan that must be repaid in each loan epoch. This
+does not need to be satisfied in every payment transaction. The borrower can make incremental
+payments that add up to the required minimum before the end of the current loan epoch.
+- `penalty` determines what should happen if the borrower fails to meet the `minPayment` requirement
+in a given epoch. The penalty will be applied to the outstanding balance. It can either be a flat
+fee or a percent penalty.
+- `loanInterest` determines the interest for the loan. The interest is always applied for the first
+time immediately upon the borrower accepting the loan. After that, it will be applied at the end of 
+each loan epoch, but only if `compoundingInterest` is set to `True`. If `compoundingInterest` is set
+to `False`, this would be a non-compounding loan. If the `loanInterest` field is set to 0, the
+`compoundingInterest` field will be ignored.
 
-The `minPayment` is the minimum required payment a borrower must make each compound period; it does
-not need to be in a single transaction. If the minimum payment has not been met by the time the next
-interest payment is required, the `penalty` will be applied to the outstanding balance. This field
-incentivizes the borrower to make regular payments on the loan. 
+If you do not set an `epochDuration`, then there will be no loan epochs and therefore no penalties
+and/or interest. Likewise, even if you set an `epochDuration`, if there are not set penalties and
+the loan is non-compounding or interest-free, then there will also be no penalties and/or interest.
 
-The `penalty` field determines what to do in the case a borrower fails to meet the required minimum
-payment. The penalty can be set to `NoPenalty` to make the offer more competitive against other
-offers. *You cannot set a penalty unless `minPayment` is greater than 0.* You can set `NoPenalty`
-for a `minPayment` greater than zero, but there is no point doing that; the `minPayment` field will
-be ignored. If `loanInterest` is set to 0 and `penalty` is set to `NoPenalty`, then the borrower
-will never need to apply interest or penalties; they can continue making payments until the loan
-expires. It is possible to set penalties on interest-free loans by still specifying a compounding
-frequency.
+The `minPayment` and `penalty` fields are meant to incentivize periodic repayments so that the
+lender can get more regular payments. Not making the required periodic payments will increase the
+risk of default since even more will need to be paid to the lender to cover the penalties.
 
 If the lender does not want a particular collateral asset used, the relative value for that asset
 can be set to 0 to prevent it from counting as collateral. Alternatively, the undesired asset can be
 entirely omitted from the list. *If there is a risk of the collateral changing value over the
 lifetime of the loan, make sure to factor that into your relative price!* If you would prefer the
 borrower to use a less volatile asset as collateral, you can make a counter-offer that replaces the
-volatile collateral asset with the less volatile one.
+volatile collateral asset with the less volatile one. You can even make an offer that uses a
+different loan asset than one requested by the borrower.
 
-The `collateralIsSwappable` field does not need to be checked since the only possible values are
-true and false; anything else will cause the script to crash when the datum is parsed. This field
-controls whether collateral can be swapped out during a loan payment. When swapping out collateral,
-the total relative value of the collateral backing the loan must still satsify the requirements.
-While being able to swap out collateral favors the borrower, the fact that the lender must
-explicitly allow it means the borrower cannot abuse this feature. Lenders can use this field to make
-their offers more attactive than offers from other lenders.
+The `collateralIsSwappable` field controls whether collateral can be swapped out during a loan
+payment. When swapping out collateral, the total relative value of the collateral backing the loan
+must still satsify the requirements. While being able to swap out collateral favors the borrower,
+the fact that the lender must explicitly allow it means the borrower cannot abuse this feature.
+Lenders can use this field to make their offers more attactive than offers from other lenders.
 
 The `offerDeposit` field tells the protocol how much you used to satisfy the minUTxOValue value for
 the Offer UTxO. It will be returned to you when the borrower accepts the offer.
@@ -1171,10 +1177,11 @@ the inputs.
         - `loanAsset` == `loanAsset` from corresponding Offer UTxO
         - `assetBeacon` == `assetBeacon` from corresponding Offer UTxO
         - `loanPrincipal` == `loanPrincipal` from corresponding Offer UTxO
-        - `compoundFrequency` == `compoundFrequency` from corresponding Offer UTxO
-        - `lastCompounding` == `invalid-before` of this transaction (as POSIXTime)
+        - `epochDuration` == `epochDuration` from corresponding Offer UTxO
+        - `lastEpochBoundary` == `invalid-before` of this transaction (as POSIXTime)
         - `loanTerm` == `loanTerm` from corresponding Offer UTxO
         - `loanInterest` == `loanInterest` from corresponding Offer UTxO
+        - `compoundingInterest` == `compoundingInterest` from corresponding Offer UTxO
         - `minPayment` == `minPayment` from corresponding Offer UTxO
         - `penalty` == `penalty` from corresponding Offer UTxO
         - `collateralization` == `collateralization` from corresponding Offer UTxO
@@ -1306,7 +1313,7 @@ redeemer must specify the size of the payment.
 
 In order to ensure compound interest accrues and penalties are applied, the borrower cannot make the
 next payment if the next interest and/or penalty application is due. The script uses the
-`invalid-hereafter` flag to assert the next compounding period has not started (or the expiration
+`invalid-hereafter` flag to assert the next loan epoch period has not started (or the expiration
 has passed, whichever is first). For convenience, the borrower can set the `invalid-hereafter` flag
 to the slot when the next interest application is due (or expiration if no more applications are
 required). The only time penalty is applied without also applying loan interest is when the loan
@@ -1342,12 +1349,12 @@ can be composed with accepting offers.
 
 #### Applying Interest/Penalties
 
-Once the current compounding period ends, the protocol will prevent the borrower from making any
+Once the current loan epoch ends, the protocol will prevent the borrower from making any
 further payments until after they apply the required interest and/or penalty. If the borrower
 refuses, the loan is guaranteed to eventually go into default and the collateral is guaranteed to be
 forfeited.
 
-If the borrower misses several compound periods, they can get caught back up in a single
+If the borrower misses several loan epochs, they can get caught back up in a single
 transaction; the interest and penalties will still be properly applied. The borrower can apply the
 interest/penalties for multiple loans in a single transaction.
 
@@ -1360,7 +1367,8 @@ At a low-level, all of the following must be true:
 - The Active UTxO the application is for must have an `ActiveDatum`.
 - The Active UTxO the application is for must be spent using the `ApplyInterest` redeemer, and the
 redeemer must specify the number of applications required as well as if any ada needs to be added
-to satisfy the new Active UTxO's minUTxOValue.
+to satisfy the new Active UTxO's minUTxOValue. This redeemer is required even for non-compounding
+loans in order to apply the penalties when required.
 - The interest observer smart contract must be executed as a staking script using the
 `ObserveInterest` redeemer. 
 - All interest/penalty inputs must be from the same loan address.
@@ -1372,7 +1380,7 @@ to satisfy the new Active UTxO's minUTxOValue.
     - There must be a corresponding Active UTxO output to the originating loan address with:
         - The same exact datum as the input except:
             - `loanOutstanding` is updated to reflect interest and penalties
-            - `lastCompounding` == input's `lastCompounding` + `compoundFrequency` * `numberOfTimes`
+            - `lastEpochBoundary` == input's `lastEpochBoundary` + `epochDuration` * `numberOfTimes`
             - `totalEpochPayments` == 0
         - The exact same value as the input + `depositIncrease` amount of ada.
 - The staking credential in the loan address must approve the transaction.

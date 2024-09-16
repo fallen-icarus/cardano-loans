@@ -6,7 +6,7 @@ cardano-cli query protocol-parameters \
   --testnet-magic 1 \
   --out-file "${tmpDir}protocol.json"
 
-cardano-cli transaction build \
+cardano-cli conway transaction build \
   --tx-in 2d3bad47abe57524ad627bb11a9ed0ff22f06538b6ba6794834155615f6c212a#0 \
   --tx-out "$(cat ../../assets/wallets/02.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName}" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName}" \

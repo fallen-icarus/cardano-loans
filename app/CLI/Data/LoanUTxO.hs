@@ -115,11 +115,12 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                pretty (either (const "failed to convert to bech32") fst $ plutusToBech32 network _lenderAddress)
            , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , annotate (colorDull Cyan) "interest:" <+> pretty _loanInterest
+           , annotate (colorDull Cyan) "compounding_interest:" <+> pretty _compoundingInterest
            , let time = getPOSIXTime _loanTerm in
                annotate (colorDull Cyan) "loan_term:" 
                  <+> pretty (time `div` 1000) <+> "slots"
                  <+> tupled [pretty time <+> "milliseconds"]
-           , annotate (colorDull Cyan) "compound_frequency:" <+> (flip (maybe "none") _compoundFrequency $ 
+           , annotate (colorDull Cyan) "epoch_duration:" <+> (flip (maybe "none") _epochDuration $ 
                \(POSIXTime time) ->
                  pretty (time `div` 1000) <+> "slots" <+> tupled [pretty time <+> "milliseconds"])
            , annotate (colorDull Cyan) "minimum_payment:" <+> pretty _minPayment <+> pretty _loanAsset
@@ -148,16 +149,17 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                pretty (either (const "failed to convert to bech32") fst $ plutusToBech32 network _lenderAddress)
            , annotate (colorDull Cyan) "loan_amount:" <+> pretty _loanPrincipal <+> pretty _loanAsset
            , annotate (colorDull Cyan) "interest:" <+> pretty _loanInterest
+           , annotate (colorDull Cyan) "compounding_interest:" <+> pretty _compoundingInterest
            , let time = getPOSIXTime _loanTerm in
                annotate (colorDull Cyan) "loan_term:" 
                  <+> pretty (time `div` 1000) <+> "slots"
                  <+> tupled [pretty time <+> "milliseconds"]
-           , annotate (colorDull Cyan) "compound_frequency:" <+> (flip (maybe "none") _compoundFrequency $ 
+           , annotate (colorDull Cyan) "epoch_duration:" <+> (flip (maybe "none") _epochDuration $ 
                \(POSIXTime time) ->
                  pretty (time `div` 1000) <+> "slots" <+> tupled [pretty time <+> "milliseconds"])
-           , let time = getPOSIXTime _lastCompounding in
-               annotate (colorDull Cyan) "last_compounding:" 
-                 <+> pretty (posixTimeToSlot config _lastCompounding)
+           , let time = getPOSIXTime _lastEpochBoundary in
+               annotate (colorDull Cyan) "last_epoch_boundary:" 
+                 <+> pretty (posixTimeToSlot config _lastEpochBoundary)
                  <+> tupled [pretty time <+> "posix"]
            , annotate (colorDull Cyan) "minimum_payment:" <+> pretty _minPayment <+> pretty _loanAsset
            , annotate (colorDull Cyan) "penalty:" <+> case _penalty of

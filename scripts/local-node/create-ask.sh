@@ -70,16 +70,15 @@ askBeacon="${beaconPolicyId}.${askTokenName}"
 assetBeacon="${beaconPolicyId}.${assetTokenName}"
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
-  --tx-in dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#1 \
-  --tx-in 18d3124d14ae7e18610f3715c04809ac5807a12e01ad39b5bb02dbf1c1d2644e#2 \
-  --tx-in 18d3124d14ae7e18610f3715c04809ac5807a12e01ad39b5bb02dbf1c1d2644e#3 \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 30 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 2000000 lovelace + 954 ${collateral2}" \
+cardano-cli conway transaction build \
+  --tx-in 7980edca1365c2cb6eb5cd97424660f6dd6e384a83df3455f2488082cf5536b0#3 \
+  --tx-in 82ac4b618f9315cda59a6dbed59f9debad492e90335c7e17ebac10b2b9b00ed9#1 \
   --tx-out "${borrowerLoanAddr} + 3000000 lovelace + 1 ${askBeacon} + 1 ${assetBeacon} + 1 ${collateral1} + 1 ${collateral2}" \
   --tx-out-inline-datum-file $askDatumFile \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 9 ${collateral1}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 79 ${collateral2}" \
   --mint "1 ${askBeacon} + 1 ${assetBeacon}" \
-  --mint-tx-in-reference dd0e2977d8ea2af53c9d1cd5fea19e09f15eef356b91314835316f649375c1c8#0 \
+  --mint-tx-in-reference a3ae17130ddbf4ce3117e218c920d219599ff935d024fac0d3ca4ef9ad6e4fde#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \

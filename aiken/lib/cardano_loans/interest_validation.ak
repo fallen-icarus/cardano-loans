@@ -90,10 +90,11 @@ fn process_input(
       loan_asset,
       asset_beacon,
       loan_principal,
-      compound_frequency,
-      last_compounding,
+      epoch_duration,
+      last_epoch_boundary,
       loan_term,
       loan_interest,
+      compounding_interest,
       min_payment,
       penalty,
       collateralization,
@@ -140,11 +141,12 @@ fn process_input(
           loan_asset: loan_asset,
           asset_beacon: asset_beacon,
           loan_principal: loan_principal,
-          compound_frequency: compound_frequency,
-          last_compounding: 
-            last_compounding + number_of_times * option.or_else(compound_frequency,0),
+          epoch_duration: epoch_duration,
+          last_epoch_boundary: 
+            last_epoch_boundary + number_of_times * option.or_else(epoch_duration,0),
           loan_term: loan_term,
           loan_interest: loan_interest,
+          compounding_interest: compounding_interest,
           min_payment: min_payment,
           penalty: penalty,
           collateralization: collateralization,
@@ -156,7 +158,8 @@ fn process_input(
               min_payment > total_epoch_payments, // Penalize if min_payment not met.
               penalty,
               loan_outstanding,
-              loan_interest,
+              // Don't apply interest unless it is compounding interest.
+              if compounding_interest {loan_interest} else {(0,1)},
               number_of_times
             ),
           total_epoch_payments: 0,

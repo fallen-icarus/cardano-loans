@@ -16,6 +16,7 @@ template scripts to come up with your own remote node template scripts for carda
 - [Aiken For Developers](#aiken-for-developers)
 - [Overspent Budget](#overspent-budget)
 - [Using Remote Nodes](#using-remote-nodes)
+- [Invalid-Hereafter](#invalid-hereafter)
 - [Minting Test Tokens](#minting-test-tokens)
 - [Registering Scripts - DEVELOPERS ONLY](#registering-the-scripts-for-staking-execution---developers-only)
 - [Creating Reference Scripts](#creating-reference-scripts)
@@ -156,6 +157,16 @@ Make sure you instal verison 1.0.26-alpha. Newer versions may change some things
 code may not compile or may result in a different script. As aiken stabilizes, the code will be
 updated to the latest version.
 
+> [!TIP] 
+> If the above command doesn't work, you can build aiken from source:
+> ```bash
+> git clone https://github.com/aiken-lang/aiken
+> cd aiken
+> git checkout v1.0.26-alpha
+> cargo build
+> ```
+> The executable should now be located at `target/debug/aiken`.
+
 When building the protocol's blueprints, make sure to use
 
 ```bash
@@ -191,16 +202,16 @@ does not properly add the change *before* estimating the execution budgets for t
 always results in it under-estimating the required execution units needed by the scripts. There are
 open issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
 [here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
-confusing error message while using `cardano-cli transaction build`, this is probably the issue.
+confusing error message while using `cardano-cli conway transaction build`, this is probably the issue.
 
-As a work around, whenever you build a transaction using `cardano-cli transaction build` where
+As a work around, whenever you build a transaction using `cardano-cli conway transaction build` where
 scripts are being executed, you must manually create an output that has all of the native tokens
 that would normally go into the change output. You can let the auto-balancer balance the ada.
 
 ## Using Remote Nodes
 
-`cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
-used to build a transaction for a remote node. Instead, the `cardano-cli transaction build-raw` 
+`cardano-cli conway transaction build` requires a local node for the auto-balancer which means it cannot be
+used to build a transaction for a remote node. Instead, the `cardano-cli conway transaction build-raw` 
 command is required. This command requires the following steps:
 1. Build a temporary transaction that is missing the execution units and transaciton fee but is
    properly balanced. You can assume a fee of zero for this transaction.
@@ -251,6 +262,22 @@ cardano-loans submit \
 ```
 
 The transaction will be submitted through Koios.
+
+## Invalid-Hereafter
+
+The invalid-hereafter validity interval bound is used to prove that a loan's deadline has not
+passed. However, the Cardano blockchain does not allow setting invalid-hereafter to be more than 36
+hours (129600 slots) passed the current slot. The reason for this is that hardforks can change slot
+lengths and therefore change the conversion from slot number to POSIX time. The 36 hours is a window
+of time where a hardfork is not possible and therefore, the node can guarantee the time conversion
+is correct.
+
+This restriction is only an issue when building transactions. Loans can still have expirations way
+passed the 36 hour horizon. The only thing to be aware of is that the invalid-hereafter must be set
+to `129600 + current_slot` unless the loan's next deadline is within 36 hours of the current time.
+
+> [!IMPORTANT] 
+> The 36 hours (129600 slots) is a network parameter that can be changed.
 
 ## Minting Test Tokens
 
@@ -592,7 +619,8 @@ cardano-loans datums offer \
   --principal 100000000 \
   --loan-term '3600 slots' \
   --interest '0.1' \
-  --compound-frequency '1200 slots' \
+  --compounding-interest \
+  --epoch-duration '1200 slots' \
   --minimum-payment 2000000 \
   --fixed-penalty 500000 \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
@@ -618,16 +646,25 @@ The `interest` can be expressed as either a decimal (like above) or a fraction: 
 10'`. If you use decimals, the ultimate fraction will look off since floating point numbers do not
 have arbitrary precision. The approximation is good enough, though.
 
-The `compound-frequency` is optional. If you do use it, you can specify the frequency in either
-slots or days. The interest/penalties must be applied at the frequency set by this field. The
-borrower has this time period to satisfy the minimum payment in order to avoid the penalty.
+The `compounding-interest` flag is optional. If used, the interest will be compounding. If not used,
+the interest will be non-compounding. If the interest is 0, this flag is disregarded since it is an
+interest-free loan.
+
+The `epoch-duration` is optional, but if you want to incentivize periodic payments, this field must
+be set. This field splits the loan into epochs of the specified length. The duration can be
+specified in either slots or days. The interest/penalties must be applied at the end of each loan
+epoch. The borrower has this time period to satisfy the minimum payment in order to avoid the
+penalty.
+
+The `minimum-payment` field specifies how much a borrower needs to pay back in a given loan epoch.
+*This minimum does not need to be met in a single transaction.* As long as the total amount paid
+back in the loan epoch is greater than the `minimum-payment`, the penalty can be avoided. This field
+can only be a flat amount (no percents).
 
 The penalty field can either be: `--no-penalty`, `--fixed-penalty INT`, `--percent-penalty PERCENT`.
 The `PERCENT` can be specified as either a decimal or a fraction. This penalty will be applied
-whenever the `minimum-payment` is missed in a given compounding period. *It is possible to enforce a
-penalty on an interest-free loan.* Just set the interest to zero while still setting a
-compound-frequency and penalty. There is no way to enforce a penalty on a non-compounding interest
-loan since a non-compounding loan requires omitting a compound-frequency.
+whenever the `minimum-payment` is missed in a given loan epoch. *It is possible to enforce a
+penalty on interest-free and non-compounding interest loans.*
 
 The `collateral-asset` fields *must* be in lexicographical order. If you reverse the order of the two
 collateral assets above, the negotiation beacon script will crash with an error saying your
@@ -857,7 +894,8 @@ cardano-loans datums active new manual \
   --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
-  --compound-frequency '1200 slots' \
+  --compounding-interest \
+  --epoch-duration '1200 slots' \
   --minimum-payment 2000000 \
   --fixed-penalty 500000 \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
@@ -906,8 +944,8 @@ To see how to build the transaction using a local node, refer
 ## Making a Loan Payment
 
 Making a loan payment requires:
-1. Calculate the invalid-hereafter slot number based on the next deadline (either compounding or
-   expiration).
+1. Calculate the invalid-hereafter slot number based on the next deadline (either epoch boundary or
+   expiration, whichever is sooner).
 1. Calculate the hash of the borrower's staking credential.
 2. Create the required spending script redeemer.
 3. Create the post-payment ActiveDatum for each payment made.
@@ -927,7 +965,7 @@ deadlineSlot=$(cardano-loans convert-time \
 
 You need to prove to the script that the next deadline has not passed yet so you need to set the
 invalid-hereafter of the transaction to the next deadline. The next deadline is either the next
-compounding time or the loan's expiration, whichever is first. When making payments on multiple
+epoch boundary or the loan's expiration, whichever is first. When making payments on multiple
 loans, the invalid-hereafter should be set to the earliest time.
 
 #### Calculate the hash of the staking credential used in the borrower address
@@ -1006,7 +1044,8 @@ cardano-loans datums active post-payment manual \
   --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
-  --compound-frequency '1200 slots' \
+  --compounding-interest \
+  --epoch-duration '1200 slots' \
   --minimum-payment 2000000 \
   --fixed-penalty 500000 \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
@@ -1015,7 +1054,7 @@ cardano-loans datums active post-payment manual \
   --relative-rate '1 / 500000' \
   --claim-expiration '1712756592000' \
   --loan-expiration '1712752992000' \
-  --last-compounding '1712749392000' \
+  --last-epoch-boundary '1712749392000' \
   --total-epoch-payments 0 \
   --outstanding-balance '3096224743817216015625 / 281474976710656' \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
@@ -1062,7 +1101,7 @@ To see how to build the transaction using a local node, refer
 [here](scripts/local-node/make-payment.sh). There is an example `cardano-cli transaction build` for
 both full payments and partial payments.
 
-## Applying Interest
+## Applying Interest and/or Penalties
 
 Applying interest to a loan requires:
 1. Calculate the invalid-hereafter slot number based on the loan's expiration.
@@ -1072,6 +1111,12 @@ Applying interest to a loan requires:
 3. Create the required observer script redeemer.
 7. Create the required staking address for the interest observer script.
 8. Submit the transaction.
+
+> [!IMPORTANT] 
+> This step is required even if a loan is interest-free or non-compounding. These periodic rollovers
+> are required in order for the protocol to check if any penalties are required, and apply them when
+> necessary. The only time this step is *not* required is when the loan is **both** interest-free
+> and has no penalty.
 
 #### Convert the next deadline (in POSIX time) to a slot number
 ```bash
@@ -1137,7 +1182,8 @@ cardano-loans datums active post-interest manual \
   --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
-  --compound-frequency '1200 slots' \
+  --compounding-interest \
+  --epoch-duration '1200 slots' \
   --minimum-payment 2000000 \
   --fixed-penalty 500000 \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
@@ -1146,7 +1192,7 @@ cardano-loans datums active post-interest manual \
   --relative-rate '1 / 500000' \
   --claim-expiration '1712756592000' \
   --loan-expiration '1712752992000' \
-  --last-compounding '1712749392000' \
+  --last-epoch-boundary '1712749392000' \
   --total-epoch-payments 0 \
   --outstanding-balance '3096224743817216015625 / 281474976710656' \
   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
@@ -1174,7 +1220,7 @@ If you need to increase the amount of ada stored in the Active UTxO, you must sp
 with the `deposit-increase` field.
 
 The `times-aplied` field tells the script how many times to apply the interest. If you need to apply
-the interest several times to catch up to the current compounding period, you can use this field to
+the interest several times to catch up to the current loan epoch, you can use this field to
 do them all in one transaction.
 
 #### Building the transaction
@@ -1247,7 +1293,8 @@ cardano-loans datums active post-payment manual \
   --principal 10000000 \
   --loan-term '3600 slots' \
   --interest '3602879701896397 / 36028797018963968' \
-  --compound-frequency '1200 slots' \
+  --compounding-interest \
+  --epoch-duration '1200 slots' \
   --minimum-payment 2000000 \
   --fixed-penalty 500000 \
   --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
@@ -1256,7 +1303,7 @@ cardano-loans datums active post-payment manual \
   --relative-rate '1 / 500000' \
   --claim-expiration '1712756592000' \
   --loan-expiration '1712752992000' \
-  --last-compounding '1712749392000' \
+  --last-epoch-boundary '1712749392000' \
   --total-epoch-payments 0 \
   --outstanding-balance '3096224743817216015625 / 281474976710656' \
   --borrower-staking-pubkey-hash '3cefec09a27b6894e2ed9a78b9cc01f083973d7c0afb8cec8bda33fa' \

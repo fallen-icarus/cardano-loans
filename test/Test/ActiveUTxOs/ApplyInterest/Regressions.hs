@@ -63,9 +63,10 @@ regressionTest1 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -321,9 +322,10 @@ regressionTest2 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -579,9 +581,10 @@ regressionTest3 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -837,9 +840,10 @@ regressionTest4 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1095,9 +1099,10 @@ regressionTest5 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1369,9 +1374,10 @@ regressionTest6 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1665,9 +1671,10 @@ regressionTest7 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = FixedFee 500_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1923,9 +1930,10 @@ regressionTest8 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = PercentFee $ Fraction (1,100)
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2181,9 +2189,10 @@ regressionTest9 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = FixedFee 500_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2439,9 +2448,10 @@ regressionTest10 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = FixedFee 500_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2697,9 +2707,10 @@ regressionTest11 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = PercentFee $ Fraction (1,100)
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2955,9 +2966,10 @@ regressionTest12 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = FixedFee 500_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3271,9 +3283,10 @@ regressionTest13 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = PercentFee $ Fraction (1,100)
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3586,9 +3599,10 @@ regressionTest14 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (0,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = FixedFee 500_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3843,9 +3857,10 @@ regressionTest15 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (0,10)
+        , _compoundingInterest = True
         , _minPayment = 2_000_000
         , _penalty = PercentFee $ Fraction (1,100)
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4101,9 +4116,10 @@ regressionTest16 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4359,9 +4375,10 @@ regressionTest17 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4576,7 +4593,7 @@ regressionTest17 = do
       }
 
 -- | Apply interest one time to a single loan. The deposit amount does not change. No penalty is
--- required. The compount frequency is not `Nothing`.
+-- required. The epoch duration is not `Nothing`.
 regressionTest18 :: MonadEmulator m => m ()
 regressionTest18 = do
   let -- Borrower Info
@@ -4617,9 +4634,10 @@ regressionTest18 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Just 1800
+        , _epochDuration = Just 1800
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4834,7 +4852,7 @@ regressionTest18 = do
       }
 
 -- | Apply interest twice to a single loan. The deposit amount does not change. No penalty is
--- required. The compount frequency is not `Nothing`.
+-- required. The epoch duration is not `Nothing`.
 regressionTest19 :: MonadEmulator m => m ()
 regressionTest19 = do
   let -- Borrower Info
@@ -4875,9 +4893,10 @@ regressionTest19 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Just 1800
+        , _epochDuration = Just 1800
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -5160,6 +5179,132 @@ functionTest12 :: TestTree
 functionTest12 = testCase "functionTest12" $ Fraction (13577531,1000000) @=?
    applyInterestNTimes False (PercentFee $ Fraction (1,100)) 3 (Fraction (1,10)) (Fraction (10,1))
 
+-- | Do not apply the interest when the _compoundingInterest flag is False. A penalty is required.
+functionTest13 :: TestTree
+functionTest13 = do
+  let offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = PubKeyCredential ""
+        , _lenderAddress = Address (PubKeyCredential "") Nothing
+        , _loanAsset = Asset ("","")
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = False
+        , _minPayment = 10
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(Asset ("",""),Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+      beforeDatum@ActiveDatum{_loanOutstanding=before} = 
+        createAcceptanceDatumFromOffer 
+          (PubKeyCredential "") 
+          (TxOutRef "" 0) 
+          (slotToPosixTime 0) 
+          offerDatum
+      ActiveDatum{_loanOutstanding=after,_penalty} = 
+        createPostInterestActiveDatum 1 beforeDatum
+  testCase "" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (0,10)) before
+
+-- | Do not apply the interest when the _compoundingInterest flag is False. A penalty is not
+-- required.
+functionTest14 :: TestTree
+functionTest14 = do
+  let offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = PubKeyCredential ""
+        , _lenderAddress = Address (PubKeyCredential "") Nothing
+        , _loanAsset = Asset ("","")
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = False
+        , _minPayment = 10
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(Asset ("",""),Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+      beforePaymentDatum = 
+        createAcceptanceDatumFromOffer 
+          (PubKeyCredential "") 
+          (TxOutRef "" 0) 
+          (slotToPosixTime 0) 
+          offerDatum
+      afterPaymentDatum@ActiveDatum{_loanOutstanding=before} =
+        createPostPaymentActiveDatum 1_000_000 beforePaymentDatum
+      ActiveDatum{_loanOutstanding=after,_penalty} = 
+        createPostInterestActiveDatum 1 afterPaymentDatum
+  testCase "" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (0,10)) before
+
+-- | Apply the interest when the _compoundingInterest flag is True. A penalty is required.
+functionTest15 :: TestTree
+functionTest15 = do
+  let offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = PubKeyCredential ""
+        , _lenderAddress = Address (PubKeyCredential "") Nothing
+        , _loanAsset = Asset ("","")
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 10
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(Asset ("",""),Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+      beforeDatum@ActiveDatum{_loanOutstanding=before} = 
+        createAcceptanceDatumFromOffer 
+          (PubKeyCredential "") 
+          (TxOutRef "" 0) 
+          (slotToPosixTime 0) 
+          offerDatum
+      ActiveDatum{_loanOutstanding=after,_penalty} = 
+        createPostInterestActiveDatum 1 beforeDatum
+  testCase "" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (1,10)) before
+
+-- | Apply the interest when the _compoundingInterest flag is True. A penalty is not
+-- required.
+functionTest16 :: TestTree
+functionTest16 = do
+  let offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = PubKeyCredential ""
+        , _lenderAddress = Address (PubKeyCredential "") Nothing
+        , _loanAsset = Asset ("","")
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 10
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(Asset ("",""),Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+      beforePaymentDatum = 
+        createAcceptanceDatumFromOffer 
+          (PubKeyCredential "") 
+          (TxOutRef "" 0) 
+          (slotToPosixTime 0) 
+          offerDatum
+      afterPaymentDatum@ActiveDatum{_loanOutstanding=before} =
+        createPostPaymentActiveDatum 1_000_000 beforePaymentDatum
+      ActiveDatum{_loanOutstanding=after,_penalty} = 
+        createPostInterestActiveDatum 1 afterPaymentDatum
+  testCase "" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (1,10)) before
+
 -------------------------------------------------
 -- TestTree
 -------------------------------------------------
@@ -5200,4 +5345,8 @@ tests =
   , functionTest10
   , functionTest11
   , functionTest12
+  , functionTest13
+  , functionTest14
+  , functionTest15
+  , functionTest16
   ]

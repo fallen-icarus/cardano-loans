@@ -62,9 +62,10 @@ benchTest1 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -332,9 +333,10 @@ benchTest2 number = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 10000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = 
@@ -577,10 +579,10 @@ benchTest2 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 17
-  , mustSucceed "benchTest2" $ benchTest2 18
+  [ mustSucceed "benchTest1" $ benchTest1 18
+  , mustSucceed "benchTest2" $ benchTest2 16
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 18
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 19
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 19
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
   ]

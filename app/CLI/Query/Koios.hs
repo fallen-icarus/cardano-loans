@@ -117,7 +117,17 @@ instance FromJSON MintTx where
 newtype MintTxs = MintTxs [MintTx] deriving (Show)
 
 instance ToJSON MintTxs where
-  toJSON (MintTxs txs) = object [ "_tx_hashes" .= map _txHash txs ]
+  toJSON (MintTxs txs) = object 
+    [ "_tx_hashes" .= map _txHash txs 
+    , "_inputs" .= True -- always return inputs.
+    , "_metadata" .= False -- never return metadata.
+    , "_assets" .= True -- always return assets.
+    , "_withdrawals" .= True -- always return withdrawals.
+    , "_certs" .= True -- always return certificates.
+    , "_scripts" .= True -- always return scripts.
+    , "_bytecode" .= False -- never return the script bytecode.
+    , "_governance" .= False -- don't return for now.
+    ]
 
 instance FromJSON MintTxs where
   parseJSON = withObject "MintTxs" $ \o -> 
@@ -133,7 +143,17 @@ instance FromJSON LoanTx where
 newtype LoanTxs = LoanTxs [LoanTx] deriving (Show)
 
 instance ToJSON LoanTxs where
-  toJSON (LoanTxs txs) = object [ "_tx_hashes" .= map (\(LoanTx tx) -> tx) txs ]
+  toJSON (LoanTxs txs) = object 
+    [ "_tx_hashes" .= map (\(LoanTx tx) -> tx) txs 
+    , "_inputs" .= True -- always return inputs.
+    , "_metadata" .= False -- never return metadata.
+    , "_assets" .= True -- always return assets.
+    , "_withdrawals" .= True -- always return withdrawals.
+    , "_certs" .= True -- always return certificates.
+    , "_scripts" .= True -- always return scripts.
+    , "_bytecode" .= False -- never return the script bytecode.
+    , "_governance" .= False -- don't return for now.
+    ]
 
 -------------------------------------------------
 -- Low-Level API
@@ -471,7 +491,7 @@ processLoanHistory loanId Transaction{..} = do
           ]
         SpendWithKeyNFT -> "Defaulted collateral claimed by lender."
         UpdateLenderAddress _ deposit -> mconcat
-          [ "Lender changed the required payment address "
+          [ "Lender changed the required payment address"
           , " with deposit increase of "
           , show deposit
           , " lovelace."

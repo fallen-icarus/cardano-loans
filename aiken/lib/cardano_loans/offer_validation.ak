@@ -125,7 +125,7 @@ fn valid_offer_output(
     loan_asset,
     asset_beacon,
     loan_principal,
-    compound_frequency,
+    epoch_duration,
     loan_term,
     loan_interest,
     min_payment,
@@ -134,7 +134,7 @@ fn valid_offer_output(
     claim_period,
     offer_deposit,
     offer_expiration,
-    .. // Don't need to check collateral_is_swappable
+    .. // Don't need to check collateral_is_swappable or compounding_interest.
   } = when parse_datum(output_datum) is {
     OfferDatum{..} as datum -> datum
     _ -> error @"UTxO not stored with an OfferDatum"
@@ -180,9 +180,9 @@ fn valid_offer_output(
       @"Datum has wrong principal", 
       loan_principal > 0),
     trace_if_false(
-      @"Datum has wrong compound frequency", 
+      @"Datum has wrong epoch duration", 
       // Set to 1 to ensure True when None.
-      option.or_else(compound_frequency,1) |> fn(x) { x > 0 }), 
+      option.or_else(epoch_duration,1) |> fn(x) { x > 0 }), 
     trace_if_false(
       @"Datum has wrong term", 
       loan_term > 0),

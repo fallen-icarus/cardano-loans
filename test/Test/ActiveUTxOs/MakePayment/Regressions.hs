@@ -62,9 +62,10 @@ regressionTest1 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -329,9 +330,10 @@ regressionTest2 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -597,9 +599,10 @@ regressionTest3 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -901,9 +904,10 @@ regressionTest4 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1207,9 +1211,10 @@ regressionTest5 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1558,9 +1563,10 @@ regressionTest6 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1574,9 +1580,10 @@ regressionTest6 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1912,9 +1919,10 @@ regressionTest7 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -1928,9 +1936,10 @@ regressionTest7 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2258,9 +2267,10 @@ regressionTest8 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = 
@@ -2548,9 +2558,10 @@ regressionTest9 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2564,9 +2575,10 @@ regressionTest9 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2920,9 +2932,10 @@ regressionTest10 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -2936,9 +2949,10 @@ regressionTest10 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3292,9 +3306,10 @@ regressionTest11 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3308,9 +3323,10 @@ regressionTest11 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -3695,9 +3711,10 @@ regressionTest12 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4017,9 +4034,10 @@ regressionTest13 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4339,9 +4357,10 @@ regressionTest14 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4663,9 +4682,10 @@ regressionTest15 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -4985,9 +5005,10 @@ regressionTest16 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -5267,9 +5288,10 @@ regressionTest17 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -5283,9 +5305,10 @@ regressionTest17 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
         , _loanPrincipal = 20
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -5615,9 +5638,10 @@ regressionTest18 = do
         , _lenderAddress = lenderAddr1
         , _loanAsset = loanAsset1
         , _loanPrincipal = 10
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -5631,9 +5655,10 @@ regressionTest18 = do
         , _lenderAddress = lenderAddr2
         , _loanAsset = loanAsset2
         , _loanPrincipal = 20
-        , _compoundFrequency = Nothing
+        , _epochDuration = Nothing
         , _loanTerm = 3600
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1))]
@@ -5954,9 +5979,10 @@ regressionTest19 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Just 1
+        , _epochDuration = Just 1
         , _loanTerm = 3600
         , _loanInterest = Fraction (0,10)
+        , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -6222,9 +6248,10 @@ regressionTest20 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _compoundFrequency = Just 50_000
+        , _epochDuration = Just 50_000
         , _loanTerm = 1_000_000
         , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
@@ -6498,6 +6525,275 @@ regressionTest20 = do
           }
       }
 
+-- | The next interest application is technically required, but the compoundingInterest field is
+-- set to false and there are no penalties so it can be skipped. The minPayment is greater than 0.
+regressionTest21 :: MonadEmulator m => m ()
+regressionTest21 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 3600
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (2,10)
+        , _compoundingInterest = False
+        , _minPayment = 10
+        , _penalty = NoPenalty
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Accept the offer.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 6
+                  ]
+              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 5_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  currentSlot >>= awaitTime . (+10) . slotToPosixTime
+  paymentSlot <- (1+) <$> currentSlot
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
 -------------------------------------------------
 -- TestTree
 -------------------------------------------------
@@ -6525,4 +6821,5 @@ tests =
   , mustSucceed "regressionTest18" regressionTest18
   , mustSucceed "regressionTest19" regressionTest19
   , mustSucceed "regressionTest20" regressionTest20
+  , mustSucceed "regressionTest21" regressionTest21
   ]
