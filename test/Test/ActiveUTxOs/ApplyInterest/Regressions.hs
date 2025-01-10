@@ -5207,7 +5207,7 @@ functionTest13 = do
           offerDatum
       ActiveDatum{_loanOutstanding=after,_penalty} = 
         createPostInterestActiveDatum 1 beforeDatum
-  testCase "" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (0,10)) before
+  testCase "functionTest13" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (0,10)) before
 
 -- | Do not apply the interest when the _compoundingInterest flag is False. A penalty is not
 -- required.
@@ -5240,7 +5240,7 @@ functionTest14 = do
         createPostPaymentActiveDatum 1_000_000 beforePaymentDatum
       ActiveDatum{_loanOutstanding=after,_penalty} = 
         createPostInterestActiveDatum 1 afterPaymentDatum
-  testCase "" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (0,10)) before
+  testCase "functionTest14" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (0,10)) before
 
 -- | Apply the interest when the _compoundingInterest flag is True. A penalty is required.
 functionTest15 :: TestTree
@@ -5270,7 +5270,7 @@ functionTest15 = do
           offerDatum
       ActiveDatum{_loanOutstanding=after,_penalty} = 
         createPostInterestActiveDatum 1 beforeDatum
-  testCase "" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (1,10)) before
+  testCase "functionTest15" $ after @=? applyInterestNTimes True _penalty 1 (Fraction (1,10)) before
 
 -- | Apply the interest when the _compoundingInterest flag is True. A penalty is not
 -- required.
@@ -5303,7 +5303,7 @@ functionTest16 = do
         createPostPaymentActiveDatum 1_000_000 beforePaymentDatum
       ActiveDatum{_loanOutstanding=after,_penalty} = 
         createPostInterestActiveDatum 1 afterPaymentDatum
-  testCase "" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (1,10)) before
+  testCase "functionTest16" $ after @=? applyInterestNTimes False _penalty 1 (Fraction (1,10)) before
 
 -------------------------------------------------
 -- TestTree
