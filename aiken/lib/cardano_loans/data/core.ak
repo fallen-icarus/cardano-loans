@@ -198,6 +198,19 @@ pub fn make_loan_id(offer_ref: OutputReference) -> LoanId {
   ) |> LoanId
 }
 
+// Some bytearray functions wrap around when the index is > 255. This could cause duplicate LoanIds
+// to be minted if two output references end up with the same bytearray. An example would be if one
+// UTxO in a tx has an index of 0 while another UTxO in the same tx has an index of 256.
+test byte_overflow() {
+  and {
+    make_loan_id(OutputReference(TransactionId("00"),0)) !=
+      make_loan_id(OutputReference(TransactionId("00"),256)),
+    
+    make_loan_id(OutputReference(TransactionId("00"),1)) !=
+      make_loan_id(OutputReference(TransactionId("00"),257)),
+  }
+}
+
 // Convert an AssetName directly to a LoanId. This should only be used
 // when the AssetName is guaranteed to be a LoanId.
 pub fn unsafe_to_loan_id(loan_id: AssetName) -> LoanId {
