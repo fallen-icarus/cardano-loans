@@ -2418,21 +2418,21 @@ benchTest8 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 14
-  , mustSucceed "benchTest2" $ benchTest2 17
+  , mustSucceed "benchTest2" $ benchTest2 16
   , mustSucceed "benchTest3" $ benchTest3 16
   , mustSucceed "benchTest4" $ benchTest4 10
   , mustSucceed "benchTest5" $ benchTest5 16
   , mustSucceed "benchTest6" $ benchTest6 13
   , mustSucceed "benchTest7" $ benchTest7 10
-  , mustSucceed "benchTest8" $ benchTest8 14
+  , mustSucceed "benchTest8" $ benchTest8 15
 
     -- Performance Increase Tests
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 15
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 11
   , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 17
   , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 14
   , mustExceedTxLimits "perfIncreaseTest7" $ benchTest7 11
-  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 15
+  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 16
   ]

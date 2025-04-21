@@ -914,10 +914,10 @@ tests =
   [ mustSucceed "benchTest1" $ benchTest1 9
   , mustSucceed "benchTest2" $ benchTest2 9
   , mustSucceed "benchTest3" $ benchTest3 8
-  , mustSucceed "benchTest4" $ benchTest4 7
+  , mustSucceed "benchTest4" $ benchTest4 8
 
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 10
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 10
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 9
-  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 8
+  , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 9
   ]
