@@ -3295,86 +3295,6 @@ datumFailure20 = do
       , extraKeyWitnesses = [lenderPubKey]
       }
 
--- | The OfferDatum has an empty collateral list.
-datumFailure21 :: MonadEmulator m => m ()
-datumFailure21 = do
-  let -- Borrower Info
-      borrowerWallet = Mock.knownMockWallet 1
-      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
-      borrowerCred = PV2.PubKeyCredential borrowerPubKey
-      loanAddress = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
-                    (Just $ PV2.StakingHash borrowerCred)
-
-      -- Lender Info
-      lenderWallet = Mock.knownMockWallet 2
-      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
-      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
-      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
-      lenderCred = PV2.PubKeyCredential lenderPubKey
-      lenderBeacon = genLenderId lenderCred
-      lenderAddr = 
-        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
-                    (Just $ PV2.StakingHash lenderCred)
-
-      -- Loan Info
-      loanAsset = Asset (adaSymbol,adaToken)
-      collateral1 = Asset (testTokenSymbol,"TestToken1")
-      collateral2 = Asset (testTokenSymbol,"TestToken2")
-      loanBeacon = genLoanAssetBeaconName loanAsset
-      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
-        { _lenderId = lenderCred
-        , _lenderAddress = lenderAddr
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _epochDuration = Nothing
-        , _loanTerm = 3600
-        , _loanInterest = Fraction (1,10)
-        , _compoundingInterest = True
-        , _minPayment = 0
-        , _penalty = NoPenalty
-        , _collateralization = []
-        , _collateralIsSwappable = False
-        , _claimPeriod = 3600
-        , _offerDeposit = 4_000_000
-        , _offerExpiration = Nothing
-        }
-
-  -- Initialize scenario
-  References{negotiationRef} <- initializeReferenceScripts 
-
-  -- Try to create the Offer UTxO.
-  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLenderId lenderBeacon,1)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-                  ]
-              , outputDatum = OutputDatum $ toDatum loanDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [lenderPubKey]
-      }
-
 -- | The OfferDatum has duplicates in the collateral list.
 datumFailure22 :: MonadEmulator m => m ()
 datumFailure22 = do
@@ -5782,9 +5702,6 @@ tests =
   , scriptMustFailWithError "datumFailure20" 
       "Datum has wrong min payment"
       datumFailure20
-  , scriptMustFailWithError "datumFailure21" 
-      "Datum has wrong collateralization"
-      datumFailure21
   , scriptMustFailWithError "datumFailure22" 
       "Duplicate collateral found"
       datumFailure22

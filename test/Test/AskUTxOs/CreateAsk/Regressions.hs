@@ -598,6 +598,64 @@ regressionTest9 = do
       }
 
 -------------------------------------------------
+-- Unsecured-Loan Tests
+-------------------------------------------------
+-- | Create a single valid Ask UTxO for an unsecured loan (ie, the collateral list is empty).
+regressionTest10 :: MonadEmulator m => m ()
+regressionTest10 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10
+        , _loanTerm = 3600
+        , _collateral = []
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Try to create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+-------------------------------------------------
 -- TestTree
 -------------------------------------------------
 -- | A `TestTree` containing all regression scenarios for creating Ask UTxOs.
@@ -612,4 +670,5 @@ tests =
   , mustSucceed "regressionTest7" regressionTest7
   , mustSucceed "regressionTest8" regressionTest8
   , mustSucceed "regressionTest9" regressionTest9
+  , mustSucceed "regressionTest10" regressionTest10
   ]
