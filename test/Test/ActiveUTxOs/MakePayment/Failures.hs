@@ -2223,12 +2223,13 @@ beaconFailure8 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad1
+            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad1
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
             { outputAddress = toCardanoApiAddress lenderAddr1
-            , outputValue = utxoValue 5_000_000 mempty
+            , outputValue = utxoValue 2_000_000 $ mempty
+                [ uncurry PV2.singleton (_unAsset loanAsset1) 5]
             , outputDatum = 
                 OutputDatum $ toDatum $ 
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId $ ad1._loanId)
@@ -2243,12 +2244,13 @@ beaconFailure8 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad2
+            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad2
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
             { outputAddress = toCardanoApiAddress lenderAddr1
-            , outputValue = utxoValue 5_000_000 mempty
+            , outputValue = utxoValue 2_000_000 $ mempty
+                [ uncurry PV2.singleton (_unAsset loanAsset2) 5]
             , outputDatum = 
                 OutputDatum $ toDatum $ 
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId $ ad2._loanId)
@@ -2265,7 +2267,7 @@ beaconFailure8 = do
           Input
             { inputId = activeUtxoRef
             , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5)
             }
       , outputs = samplePayments activeUTxOs
       , withdrawals =
@@ -2591,12 +2593,13 @@ beaconFailure9 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad1
+            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad1
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
             { outputAddress = toCardanoApiAddress lenderAddr1
-            , outputValue = utxoValue 5_000_000 mempty
+            , outputValue = utxoValue 2_000_000 $ mconcat
+                [ uncurry PV2.singleton (_unAsset loanAsset1) 5]
             , outputDatum = 
                 OutputDatum $ toDatum $ 
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId $ ad1._loanId)
@@ -2611,12 +2614,13 @@ beaconFailure9 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad2
+            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad2
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
             { outputAddress = toCardanoApiAddress lenderAddr1
-            , outputValue = utxoValue 5_000_000 mempty
+            , outputValue = utxoValue 2_000_000 $ mconcat
+                [ uncurry PV2.singleton (_unAsset loanAsset2) 5]
             , outputDatum = 
                 OutputDatum $ toDatum $ 
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId $ ad2._loanId)
@@ -2633,7 +2637,7 @@ beaconFailure9 = do
           Input
             { inputId = activeUtxoRef
             , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5)
             }
       , outputs = samplePayments activeUTxOs
       , withdrawals =
@@ -17254,10 +17258,10 @@ tests =
       "UTxO does not have the right beacons"
       beaconFailure7
   , scriptMustFailWithError "beaconFailure8" 
-      "Not all required payment outputs found"
+      "UTxO has a beacon with the wrong name"
       beaconFailure8
   , scriptMustFailWithError "beaconFailure9" 
-      "Not all required payment outputs found"
+      "UTxO has a beacon with the wrong name"
       beaconFailure9
   , scriptMustFailWithError "beaconFailure10" 
       "Payment UTxO missing beacons"
