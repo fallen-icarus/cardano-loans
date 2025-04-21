@@ -18,7 +18,8 @@ use cardano_loans/utils.{error_if_false,trace_if_false,parse_datum}
 // false if it is missing required collateral. All other failures will result in an error crashing
 // the script. Due to the way this function is written, beacon tokens do not count towards the 
 // collateral quantities even if they are the loan asset. Therefore, beacon tokens cannot be used 
-// as one of the collateral assets.
+// as one of the collateral assets. If the collateral list is empty, then the Ask UTxO does not need
+// any collateral asset.
 fn check_ask_value(
   val: Value,
   negotiation_beacon_id: NegotiationId,
@@ -88,7 +89,8 @@ fn check_ask_value(
     }
   }
 
-  // The collateral_units_met must match the size of the collateral list. 
+  // The collateral_units_met must match the size of the collateral list. If the collateral list is
+  // empty, then there should not be any other assets (ADA is always allowed).
   list.foldl(value.to_dict(val) |> dict.to_list(_), 0, foo) == list.length(collateral)
 }
 
@@ -140,12 +142,9 @@ fn valid_ask_output(
       loan_term > 0),
     trace_if_false(
       @"Datum has wrong collateral", 
-      and {
-        // It must not be empty.
-        !list.is_empty(collateral),
-        // It must be sorted and not have any duplicates.
-        collateral == list.sort(collateral,utils.compare_collateral_asset_no_dups)
-      }),
+      // It can be empty, but if it isn't:
+      // It must be sorted and not have any duplicates.
+      collateral == list.sort(collateral,utils.compare_collateral_asset_no_dups)),
     trace_if_false(
       @"Ask UTxO is missing required collateral",
       check_ask_value(

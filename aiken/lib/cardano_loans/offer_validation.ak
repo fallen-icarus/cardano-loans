@@ -195,11 +195,10 @@ fn valid_offer_output(
     trace_if_false(
       @"Datum has wrong collateralization",
       and {
-        // List can't be empty.
-        !list.is_empty(collateralization),
-        // List must be sorted and not have duplicates.
+        // List be empty, but if it isn't:
+        // 1) List must be sorted and not have duplicates.
         collateralization == list.sort(collateralization,utils.compare_collateralization_no_dups),
-        // All prices must be > 0 and the denominators must be > 0.
+        // 2) All prices must be > 0 and the denominators must be > 0.
         list.all(
           collateralization,
           fn(x) {
