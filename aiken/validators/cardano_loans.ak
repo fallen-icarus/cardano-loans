@@ -820,7 +820,8 @@ validator(
         //              loan_principal from the Offer UTxO * (1 + loan_interest from the Offer UTxO)
         //         - total_epoch_payments == 0
         //         - loan_id == sha2_256( offer_tx_hash ++ offer_output_index ) as token name.
-        //    c) It must have enough relative collateral to equal the loan_principal amount.
+        //    c) If the collateral list is non-empty, it must have enough relative collateral to
+        //       equal the loan_principal amount.
         //    d) It must have exactly 1 BorrowerId, exactly 1 Active beacon, exactly 1 Asset Beacon
         //       that corresponds to the loan asset, and exactly 1 LoanId that matches the loan_id
         //       field in the datum.
@@ -1092,8 +1093,9 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    e) asset_beacon == Asset beacon name
         //    f) loan_principal > 0
         //    g) loan_term > 0
-        //    h) collateral list must not be empty, be sorted, and not have any duplicates.
-        // 4) The output must contain at least one unit of each asset in the collateral list.
+        //    h) collateral list must be sorted, and not have any duplicates.
+        // 4) If the collateral list is non-empty, the output must contain at least one unit of each
+        //    asset in the collateral list.
         // 5) No other assets are allowed in the output.
         // 6) The borrower's credential must signal approval.
         //
@@ -1104,20 +1106,24 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         // The Asset beacon names are deliberately the same for both the negotiation beacons and the
         // active beacons to improve beacon usability (just swap out the policy id).
         //
-        // One unit of each asset in the collateral list must be stored in the Ask UTxO to allow the
-        // lender to potentially filter Ask UTxOs based off the loan asset AND a desired collateral
-        // asset. In other words, the collateral itself can compliment the beacon queries. This
-        // requirement also has the added benefit of protecting against denial-of-service attacks
-        // against the beacon queries by: 1) invalidating Ask UTxOs with fake collateral assets, and
-        // 2) pushing up the required minUTxOValue for each Ask UTxO. The minUTxOValue makes it
-        // expensive to create millions of Ask UTxOs with real but worthless collateral just to
-        // pollute the beacon queries.
+        // An empty collateral list signals to lenders that the borrower is looking for an unsecured
+        // loan (e.g., a personal loan). Lender's can filter UTxOs by the collateral list if they
+        // want to only see (or don't want to see) asks for unsecured loans.
+        //
+        // If the collateral list is non-empty, one unit of each asset in the collateral list must
+        // be stored in the Ask UTxO to allow the lender to potentially filter Ask UTxOs based off
+        // the loan asset AND a desired collateral asset. In other words, the collateral itself can
+        // compliment the beacon queries. This requirement also has the added benefit of protecting
+        // against denial-of-service attacks against the beacon queries by: 1) invalidating Ask
+        // UTxOs with fake collateral assets, and 2) pushing up the required minUTxOValue for each
+        // Ask UTxO. The minUTxOValue makes it expensive to create millions of Ask UTxOs with real
+        // but worthless collateral just to pollute the beacon queries.
         //
         // The borrower's credential must signal approval so that only the borrower can initiate
         // negotiations under that identity. This cryptographically prevents identity theft.
         //
         // The loan asset is deliberately allowed to be the same as a collateral asset to enable
-        // secured loans. Secured loans are very useful for bootstrapping a borrower's credit
+        // fully secured loans. Secured loans can be useful for bootstrapping a borrower's credit
         // history.
         //
         // There is no need for the AskDatum to contain the observer scripts since the observer
@@ -1195,7 +1201,7 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    i) loan_interest must have a denominator > 0 and a numerator >= 0
         //    j) min_payment >= 0
         //    k) The penalty must either have a fixed fee > 0, a percent fee > 0, or no penalty.
-        //    l) collateralization list must not be empty, be sorted, not have any duplicates, and 
+        //    l) collateralization list must be sorted, not have any duplicates, and 
         //       all relative prices must have numerators >= 0 and have denominators > 0
         //    m) claim_period > 0
         //    n) offer_deposit > 0
@@ -1215,6 +1221,8 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         // the min_payment must be met to avoid penalties. Setting interest to 0 will enable
         // interest interest-free loans. An interest > 0 with compounding_interest set to False
         // will result in a non-compounding interest loan.
+        //
+        // The lender is able to offer an unsecured loan by leaving the collateral list empty.
         //
         // If the lender does not want a particular collateral asset used, the relative value
         // for that asset can be set to 0 to prevent it from counting as collateral. The undesired

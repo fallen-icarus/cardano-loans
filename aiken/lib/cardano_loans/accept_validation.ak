@@ -96,7 +96,8 @@ fn lender_output_has_proper_value(
 }
 
 // Check if the newly accepted loan has enough collateral backing it. This also checks that
-// the output has the proper beacons and fails with an error if it does not.
+// the output has the proper beacons and fails with an error if it does not. If the collateral list
+// is empty, then no collateral is required.
 fn has_enough_collateral(
   active_beacon_id: ActiveId,
   borrower_id: BorrowerId,
@@ -192,8 +193,11 @@ fn has_enough_collateral(
     @"Collateral UTxO missing beacons",
     has_proper_beacons
   )
-
-  relative_collateral >= principal_taken
+  
+  when collateralization is {
+    [] -> True // This is an unsecured loan so no collateral is needed.
+    _ -> relative_collateral >= principal_taken
+  }
 }
 
 // Returns what information the collateral output and lender output should have based on the
