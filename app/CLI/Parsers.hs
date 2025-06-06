@@ -134,7 +134,7 @@ pCreateNewAskInfo =
         <*> pAsset "loan"
         <*> pPrincipal
         <*> pLoanTerm
-        <*> some (pAsset "collateral")
+        <*> many (pAsset "collateral")
 
 pCreateNewOfferInfo :: Parser Command
 pCreateNewOfferInfo =
@@ -941,7 +941,7 @@ pIsCompounding = flag False True
   )
 
 pCollateralization :: Parser [(Asset,Fraction)]
-pCollateralization = some ((,) <$> pAsset "collateral" <*> pRelativeRate)
+pCollateralization = many ((,) <$> pAsset "collateral" <*> pRelativeRate)
   where 
     pRelativeRate :: Parser Fraction
     pRelativeRate = option (eitherReader readFraction)
