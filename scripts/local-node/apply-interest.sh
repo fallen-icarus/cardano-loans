@@ -39,7 +39,7 @@ expirationSlot=$(cardano-loans convert-time \
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $borrowerStakePubKeyFile)
 
 ## Export the interest observer script so you can generate its required stake address.
@@ -50,7 +50,7 @@ cardano-loans scripts \
 
 ## Build the observer script's stake address.
 echo "Building the observer script's stake address..."
-observerAddress=$(cardano-cli stake-address build \
+observerAddress=$(cardano-cli conway stake-address build \
   --testnet-magic 1 \
   --stake-script-file $interestObserverScript)
 
@@ -138,13 +138,13 @@ cardano-cli conway transaction build \
   --invalid-hereafter $expirationSlot \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/01.skey" \
   --signing-key-file "${walletDir}/01Stake.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"

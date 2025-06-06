@@ -35,7 +35,7 @@ askUTxO='6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#0'
 echo "Querying the latest slot..."
 # startSlot=$(cardano-loans query current-slot \
 #   --testnet)
-startSlot=70723379
+startSlot=$(cardano-cli conway query tip --testnet-magic 1 | jq .slot)
 
 ## Convert the slot number to the required posix time.
 echo "Calculating the slot's posix time..."
@@ -45,7 +45,7 @@ startTime=$(cardano-loans convert-time \
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $borrowerStakePubKeyFile)
 
 ## Create the Active datum.
@@ -173,13 +173,13 @@ cardano-cli conway transaction build \
   --invalid-before $startSlot \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/01.skey" \
   --signing-key-file "${walletDir}/01Stake.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"

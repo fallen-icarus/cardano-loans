@@ -36,12 +36,12 @@ cardano-cli conway transaction build \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/03.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
