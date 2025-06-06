@@ -105,7 +105,10 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                <+> pretty (time `div` 1000) <+> "slots"
                <+> tupled [pretty time <+> "milliseconds"]
            , annotate (colorDull Cyan) "collateral:"
-           , indent 2 $ align $ vsep $ map pretty $ _unCollateral _collateral
+           , let col = _unCollateral _collateral in
+               if null col
+               then indent 2 $ annotate (colorDull Red) "none"
+               else indent 2 $ align $ vsep $ map pretty col
            ]
     prettyLoanDatum (Offer OfferDatum{..}) =
       vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "Offer"
@@ -138,8 +141,10 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                  pretty (time `div` 1000) <+> "slots" <+> tupled [pretty time <+> "milliseconds"])
            , annotate (colorDull Cyan) "offer_deposit:" <+> pretty _offerDeposit <+> "lovelace"
            , annotate (colorDull Cyan) "collateralization:"
-           , indent 2 $ align $ vsep $ flip map (_unCollateralization _collateralization) $ 
-               \(col,rate) -> pretty col <+> "@" <+> pretty rate
+           , let cs = _unCollateralization _collateralization in
+               if null cs
+               then indent 2 $ annotate (colorDull Red) "none"
+               else indent 2 $ align $ vsep $ flip map cs $ \(col,rate) -> pretty col <+> "@" <+> pretty rate
            ]
     prettyLoanDatum (Active ActiveDatum{..}) =
       vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "Active"
@@ -178,6 +183,8 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                  <+> tupled [pretty time <+> "posix"]
            , annotate (colorDull Cyan) "outstanding_balance:" <+> pretty _loanOutstanding
            , annotate (colorDull Cyan) "collateralization:"
-           , indent 2 $ align $ vsep $ flip map (_unCollateralization _collateralization) $ 
-               \(col,rate) -> pretty col <+> "@" <+> pretty rate
+           , let cs = _unCollateralization _collateralization in
+               if null cs
+               then indent 2 $ annotate (colorDull Red) "none"
+               else indent 2 $ align $ vsep $ flip map cs $ \(col,rate) -> pretty col <+> "@" <+> pretty rate
            ]
