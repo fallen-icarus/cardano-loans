@@ -213,7 +213,7 @@ that would normally go into the change output. You can let the auto-balancer bal
 `cardano-cli conway transaction build` requires a local node for the auto-balancer which means it cannot be
 used to build a transaction for a remote node. Instead, the `cardano-cli conway transaction build-raw` 
 command is required. This command requires the following steps:
-1. Build a temporary transaction that is missing the execution units and transaciton fee but is
+1. Build a temporary transaction that is missing the execution units and transaction fee but is
    properly balanced. You can assume a fee of zero for this transaction.
 2. Submit the temporary transaction for execution budget estimations.
 3. Rebuild the transaction with the proper execution budgets. The fee is still set to zero.
@@ -249,7 +249,7 @@ This action uses Koios. The returned budgets will be indexed by the input order,
 and withdrawal credential order. **This may not be the same order you specified when building the
 temporary transaction.** The node will reorder them based on lexicographical ordering. If you are
 not sure of the proper ordering, you can view the transaction file that is created with
-`cardano-cli` using `cardano-cli transaction view`; the inputs, policy ids, and withdrawal
+`cardano-cli` using `cardano-cli debug transaction view`; the inputs, policy ids, and withdrawal
 credentials will be properly ordered.
 
 #### Submitting the final transaction
@@ -335,19 +335,19 @@ cardano-loans scripts \
 
 #### Create the registration certificates
 ```bash
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file negotiation_beacons.plutus \
   --out-file negotiation_beacons.cert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file payment_observer.plutus \
   --out-file payment_observer.cert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file interest_observer.plutus \
   --out-file interest_observer.cert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file address_update_observer.plutus \
   --out-file address_update_observer.cert
 ```
@@ -386,7 +386,7 @@ cardano-loans scripts loan-script \
   --out-file loan.plutus
 
 # Create the borrower address.
-cardano-cli address build \
+cardano-cli conway address build \
   --payment-script-file loan.plutus \
   --stake-verification-key-file borrower_stake.vkey \
   --testnet-magic 1 \
@@ -401,13 +401,13 @@ the address.
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -475,6 +475,8 @@ The `collateral-asset` fields *must* be in lexicographical order. If you reverse
 collateral assets above, the negotiation beacon script will crash with an error saying your
 collateral assets are wrong.
 
+If you wish to ask for an unsecured loan, don't include any `collateral-asset` fields.
+
 #### Building the transaction
 To see how to build the transaction using a local node, refer
 [here](scripts/local-node/create-ask.sh).
@@ -490,7 +492,7 @@ Closing an Ask UTxO requires the following steps:
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
@@ -552,13 +554,13 @@ counter-offer that can be immediately accepted by the borrower.
 
 #### Calculate the hash of the staking credential used in the Lender ID
 ```bash
-lenderCredentialHash=$(cardano-cli stake-address key-hash \
+lenderCredentialHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file lender_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-lenderCredentialHash=$(cardano-cli transaciton policyid \
+lenderCredentialHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -673,6 +675,8 @@ collateral assets are wrong. The `relative-rate` fields must be paired with the 
 just like with the `interest` field. If you do not want a specific collateral to be used, you can
 either omit that collateral from the OfferDatum or you can set its `relative-rate` to zero.
 
+To offer an unsecured loan, don't include any `collateral-asset` and `relative-rate` fields.
+
 The `claim-period` is how long you will have to claim expired collateral after the borrower defaults
 on the loan. Once this time period passes, you will still be able to claim the collateral, but so
 will the borrower. It will be a race to get the collateral. This is required to prevent permanent
@@ -704,13 +708,13 @@ Closing an Offer UTxO requires the following steps:
 
 #### Calculate the hash of the staking credential used in the Lender ID
 ```bash
-lenderCredentialHash=$(cardano-cli stake-address key-hash \
+lenderCredentialHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file lender_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-lenderCredentialHash=$(cardano-cli transaciton policyid \
+lenderCredentialHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -797,13 +801,13 @@ startTime=$(cardano-loans convert-time \
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -970,13 +974,13 @@ loans, the invalid-hereafter should be set to the earliest time.
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -1015,7 +1019,7 @@ cardano-loans scripts \
   --payment-script \
   --out-file payment_observer.plutus
 
-observerAddress=$(cardano-cli stake-address build \
+observerAddress=$(cardano-cli conway stake-address build \
   --testnet-magic 1 \
   --stake-script-file payment_observer.plutus)
 ```
@@ -1098,8 +1102,8 @@ When making payments on multiple loans, make sure the required outputs are in th
 payment inputs!
 
 To see how to build the transaction using a local node, refer
-[here](scripts/local-node/make-payment.sh). There is an example `cardano-cli transaction build` for
-both full payments and partial payments.
+[here](scripts/local-node/make-payment.sh). There is an example `cardano-cli conway transaction
+build` for both full payments and partial payments.
 
 ## Applying Interest and/or Penalties
 
@@ -1131,13 +1135,13 @@ loans, the invalid-hereafter should be set to the earliest time.
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
@@ -1152,7 +1156,7 @@ cardano-loans scripts \
   --interest-script \
   --out-file payment_observer.plutus
 
-observerAddress=$(cardano-cli stake-address build \
+observerAddress=$(cardano-cli conway stake-address build \
   --testnet-magic 1 \
   --stake-script-file interest_observer.plutus)
 ```
@@ -1264,7 +1268,7 @@ cardano-loans scripts \
   --address-update-script \
   --out-file address_update_observer.plutus
 
-observerAddress=$(cardano-cli stake-address build \
+observerAddress=$(cardano-cli conway stake-address build \
   --testnet-magic 1 \
   --stake-script-file address_update_observer.plutus)
 ```
@@ -1423,13 +1427,13 @@ The invalid-before of the transaction must be at least the claim expiration time
 
 #### Calculate the hash of the staking credential used in the borrower address
 ```bash
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file borrower_stake.vkey)
 ```
 
 If you are using a staking script credential, you can create the credential hash with this command:
 ```bash
-borrowerStakeScriptHash=$(cardano-cli transaciton policyid \
+borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
   --script-file stake_script.plutus)
 ```
 
