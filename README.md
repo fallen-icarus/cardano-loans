@@ -49,6 +49,7 @@ be found [here](./Benchmarks.md).
 - [Benchmarks and Fee Estimations (YMMV)](#benchmarks-and-fee-estimations-ymmv)
 - [Features Discussion](#features-discussion)
     - [On-Chain, Emergent Credit History](#on-chain-emergent-credit-history)
+    - [Banking the Unbanked with Unsecured Loans](#banking-the-unbanked-with-unsecured-loans)
     - [Negotiable Collateralization](#negotiable-collateralization)
     - [Multi-Asset Loans](#multi-asset-loans)
     - [Staking Script Support](#staking-script-support)
@@ -384,12 +385,13 @@ that reflects ownership of the loan. In the case of a default, whoever owns this
 claim the remaining collateral. Furthermore, the owner of this NFT is able to update the required
 payment address for the loan, even after it has started. This NFT is effectively the loan bond that
 can be freely traded on a secondary market.
-- **Over-Collateralized, Under-Collateralized, or Fully-Collateralized Loans** - lenders and
+- **Over-Collateralized, Under-Collateralized, Fully-Collateralized, or Unsecured Loans** - lenders and
 borrowers can set the relative values of the collateral assets to anything they want. If they set
 the relative values above the market price, that is an over-collateralized loan; at the market price
 would be a fully-collateralized loan; and below the market price would be an under-collateralized
 loan. If lenders think the value of the collateral will change over the course of the loan's
-lifetime, they can set the relative values in such a way to minimize this risk.
+lifetime, they can set the relative values in such a way to minimize this risk. Lenders can also choose
+to offer unsecured loans.
 - **A Single DApp Address for each Borrower** - every borrower gets their own personal DApp address.
 All negotiations involving the borrower take place in this address and all active loans live in this
 address. This makes it very easy for front-ends to integrate Cardano-Loans as well as for borrowers
@@ -875,7 +877,7 @@ the Borrower ID *and* the target loan address.
     - `assetBeacon` == this output's loan asset beacon's token name
     - `loanPrincipal` > 0
     - `loanTerm` > 0
-    - `collateral` must not be empty, must be sorted lexicographically, and must *not* have any
+    - `collateral` must be sorted lexicographically, and must *not* have any
     duplicates
 - All outputs with beacons must contain at least one unit of each asset in the collateral list.
 - All outputs with beacons must not have any extraneous assets (ada is always allowed).
@@ -894,6 +896,8 @@ collateral just to pollute the beacon queries.
 All assets the borrower is willing to use as collateral *must* appear in the `collateral` list. The
 borrower does not need to use that asset as collateral, but *assets not found in the `collateral`
 list cannot be used as collateral for a loan*.
+
+For unsecured loan requests, the `collateral` list should be left empty.
 
 A consequence of these requirements is that all Ask UTxOs created *must* be for the same borrower.
 
@@ -1007,7 +1011,7 @@ the Lender ID.
     - `penalty` must either be `FixedFee x` where `x` > 0, `PercentFee fee` where the numerator
     for `fee` is > 0 and the denominator is > 0, or `NoPenalty`. If `minPayment` is set to 0, then
     `penalty` *must* be set to `NoPenalty`.
-    - `collateralization` must not be empty, must be sorted lexicographically, must *not* have any
+    - `collateralization` must be sorted lexicographically, must *not* have any
     duplicates, and all relative prices must have numerators >= 0 and denominators > 0
     - `claimPeriod` > 0
     - `offerDeposit` > 0
@@ -1061,6 +1065,8 @@ lifetime of the loan, make sure to factor that into your relative price!* If you
 borrower to use a less volatile asset as collateral, you can make a counter-offer that replaces the
 volatile collateral asset with the less volatile one. You can even make an offer that uses a
 different loan asset than one requested by the borrower.
+
+For unsecured loan offers, leave the `collateralization` list empty.
 
 The `collateralIsSwappable` field controls whether collateral can be swapped out during a loan
 payment. When swapping out collateral, the total relative value of the collateral backing the loan
@@ -1192,7 +1198,8 @@ the inputs.
         - `loanOutstanding` == `loanPrincipal` * (1 + `loanInterest`)
         - `totalEpochPayments` == 0
         - `loanId` == `sha2_256( offer_utxo_tx_hash ++ offer_utxo_output_index )`
-    - It must have enough relative collateral to equal the `loanPrincipal`.
+    - It must have enough relative collateral to equal the `loanPrincipal`. **This check is skipped
+    for unsecured loans.**
     - It must have exactly 1 Borrower ID with the token name matching `borrowerId`, 1 Active beacon
     with the token name "Active", 1 loan asset beacon with the token name matching `assetBeacon`,
     and 1 Loan ID beacon with the token name matching `loanId`.
@@ -1328,7 +1335,8 @@ making a payment as long as the total relative value of the collateral is still 
 
 To account for interest, collateral can only be taken proportional to the amount of the
 `loanOutstanding` paid off. This ensures there will always be collateral until the very end of the
-loan which helps incentivize proper behavior from borrowers. The formula is basically:
+loan which helps incentivize proper behavior from borrowers (unsecured loans are an exception). The
+formula is basically:
 
 ```
 sum { collateralTaken / relativeValue }           loanRepaid
@@ -1611,6 +1619,14 @@ Using Cardano-Loans, the non-banked can finally leap-frog passed the incompetenc
 their own national financial systems and build up their own, (possibly) globally recognized,
 economic identity.
 
+### Banking the Unbanked with Unsecured Loans
+
+Being able to offer unsecured loans is critical for being able to bank the unbanked through a
+DeFi/TradFi hybrid approach! See this [blog
+post](https://github.com/fallen-icarus/meditations-blog/blob/main/How%20to%20Bank%20the%20Unbanked/README.md)
+for details. **This hybrid process can also be a free market approach to trustlessly bootstrapping
+DIDs.**
+
 ### Negotiable Collateralization
 
 Since lenders explicitly set the relative values of each collateral asset used, there is no need to
@@ -1718,6 +1734,12 @@ of credentials as DIDs, the protocol may not already support DIDs.
 
 Therefore, whether any changes are needed for Cardano-Loans to support DIDs entirely depends on how
 DIDs are issued.
+
+> [!IMPORTANT]
+> The [hybrid process](https://github.com/fallen-icarus/meditations-blog/blob/main/How%20to%20Bank%20the%20Unbanked/README.md)
+> used to bank the unbanked could be a free market approach to trustlessly bootstrapping DIDs. No
+> government bootstrapping would be required. In essence, it can be said that Cardano-Loans can
+> generate trustless DIDs.
 
 ### Term Extensions and Re-Negotiations
 

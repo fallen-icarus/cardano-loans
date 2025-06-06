@@ -1,5 +1,11 @@
 # Revision history for cardano-loans
 
+## 3.0.0.0rc
+
+#### New Features
+
+- [On-Chain] Added support for unsecured loans. See this [blog post](https://github.com/fallen-icarus/meditations-blog/blob/main/How%20to%20Bank%20the%20Unbanked/README.md) for why.
+
 ## 2.0.0.0rc
 
 #### Bug Fixes
