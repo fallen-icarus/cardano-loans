@@ -16,7 +16,7 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.5465737454
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $borrowerStakePubKeyFile)
 
 ## Create the required redeemers.
@@ -66,13 +66,13 @@ cardano-cli conway transaction build \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/01.skey" \
   --signing-key-file "${walletDir}/01Stake.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"

@@ -21,7 +21,7 @@ loanIdTokenName='4fe883a427bd96128e0fcfdbe94865c41ce92187d252f0ec45f261255f693c8
 
 ## Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
-borrowerStakePubKeyHash=$(cardano-cli stake-address key-hash \
+borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $borrowerStakePubKeyFile)
 
 ## Convert the posix time to a slot number for invalid-before.
@@ -83,13 +83,13 @@ cardano-cli conway transaction build \
   --invalid-before $unlockSlot \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/01.skey" \
   --signing-key-file "${walletDir}/01Stake.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"

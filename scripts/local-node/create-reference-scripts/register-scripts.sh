@@ -56,25 +56,25 @@ cardano-loans redeemers address-update-script register \
 
 ## Create the registration certificates.
 echo "Creating the registration certificates..."
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $negotiationScript \
   --out-file $negotiationCert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $paymentScript \
   --out-file $paymentCert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $interestScript \
   --out-file $interestCert
 
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $addressUpdateScript \
@@ -105,12 +105,12 @@ cardano-cli conway transaction build \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/01.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"

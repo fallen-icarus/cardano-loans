@@ -44,7 +44,7 @@ cardano-loans scripts \
 
 ## Build the observer script's stake address.
 echo "Building the observer script's stake address..."
-observerAddress=$(cardano-cli stake-address build \
+observerAddress=$(cardano-cli conway stake-address build \
   --testnet-magic 1 \
   --stake-script-file $addressUpdateObserverScript)
 
@@ -142,12 +142,12 @@ cardano-cli conway transaction build \
   --invalid-hereafter $updateSlot \
   --out-file "${tmpDir}tx.body"
 
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "${walletDir}/02.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
+cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
