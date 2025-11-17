@@ -1,6 +1,7 @@
 use aiken/bytearray as byte
 use aiken/dict.{Dict}
 use aiken/list
+use aiken/option
 use aiken/time.{PosixTime}
 use aiken/transaction.{
     Datum,
@@ -22,7 +23,6 @@ use cardano_loans/data/core.{
     Asset,
     Fraction,
     ScriptHash,
-    NoPenalty
   }
 use cardano_loans/data/datums.{ActiveDatum}
 use cardano_loans/data/redeemers.{LoanRedeemer, MakePayment}
@@ -36,7 +36,7 @@ type RequiredCollateralOutput {
   asset_beacon: AssetBeacon,
   borrower_id: BorrowerId,
   payment_amount: Int,
-  relative_collteral_value: List<(Asset,Int)>,
+  relative_collteral_value: List<(Asset,Fraction)>,
   loan_outstanding: Fraction,
   req_datum: Datum
 }
@@ -244,7 +244,6 @@ fn process_input(
     ActiveDatum{
       active_beacon_id,
       payment_observer_hash,
-      interest_observer_hash,
       address_update_observer_hash,
       borrower_id,
       lender_address,
@@ -254,7 +253,7 @@ fn process_input(
       epoch_duration,
       last_epoch_boundary,
       loan_term,
-      loan_interest: (interest_num,_) as loan_interest,
+      loan_interest,
       compounding_interest: compounding_interest,
       min_payment,
       penalty,
@@ -262,7 +261,7 @@ fn process_input(
       collateral_is_swappable,
       claim_expiration,
       loan_expiration,
-      loan_outstanding: (outstanding_num,outstanding_den) as loan_outstanding,
+      loan_outstanding: initial_loan_outstanding,
       total_epoch_payments,
       loan_id
     } -> {
@@ -279,18 +278,43 @@ fn process_input(
         )
       )
 
-      let requires_interest = compounding_interest && interest_num > 0
-
-      expect True = error_if_false(
-        @"Next interest and/or penalty application required",
-        // If the interest is non-compounding or the interest is set to zero, and penalty is 
-        // NoPenalty, the epoch_duration is irrelevant. No rollover is required in this situation.
-        // Also, no rollover is required when epoch_duration is None.
-        (!requires_interest && penalty == NoPenalty) || when epoch_duration is {
-          None -> True
-          Some(freq) -> upper <= last_epoch_boundary + freq
+      // 1. Calculate the number of times interest/penalties must be applied.
+      let number_of_times = when epoch_duration is {
+        // If there's no epoch duration, no interest/penalties occurs.
+        None -> 0
+        Some(freq) -> {
+          // This formula is used to calculate the number_of_times without having to trust the
+          // user. It subtracts 1 so that frontends can set invalid-hereafter to the next epoch
+          // boundary without erroneously triggering interest/penalty.
+          (upper - last_epoch_boundary - 1) / freq
         }
-      )
+      }
+
+      // 2. Apply any interest/penalties before processing the payment.
+      let (outstanding_num, outstanding_den) as post_rollover_outstanding =
+        if number_of_times > 0 {
+          utils.compound_n_times(
+            min_payment > total_epoch_payments,
+            penalty,
+            initial_loan_outstanding,
+            if compounding_interest { loan_interest } else { (0, 1) },
+            number_of_times,
+          )
+        } else {
+          initial_loan_outstanding
+        }
+
+      // 3. Apply the payment.
+      let new_outstanding_balance = 
+        utils.subtract_payment(outstanding_num,outstanding_den,payment_amount)
+
+      // 4. Reset the payment counter for the new epoch if needed. 
+      let corrected_total_payments = 
+            if number_of_times > 0 { 0 } else { total_epoch_payments }
+
+      // 5. Calculate the new epoch boundary.
+      let updated_epoch_boundary = 
+            last_epoch_boundary + number_of_times * option.or_else(epoch_duration, 0)
 
       expect True = error_if_false(
         @"Payment inputs use different active beacons",
@@ -339,11 +363,10 @@ fn process_input(
             core.unsafe_to_asset_beacon(asset_beacon),
             core.unsafe_to_borrower_id(borrower_id), 
           ),
-          loan_outstanding,
+          post_rollover_outstanding, // Needed to know how much collateral is unlocked.
           ActiveDatum{
             active_beacon_id: active_beacon_id,
             payment_observer_hash: payment_observer_hash,
-            interest_observer_hash: interest_observer_hash,
             address_update_observer_hash: address_update_observer_hash,
             borrower_id: borrower_id,
             lender_address: lender_address,
@@ -351,7 +374,7 @@ fn process_input(
             asset_beacon: asset_beacon,
             loan_principal: loan_principal,
             epoch_duration: epoch_duration,
-            last_epoch_boundary: last_epoch_boundary,
+            last_epoch_boundary: updated_epoch_boundary,
             loan_term: loan_term,
             loan_interest: loan_interest,
             compounding_interest: compounding_interest,
@@ -361,8 +384,8 @@ fn process_input(
             collateral_is_swappable: collateral_is_swappable,
             claim_expiration: claim_expiration,
             loan_expiration: loan_expiration,
-            loan_outstanding: utils.subtract_payment(outstanding_num,outstanding_den,payment_amount),
-            total_epoch_payments: total_epoch_payments + payment_amount,
+            loan_outstanding: new_outstanding_balance,
+            total_epoch_payments: corrected_total_payments + payment_amount,
             loan_id: loan_id
           } |> InlineDatum
         )
@@ -377,7 +400,8 @@ fn process_input(
 
 // Get the total relative value of the collateral. This also checks that the UTxO has the
 // proper beacons. Returns the relative units of each collateral asset in the
-// reverse order of the collateral list. 
+// reverse order of the collateral list. It returns the ralative value as a fraction to preserve
+// precision.
 fn get_relative_collateral_values(
   utxo_value: Value,
   collateralization: List<(Asset,Fraction)>,
@@ -385,10 +409,10 @@ fn get_relative_collateral_values(
   loan_id: LoanId,
   asset_beacon: AssetBeacon,
   borrower_id: BorrowerId
-) -> List<(Asset,Int)> {
+) -> List<(Asset,Fraction)> {
   // A function to map over the value of this UTxO. It will return the relative value of
   // the collateral UTxO as well as whether the UTxO has the proper beacons. 
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc:(List<(Asset,Int)>,Bool)) {
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc:(List<(Asset,Fraction)>,Bool)) {
     let (cn,tns_dict) = x
     let (relative_collateral,has_beacons) = acc
 
@@ -440,7 +464,7 @@ fn get_relative_collateral_values(
     else {
       let non_beacon_toks = dict.to_list(tns_dict)
 
-      let collat_check = fn(token_info: (AssetName,Int), inner_acc: List<(Asset,Int)>) {
+      let collat_check = fn(token_info: (AssetName,Int), inner_acc: List<(Asset,Fraction)>) {
         let (tn,n) = token_info
         let collatAsset = utils.find_by_key(collateralization,(cn,tn))
         when collatAsset is {
@@ -452,9 +476,9 @@ fn get_relative_collateral_values(
             } 
         
             // Calculate the value of the collateral in terms of the loan asset. Add it to the
-            // accumulator. acc + collateral_quantity * reciprocal(price)
+            // accumulator: `acc + collateral_quantity * reciprocal(price)`.
             else {
-              list.push(inner_acc, ((cn,tn), n * price_den / price_num))
+              list.push(inner_acc, ((cn,tn), (n * price_den, price_num)))
             }
           }
         }
@@ -516,20 +540,48 @@ fn check_outputs(
           borrower_id
         )
 
-        let (old_collateral_relative_value,new_collateral_relative_value) =
+        let ((old_num, old_den), (new_num, new_den)) =
           sum_relative_collateral_values(
             old_collateral_relative_values,
             new_collateral_relative_values,
             collateral_is_swappable,
-            (0,0)
+            ((0,1),(0,1))
           )
 
         // The proportion of the collateral taken must be <= the proportion of the loan repaid.
-        // Formula using only Int and no division (division is more expensive).
+        //
+        // This check is derived from the following inequality:
+        // (collateral_taken / total_collateral) <= (payment / outstanding_loan)
+        //
+        // 1. Collateral proportion:
+        //    - old_collateral = old_num / old_den
+        //    - new_collateral = new_num / new_den
+        //    - collateral_taken = old_collateral - new_collateral
+        //        => (old_num * new_den - new_num * old_den) / (old_den * new_den)
+        //    - Proportion = collateral_taken / old_collateral
+        //        => ((old_num * new_den - new_num * old_den) / (old_den * new_den)) / (old_num / old_den)
+        //        => (old_num * new_den - new_num * old_den) / (old_num * new_den)
+        //
+        // 2. Loan repayment proportion:
+        //    - payment = payment_amount
+        //    - outstanding_loan = outstanding_num / outstanding_den
+        //    - Proportion = payment / outstanding_loan
+        //        => payment_amount / (outstanding_num / outstanding_den)
+        //        => (payment_amount * outstanding_den) / outstanding_num
+        //
+        // 3. The inequality:
+        //    (old_num*new_den - new_num*old_den)/(old_num*new_den) <= (payment*outstanding_den)/outstanding_num
+        //
+        // 4. To avoid division cross-multiply the denominators. Since all values are
+        //    positive, the direction of the inequality is preserved:
+        //    outstanding_num * (old_num * new_den - new_num * old_den) <= 
+        //      payment * outstanding_den * old_num * new_den
+        //
+        // This final equation is what is implemented below.
         expect True = error_if_false(
           @"Too much collateral taken",
-          outstanding_num * (old_collateral_relative_value - new_collateral_relative_value) <=
-            old_collateral_relative_value * payment_amount * outstanding_den
+          outstanding_num * (old_num * new_den - new_num * old_den) <=
+            old_num * payment_amount * outstanding_den * new_den
         )
 
         check_outputs(
@@ -624,20 +676,49 @@ fn check_outputs(
           borrower_id
         )
 
-        let (old_collateral_relative_value,new_collateral_relative_value) =
+        let ((old_coll_num, old_coll_den), (new_coll_num, new_coll_den)) =
           sum_relative_collateral_values(
             old_collateral_relative_values,
             new_collateral_relative_values,
             collateral_is_swappable,
-            (0,0)
+            ((0,1),(0,1))
           )
 
         // The proportion of the collateral taken must be <= the proportion of the loan repaid.
-        // Formula using only Int and no division (division is more expensive): 
+        //
+        // The check is derived from the following inequality:
+        // (collateral_taken / total_collateral) <= (payment / outstanding_loan)
+        //
+        // 1. Collateral proportion:
+        //    - old_collateral = old_coll_num / old_coll_den
+        //    - new_collateral = new_coll_num / new_coll_den
+        //    - collateral_taken = old_collateral - new_collateral
+        //        => (old_coll_num*new_coll_den - new_coll_num*old_coll_den)/(old_coll_den*new_coll_den)
+        //    - Proportion = collateral_taken / old_collateral
+        //        => ((old_coll_num*new_coll_den - new_coll_num*old_coll_den)/(old_coll_den*new_coll_den)) / (old_coll_num/old_coll_den)
+        //        => (old_coll_num * new_coll_den - new_coll_num * old_coll_den) / (old_coll_num * new_coll_den)
+        //
+        // 2. Loan repayment proportion:
+        //    - payment = col_payment_amount
+        //    - outstanding_loan = outstanding_num / outstanding_den
+        //    - Proportion = payment / outstanding_loan
+        //        => col_payment_amount / (outstanding_num / outstanding_den)
+        //        => (col_payment_amount * outstanding_den) / outstanding_num
+        //
+        // 3. The inequality:
+        //    (old_coll_num*new_coll_den - new_coll_num*old_coll_den)/(old_coll_num*new_coll_den) <=
+        //      (col_payment_amount*outstanding_den)/outstanding_num
+        //
+        // 4. To avoid division, cross-multiply the denominators. Since all values are
+        //    positive, the direction of the inequality is preserved:
+        //    outstanding_num * (old_coll_num*new_coll_den - new_coll_num*old_coll_den) <= 
+        //      col_payment_amount*outstanding_den * old_coll_num*new_coll_den
+        //
+        // This final integer-only equation is what is implemented below.
         expect True = error_if_false(
           @"Too much collateral taken",
-          outstanding_num * (old_collateral_relative_value - new_collateral_relative_value) <=
-            old_collateral_relative_value * col_payment_amount * outstanding_den
+          outstanding_num * (old_coll_num * new_coll_den - new_coll_num * old_coll_den) <=
+            old_coll_num * col_payment_amount * outstanding_den * new_coll_den
         )
 
         // The required payment output must still be found for this input.
@@ -686,14 +767,16 @@ fn check_outputs(
 // In order to ensure collateral_is_swappable is respectively, this function just zips the 
 // two lists to compare while independently summing them. 
 fn sum_relative_collateral_values(
-  in_values: List<(Asset,Int)>,
-  out_values: List<(Asset,Int)>,
+  in_values: List<(Asset,Fraction)>,
+  out_values: List<(Asset,Fraction)>,
   collateral_is_swappable: Bool,
-  acc: (Int,Int)
-) -> (Int,Int) {
+  acc: (Fraction,Fraction)
+) -> (Fraction,Fraction) {
   when (in_values,out_values) is {
     ([(inAsset,inVal),..restIn],[(outAsset,outVal),..restOut]) -> {
-      let (inRel,outRel) = acc
+      let ((acc_in_n, acc_in_d),(acc_out_n, acc_out_d)) = acc
+      let (inVal_n, inVal_d) = inVal
+      let (outVal_n, outVal_d) = outVal
 
       // The lists are in reverse order of policy id and asset names. So Less means it should
       // appear later in the list and Greater means it should appear sooner.
@@ -702,14 +785,20 @@ fn sum_relative_collateral_values(
           expect True = error_if_false(
             @"Collateral is not swappable",
             // Collateral can only be deposited if collateral_is_swappable is set to True.
-            (outVal - inVal) <= 0 || collateral_is_swappable
+            // It's a cross-multiplication to avoid division: outVal <= inVal
+            //   (outVal_n / outVal_d) <= (inVal_n / inVal_d)
+            //   outVal_n * inVal_d <= inVal_n * outVal_d
+            outVal_n * inVal_d <= inVal_n * outVal_d || collateral_is_swappable
           )
 
+          // Summing fractions: (a/b) + (c/d) = (a*d + c*b) / (b*d)
           sum_relative_collateral_values(
             restIn,
             restOut,
             collateral_is_swappable,
-            (inRel + inVal,outRel + outVal)
+            ( (acc_in_n * inVal_d + inVal_n * acc_in_d, acc_in_d * inVal_d),
+              (acc_out_n * outVal_d + outVal_n * acc_out_d, acc_out_d * outVal_d)
+            ),
           )
         }
 
@@ -722,39 +811,51 @@ fn sum_relative_collateral_values(
             collateral_is_swappable
           )
 
+          // Summing fractions: (a/b) + (c/d) = (a*d + c*b) / (b*d)
           sum_relative_collateral_values(
             in_values,
             restOut,
             collateral_is_swappable,
-            (inRel,outRel + outVal)
+            ( (acc_in_n, acc_in_d),
+              (acc_out_n * outVal_d + outVal_n * acc_out_d, acc_out_d * outVal_d)
+            ),
           )
         }
 
         // The input is greater and needs to be processed separately before moving on.
         Greater -> {
+          // Summing fractions: (a/b) + (c/d) = (a*d + c*b) / (b*d)
           sum_relative_collateral_values(
             restIn,
             out_values,
             collateral_is_swappable,
-            (inRel + inVal,outRel)
+            ( (acc_in_n * inVal_d + inVal_n * acc_in_d, acc_in_d * inVal_d),
+              (acc_out_n, acc_out_d)
+            ),
           )
         }
       }
     }
 
     ([(_,inVal),..restIn],[]) -> {
-      let (inRel,outRel) = acc
+      let ((acc_in_n, acc_in_d),(acc_out_n, acc_out_d)) = acc
+      let (inVal_n, inVal_d) = inVal
+
+      // Summing fractions: (a/b) + (c/d) = (a*d + c*b) / (b*d)
       sum_relative_collateral_values(
         restIn,
         [],
         collateral_is_swappable,
-        (inRel + inVal,outRel)
+        ( (acc_in_n * inVal_d + inVal_n * acc_in_d, acc_in_d * inVal_d),
+          (acc_out_n, acc_out_d)
+        ),
       )
     }
 
     // This scenario can only occur if a collateral asset was deposited.
     ([],[(_,outVal),..restOut]) -> {
-      let (inRel,outRel) = acc
+      let ((acc_in_n, acc_in_d),(acc_out_n, acc_out_d)) = acc
+      let (outVal_n, outVal_d) = outVal
 
       expect True = error_if_false(
         @"Collateral is not swappable",
@@ -762,11 +863,14 @@ fn sum_relative_collateral_values(
         collateral_is_swappable
       )
 
+      // Summing fractions: (a/b) + (c/d) = (a*d + c*b) / (b*d)
       sum_relative_collateral_values(
         [],
         restOut,
         collateral_is_swappable,
-        (inRel,outRel + outVal)
+        ( (acc_in_n, acc_in_d),
+          (acc_out_n * outVal_d + outVal_n * acc_out_d, acc_out_d * outVal_d)
+        ),
       )
     }
 

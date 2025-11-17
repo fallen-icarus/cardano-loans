@@ -16,7 +16,7 @@ pub type LoanDatum {
     borrower_id: AssetName, 
     // The asset to be loaned out.
     loan_asset: Asset, 
-    // The asset name for the loan asset beacon. This is the sha256 hash of the loan asset's name,
+    // The asset name for the loan asset beacon. This is the sha2_256 hash of the loan asset's name,
     // prefixed with "Asset" (before hashing).
     asset_beacon: AssetName, 
     // The size of the loan. It must be > 0.
@@ -42,7 +42,7 @@ pub type LoanDatum {
     lender_address: Address, 
     // The asset to be loaned out.
     loan_asset: Asset, 
-    // The asset name for the loan asset beacon. This is the sha256 hash of the loan asset's name,
+    // The asset name for the loan asset beacon. This is the sha2_256 hash of the loan asset's name,
     // prefixed with "Asset" (before hashing).
     asset_beacon: AssetName, 
     // The size of the loan. It must be > 0.
@@ -91,8 +91,6 @@ pub type LoanDatum {
     active_beacon_id: PolicyId, 
     // Script hash for the payment observer script.
     payment_observer_hash: ScriptHash, 
-    // Script hash for the interest observer script.
-    interest_observer_hash: ScriptHash, 
     // Script hash for the address update observer script.
     address_update_observer_hash: ScriptHash, 
     // The borrower's staking credential as a token name.
@@ -135,7 +133,7 @@ pub type LoanDatum {
     loan_outstanding: Fraction, 
     // The total amount paid this loan epoch.
     total_epoch_payments: Int,
-    // The unique identifier for this loan. It is the sha256 hash of the corresponding 
+    // The unique identifier for this loan. It is the sha2_256 hash of the corresponding 
     // Offer UTxO's OutputReference.
     loan_id: AssetName 
   }
