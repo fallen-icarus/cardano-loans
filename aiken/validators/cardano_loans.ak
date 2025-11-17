@@ -38,10 +38,6 @@ use cardano_loans/data/redeemers.{
     ObservePayment, 
     RegisterPaymentObserverScript,
 
-    InterestObserverRedeemer,
-    ObserveInterest, 
-    RegisterInterestObserverScript,
-
     AddressUpdateObserverRedeemer,
     ObserveAddressUpdate, 
     RegisterAddressUpdateObserverScript,
@@ -51,7 +47,6 @@ use cardano_loans/data/redeemers.{
     CloseOrUpdateOffer, 
     AcceptOffer, 
     MakePayment, 
-    ApplyInterest, 
     SpendWithKeyNFT, 
     UpdateLenderAddress, 
     Unlock,
@@ -61,7 +56,6 @@ use cardano_loans/ask_validation as ask
 use cardano_loans/offer_validation as offer
 use cardano_loans/accept_validation as accept
 use cardano_loans/payment_validation as payment
-use cardano_loans/interest_validation as interest
 use cardano_loans/address_update_validation as address_update
 use cardano_loans/burn_and_claim_validation as burn_and_claim
 use cardano_loans/burn_and_unlock_validation as burn_and_unlock
@@ -329,33 +323,6 @@ validator() {
         )
       }
 
-      ApplyInterest{..} -> {
-        // This redeemer delegates all checks to the interest_observer_script. All this redeemer
-        // must do is ensure the interest_observer_script script is executed as a staking
-        // script.
-
-        // Extract the required information from the script context.
-        expect ScriptContext(Transaction{withdrawals,..}, tx.Spend(_)) = ctx
-
-        // Get the interest_observer_hash from the Active datum. All valid Active UTxOs are 
-        // guaranteed to have the proper interest_observer_hash in the datum.
-        let interest_observer_hash = when datum is {
-          ActiveDatum{interest_observer_hash,..} -> interest_observer_hash
-          _ -> error @"UTxO is not an Active UTxO"
-        }
-
-        // The interest_observer_script must be executed with the ObserveInterest redeemer. This
-        // redeemer can only be used with a staking execution. The interest_observer_script only has
-        // one possible redeemer that can be used.
-        trace_if_false(
-          @"Interest observer script not executed with proper redeemer",
-          utils.observer_script_executed(
-            withdrawals,
-            interest_observer_hash
-          )
-        )
-      }
-
       SpendWithKeyNFT -> {
         // Claiming expired Active UTxOs involves burning all beacons attached to the expired UTxOs
         // as well as the Key NFT for each loan. Because of this burning requirement, the logic is
@@ -461,97 +428,6 @@ validator() {
             utils.staking_credential_approves(stake,withdrawals,extra_signatories)
           )
         }
-      }
-    }
-  }
-}
-
-// ----------------------------------------------
-// Interest Observer Script
-// ----------------------------------------------
-// To minimize the redundant executions from having the loan validator script do the checks, this
-// observer script is used to validate interest applications of live loans. In order to observe
-// interest applications, this script must be executed as a staking script. The loan validator
-// script's hash is hard-coded into this observer script so that the observer script allways knows
-// where to look. The beacons can only be minted if the interest observer script hash in the
-// ActiveDatum is correct.
-validator(loan_script_hash: ScriptHash) {
-  fn interest_observer_script(redeemer: InterestObserverRedeemer, ctx: ScriptContext) -> Bool {
-    when redeemer is {
-      RegisterInterestObserverScript -> {
-        // Only allow registering the script. It cannot be delegated or deregistered.
-        when ctx is {
-          ScriptContext(_, tx.Publish(CredentialRegistration(_))) -> True
-          _ -> error "This redeemer can only be used to register the interest observer script"
-        }
-      }
-
-      ObserveInterest -> {
-        // This redeemer is used to have the loan accrue interest. It involves evolving this Active
-        // UTxO into an new Active UTxO where everything is the same except for the updated
-        // loan_outstanding, total_epoch_payments, and last_epoch_boundary in the datum. Ada can be
-        // deposited in case the minUTxOValue increased due to a larger datum. The LoanIds guarantee
-        // no double satisfaction occurs during this step.
-        //
-        // The invalid-hereafter flag is used to prove the loan's expiration has not passed.
-        //
-        // In order for this redeemer to successfully execute, all of the following must be true:
-        // 1) The interest_observer_script is executed as a staking script.
-        // 2) All loan interest inputs must be for the same borrower.
-        // 3) The borrower must signal approval.
-        // 4) For all loan interest inputs:
-        //      a) It must have an ActiveDatum.
-        //      b) The loan must not be expired.
-        //      c) The BorrowerId must still present.
-        //      d) The deposit_increase must be >= 0.
-        //      e) The number_of_times must be >= 1.
-        //      e) There must be a corresponding Active UTxO output to the borrower's address with:
-        //         1) The value must be starting value + ada deposit_increase
-        //         2) loan_outstanding == input's balance with interest and penalties applied.
-        //         3) last_epoch_boundary == last_epoch_boundary + epoch_duration
-        //         4) total_epoch_payments == 0
-        //
-        // Penalties are always applied _before_ the interest.
-        //
-        // Technically, the borrower can apply interest to the loan as many times as they like
-        // before the expiration. However, since it means the interest is unnecessarily applied to
-        // the balance, they are strongly incentivized NOT to do this. Therefore, this redeemer
-        // assumes it is only executed when it actually needs to be executed. The penalties are also
-        // guaranteed to be applied for each excess interest application.
-        //
-        // Interest will be applied as many times as specified in the ApplyInterest redeemer used to
-        // spend the loan input. The only time interest should be applied more than once in a single
-        // transaction is when a borrower has missed a few loan epochs. Therefore, while the first
-        // interest application may or may not require a penalty, all subsequent applications
-        // applied in the transaction are guaranteed to require the penalty.
-        //
-        // Because the datum can grow with this redeemer, the minUTxOValue requirement can increase.
-        // Parameter changes can also make this requirement grow. Therefore, requiring the value of
-        // the new UTxO to be exactly the same as the input could be too strict in some situations.
-        // To relax this restriction slightly, the output UTxO can have the input value + the amount
-        // of ADA specified by the redeemer. 
-
-        // Extract the required information from the script context.
-        expect ScriptContext( 
-          Transaction{inputs,outputs,validity_range,redeemers,withdrawals,extra_signatories,..}, 
-          tx.WithdrawFrom(_)
-        ) = ctx
-
-        // This will error if there are any failed checks. It returns the staking credential for
-        // borrower so that approval can be checked by this script.
-        let Address(_,stake_cred) = interest.valid_interest_application(
-          inputs,
-          outputs,
-          redeemers,
-          loan_script_hash,
-          utils.get_upper_bound(validity_range),
-        )
-
-        // Check the borrower approved.
-        trace_if_false(
-          @"Borrower credential did not approve", 
-          utils.staking_credential_approves(stake_cred,withdrawals,extra_signatories)
-        )
       }
     }
   }
@@ -762,7 +638,6 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash) {
 validator( 
   loan_script_hash: ScriptHash, 
   payment_observer_script_hash: ScriptHash,
-  interest_observer_script_hash: ScriptHash,
   address_update_observer_script_hash: ScriptHash
 ) {
   fn active_beacon_script(redeemer: ActiveBeaconsRedeemer, ctx: ScriptContext) -> Bool {
@@ -797,7 +672,6 @@ validator(
         //    b) The datum must be an ActiveDatum and have the proper terms:
         //         - active_beacon_id == this policy id.
         //         - payment_observer_hash == hard-coded payment_observer_hash
-        //         - interest_observer_hash == hard-coded interest_observer_hash
         //         - address_update_observer_hash == hard-coded address_update_observer_hash
         //         - borrower_id == this borrower's staking credential as a token name.
         //         - lender_address == lender_address from the Offer UTxO.
@@ -888,7 +762,6 @@ validator(
           core.to_negotiation_id(negotiation_beacon_id),
           core.to_active_id(active_beacon_id),
           payment_observer_script_hash,
-          interest_observer_script_hash,
           address_update_observer_script_hash,
           loan_script_hash,
           validity_range,

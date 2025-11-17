@@ -12,13 +12,9 @@ pub type LoanRedeemer {
   // Convert an Ask UTxO and an Offer UTxO into an Active UTxO.
   AcceptOffer
 
-  // Make a payment on a loan. The amount tells the script how much to expect. 
+  // Make a payment on a loan. The amount tells the script how much to expect. This applies any
+  // required interest/penalties to the outstanding balance before processing the payment.
   MakePayment{payment_amount: Int}
-
-  // Apply interest and penalty to a loan and optionally deposit more ada if the minUTxOValue 
-  // increased. The interest is applied n times where n is number_of_times. Penalties are only
-  // applied when appropriate.
-  ApplyInterest{deposit_increase: Int, number_of_times: Int}
 
   // Claim collateral for an expired loan.
   SpendWithKeyNFT
@@ -78,15 +74,6 @@ pub type PaymentObserverRedeemer {
 
   // Register the payment observer script allow it to be used as a staking script.
   RegisterPaymentObserverScript
-}
-
-// Redeemers for the interest observer script.
-pub type InterestObserverRedeemer {
-  // Observe a borrower's loan interest application transaction.
-  ObserveInterest
-
-  // Register the interest observer script to be used as a staking script.
-  RegisterInterestObserverScript
 }
 
 // Redeemers for the address update observer script.

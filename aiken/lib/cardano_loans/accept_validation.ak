@@ -108,8 +108,9 @@ fn has_enough_collateral(
   output_value: Value
 ) -> Bool {
   // A function to map over the value of this UTxO. It will return the relative value of
-  // the collateral in the output. It will also check the UTxO has the proper beacons.
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Bool)) {
+  // the collateral in the output. The relative value is tracked as a fraction to preserve
+  // precision. It will also check the UTxO has the proper beacons.
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Fraction,Bool)) {
     let (cn,tns_dict) = x
     let (relative_collateral,has_proper_beacons) = acc
 
@@ -164,7 +165,7 @@ fn has_enough_collateral(
     else {
       let non_beacon_toks = dict.to_list(tns_dict)
 
-      let check_collat = fn(token_info: (AssetName,Int), inner_acc: Int) {
+      let check_collat = fn(token_info: (AssetName,Int), inner_acc: Fraction) {
         let (tn,n) = token_info
         let (price_num,price_den) = 
           utils.find_by_key(collateralization,(cn,tn)) |> option.or_else(_,(0,1))
@@ -175,9 +176,15 @@ fn has_enough_collateral(
         } 
         
         // Calculate the value of the collateral in terms of the loan asset. Add it to the
-        // accumulator. acc + collateral_quantity * reciprocal(price)
+        // accumulator.
         else {
-          inner_acc + n * price_den / price_num
+          let (acc_num, acc_den) = inner_acc
+          let new_val_num = n * price_den
+          let new_val_den = price_num
+
+          ( acc_num * new_val_den + new_val_num * acc_den,
+            acc_den * new_val_den
+          )
         }
       }
 
@@ -186,8 +193,8 @@ fn has_enough_collateral(
     }
   }
 
-  let (relative_collateral,has_proper_beacons) = 
-    list.foldl(value.to_dict(output_value) |> dict.to_list(_), (0,False), foo) 
+  let ((relative_collateral_num, relative_collateral_den), has_proper_beacons) = 
+    list.foldl(value.to_dict(output_value) |> dict.to_list(_), ((0,1),False), foo) 
 
   expect True = error_if_false(
     @"Collateral UTxO missing beacons",
@@ -196,7 +203,7 @@ fn has_enough_collateral(
   
   when collateralization is {
     [] -> True // This is an unsecured loan so no collateral is needed.
-    _ -> relative_collateral >= principal_taken
+    _ -> relative_collateral_num >= principal_taken * relative_collateral_den
   }
 }
 
@@ -209,7 +216,6 @@ fn process_input(
   borrower_id: BorrowerId,
   offer_datum: LoanDatum,
   payment_observer_hash: ScriptHash,
-  interest_observer_hash: ScriptHash,
   address_update_observer_hash: ScriptHash,
   loan_id: LoanId // This is taken from the output reference for the Offer UTxO.
 ) -> (RequiredCollateralOutput,RequiredLenderOutput,AssetName) {
@@ -248,7 +254,6 @@ fn process_input(
   let req_datum = ActiveDatum{
     active_beacon_id: active_beacon_id,
     payment_observer_hash: payment_observer_hash,
-    interest_observer_hash: interest_observer_hash,
     address_update_observer_hash: address_update_observer_hash,
     borrower_id: core.get_borrower_id_name(borrower_id),
     lender_address: lender_address,
@@ -300,7 +305,6 @@ fn process_input(
 fn get_input_info(
   negotiation_beacon_id: NegotiationId,
   payment_observer_hash: ScriptHash,
-  interest_observer_hash: ScriptHash,
   address_update_observer_hash: ScriptHash,
   loan_script_hash: ScriptHash,
   validity_range: ValidityRange,
@@ -425,7 +429,6 @@ fn get_input_info(
           // If this UTxO has the three beacons, the datum is guaranteed to be an OfferDatum.
           parse_datum(d), 
           payment_observer_hash,
-          interest_observer_hash,
           address_update_observer_hash,
           loan_id
         )
@@ -656,7 +659,6 @@ pub fn valid_loan_acceptances(
   negotiation_beacon_id: NegotiationId,
   active_beacon_id: ActiveId,
   payment_observer_hash: ScriptHash,
-  interest_observer_hash: ScriptHash,
   address_update_observer_hash: ScriptHash,
   loan_script_hash: ScriptHash,
   validity_range: ValidityRange,
@@ -668,7 +670,6 @@ pub fn valid_loan_acceptances(
     get_input_info(
       negotiation_beacon_id,
       payment_observer_hash,
-      interest_observer_hash,
       address_update_observer_hash,
       loan_script_hash,
       validity_range,

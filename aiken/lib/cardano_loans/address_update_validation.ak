@@ -92,7 +92,6 @@ fn process_input(
     ActiveDatum{
       active_beacon_id,
       payment_observer_hash,
-      interest_observer_hash,
       address_update_observer_hash,
       borrower_id,
       loan_asset,
@@ -143,7 +142,6 @@ fn process_input(
           ActiveDatum{
             active_beacon_id: active_beacon_id,
             payment_observer_hash: payment_observer_hash,
-            interest_observer_hash: interest_observer_hash,
             address_update_observer_hash: address_update_observer_hash,
             borrower_id: borrower_id,
             lender_address: new_address,
