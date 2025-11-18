@@ -18,7 +18,6 @@ module CardanoLoans
     -- * On-chain Redeemers
   , LoanRedeemer(..) 
   , PaymentObserverRedeemer(..)
-  , InterestObserverRedeemer(..)
   , AddressUpdateObserverRedeemer(..)
   , NegotiationBeaconsRedeemer(..) 
   , ActiveBeaconsRedeemer(..) 
@@ -30,8 +29,6 @@ module CardanoLoans
   , loanValidatorHash
   , paymentObserverScript
   , paymentObserverCurrencySymbol
-  , interestObserverScript
-  , interestObserverCurrencySymbol
   , addressUpdateObserverScript
   , addressUpdateObserverCurrencySymbol
   , activeBeaconScript
@@ -49,8 +46,10 @@ module CardanoLoans
   , activeBeaconName
     
     -- * Calculations
+  , subtractPayment
   , applyInterest
   , applyInterestNTimes
+  , nextBoundary
 
     -- * Creating Datums
   , NewAskInfo(..)
@@ -63,9 +62,6 @@ module CardanoLoans
   , NewPaymentInfo(..)
   , unsafeCreatePostPaymentActiveDatum
   , createPostPaymentActiveDatum
-  , NewInterestInfo(..)
-  , unsafeCreatePostInterestActiveDatum
-  , createPostInterestActiveDatum
   , NewAddressInfo(..)
   , unsafeCreatePostAddressUpdateActiveDatum
 
@@ -187,8 +183,6 @@ data ActiveDatum = ActiveDatum
   { _activeBeaconId :: ActiveBeaconId
   -- | The hash for the payment observer script.
   , _paymentObserverHash :: PV2.ScriptHash
-  -- | The hash for the interest observer script.
-  , _interestObserverHash :: PV2.ScriptHash
   -- | The hash for the address update observer script.
   , _addressUpdateObserverHash :: PV2.ScriptHash
   -- | The borrower's staking credential as a token name.
@@ -235,7 +229,6 @@ instance ToJSON ActiveDatum where
   toJSON ActiveDatum{..} =
     object [ "active_beacon_id" .= _activeBeaconId
            , "payment_observer_script" .= _paymentObserverHash
-           , "interest_observer_script" .= _interestObserverHash
            , "address_update_observer_script" .= _addressUpdateObserverHash
            , "borrower_id" .= _borrowerId
            , "lender_address" .= LenderAddress _lenderAddress
@@ -281,8 +274,6 @@ data LoanRedeemer
   | AcceptOffer
   -- | Make a payment on a loan. The amount is the size of the payment.
   | MakePayment { _paymentAmount :: Integer }
-  -- | Apply interest to a loan N times and deposit the specified amount of ada if needed.
-  | ApplyInterest { _depositIncrease :: Integer, _numberOfTimes :: Integer }
   -- | Claim collateral for an expired loan using the Key NFT.
   | SpendWithKeyNFT
   -- | Update the address where loan payments must go. Optionally deposit additional ada if needed.
@@ -296,13 +287,6 @@ data PaymentObserverRedeemer
   = ObservePayment
   -- | Register the script.
   | RegisterPaymentObserverScript
-  deriving (Generic,Show)
-
-data InterestObserverRedeemer
-  -- | Observer a borrower's loan interest application transaction.
-  = ObserveInterest
-  -- | Register the script.
-  | RegisterInterestObserverScript
   deriving (Generic,Show)
 
 data AddressUpdateObserverRedeemer
@@ -343,7 +327,6 @@ PlutusTx.makeIsDataIndexed ''OfferDatum [('OfferDatum,1)]
 PlutusTx.makeIsDataIndexed ''ActiveDatum [('ActiveDatum,2)]
 PlutusTx.unstableMakeIsData ''LoanRedeemer
 PlutusTx.unstableMakeIsData ''PaymentObserverRedeemer
-PlutusTx.unstableMakeIsData ''InterestObserverRedeemer
 PlutusTx.unstableMakeIsData ''AddressUpdateObserverRedeemer
 PlutusTx.unstableMakeIsData ''NegotiationBeaconsRedeemer
 PlutusTx.unstableMakeIsData ''ActiveBeaconsRedeemer
@@ -373,16 +356,6 @@ paymentObserverCurrencySymbol :: PV2.CurrencySymbol
 paymentObserverCurrencySymbol = 
   PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash paymentObserverScript
 
-interestObserverScript :: SerialisedScript
-interestObserverScript =
-  applyArguments
-    (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.interest_observer_script")
-    [PV2.toData loanValidatorHash]
-
-interestObserverCurrencySymbol :: PV2.CurrencySymbol
-interestObserverCurrencySymbol = 
-  PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash interestObserverScript
-
 addressUpdateObserverScript :: SerialisedScript
 addressUpdateObserverScript =
   applyArguments
@@ -401,7 +374,6 @@ activeBeaconScript =
     (parseScriptFromCBOR $ blueprints Map.! "cardano_loans.active_beacon_script")
     [ PV2.toData loanValidatorHash
     , PV2.toData paymentObserverCurrencySymbol
-    , PV2.toData interestObserverCurrencySymbol
     , PV2.toData addressUpdateObserverCurrencySymbol
     ]
 
@@ -510,6 +482,14 @@ applyInterestNTimes
     else
       applyInterestNTimes True penalty (count - 1) interest $ 
         Fraction (balNum * (interestDen + interestNum), balDen * interestDen)
+
+-- | Calculate the next epoch boundary required.
+nextBoundary :: POSIXTime -> POSIXTime -> POSIXTime -> POSIXTime
+nextBoundary lastBoundary epochDuration currentTime
+  | boundary > currentTime = boundary
+  | otherwise = nextBoundary boundary epochDuration currentTime
+  where
+    boundary = lastBoundary + epochDuration
 
 -------------------------------------------------
 -- Creating datums
@@ -637,7 +617,6 @@ unsafeCreateActiveDatum :: NewActiveInfo -> ActiveDatum
 unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
   , _paymentObserverHash = scriptHash paymentObserverScript
-  , _interestObserverHash = scriptHash interestObserverScript
   , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
   , _borrowerId = genBorrowerId _borrowerCred
   , _lenderAddress = _lenderAddress
@@ -666,7 +645,6 @@ createAcceptanceDatumFromOffer :: Credential -> TxOutRef -> POSIXTime -> OfferDa
 createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = ActiveDatum
   { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
   , _paymentObserverHash = scriptHash paymentObserverScript
-  , _interestObserverHash = scriptHash interestObserverScript
   , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
   , _borrowerId = genBorrowerId borrowerCred
   , _lenderAddress = _lenderAddress
@@ -728,131 +706,100 @@ data NewPaymentInfo = NewPaymentInfo
   , _loanId :: LoanId
   -- | Payment amount.
   , _paymentAmount :: Integer
+  -- | The invalid-hereafter bound used when making the payment.
+  , _invalidHereafter :: POSIXTime
   } deriving (Generic,Show)
 
 -- | Convert the active info to the ActiveDatum without checking any invariants. 
 unsafeCreatePostPaymentActiveDatum :: NewPaymentInfo -> ActiveDatum
-unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} = ActiveDatum
-  { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
-  , _paymentObserverHash = scriptHash paymentObserverScript
-  , _interestObserverHash = scriptHash interestObserverScript
-  , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
-  , _borrowerId = genBorrowerId _borrowerCred
-  , _lenderAddress = _lenderAddress
-  , _loanAsset = _loanAsset
-  , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrincipal = _loanPrincipal
-  , _epochDuration = _epochDuration
-  , _loanTerm = _loanTerm
-  , _loanInterest = _loanInterest
-  , _compoundingInterest = _compoundingInterest
-  , _minPayment = _minPayment
-  , _penalty = _penalty
-  , _collateralization = Collateralization _collateralization
-  , _collateralIsSwappable = _collateralIsSwappable
-  , _lastEpochBoundary = _lastEpochBoundary
-  , _claimExpiration = _claimExpiration
-  , _loanExpiration = _loanExpiration
-  , _loanOutstanding = subtractPayment _paymentAmount _loanOutstanding
-  , _totalEpochPayments = _totalEpochPayments + _paymentAmount
-  , _loanId = _loanId
-  }
+unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} = 
+  case _epochDuration of
+    Just freq ->
+      let numberOfTimes = (_invalidHereafter - _lastEpochBoundary - 1) `div` freq
+          postInterestOutstanding =
+            applyInterestNTimes
+                  (_minPayment > _totalEpochPayments) -- Check for penalty before rollover
+                  _penalty
+                  (getPOSIXTime numberOfTimes)
+                  (if _compoundingInterest then _loanInterest else Fraction (0, 1))
+                  _loanOutstanding
+          newEpochBoundary = _lastEpochBoundary + numberOfTimes * fromMaybe 0 _epochDuration
+          priorTotal = if numberOfTimes > 0 then 0 else _totalEpochPayments
+      in ActiveDatum
+            { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+            , _paymentObserverHash = scriptHash paymentObserverScript
+            , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
+            , _borrowerId = genBorrowerId _borrowerCred
+            , _lenderAddress = _lenderAddress
+            , _loanAsset = _loanAsset
+            , _assetBeacon = genLoanAssetBeaconName _loanAsset
+            , _loanPrincipal = _loanPrincipal
+            , _epochDuration = _epochDuration
+            , _loanTerm = _loanTerm
+            , _loanInterest = _loanInterest
+            , _compoundingInterest = _compoundingInterest
+            , _minPayment = _minPayment
+            , _penalty = _penalty
+            , _collateralization = Collateralization _collateralization
+            , _collateralIsSwappable = _collateralIsSwappable
+            , _lastEpochBoundary = newEpochBoundary
+            , _claimExpiration = _claimExpiration
+            , _loanExpiration = _loanExpiration
+            , _loanOutstanding = subtractPayment _paymentAmount postInterestOutstanding
+            , _totalEpochPayments = priorTotal + _paymentAmount
+            , _loanId = _loanId
+            }
 
-createPostPaymentActiveDatum :: Integer -> ActiveDatum -> ActiveDatum
-createPostPaymentActiveDatum paymentAmount activeDatum@ActiveDatum{..} =
-  activeDatum
-    { _loanOutstanding = subtractPayment paymentAmount _loanOutstanding
-    , _totalEpochPayments = _totalEpochPayments + paymentAmount
-    }
+    Nothing ->
+      ActiveDatum
+        { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
+        , _paymentObserverHash = scriptHash paymentObserverScript
+        , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
+        , _borrowerId = genBorrowerId _borrowerCred
+        , _lenderAddress = _lenderAddress
+        , _loanAsset = _loanAsset
+        , _assetBeacon = genLoanAssetBeaconName _loanAsset
+        , _loanPrincipal = _loanPrincipal
+        , _epochDuration = _epochDuration
+        , _loanTerm = _loanTerm
+        , _loanInterest = _loanInterest
+        , _compoundingInterest = _compoundingInterest
+        , _minPayment = _minPayment
+        , _penalty = _penalty
+        , _collateralization = Collateralization _collateralization
+        , _collateralIsSwappable = _collateralIsSwappable
+        , _lastEpochBoundary = _lastEpochBoundary
+        , _claimExpiration = _claimExpiration
+        , _loanExpiration = _loanExpiration
+        , _loanOutstanding = subtractPayment _paymentAmount _loanOutstanding
+        , _totalEpochPayments = _totalEpochPayments + _paymentAmount
+        , _loanId = _loanId
+        }
 
-data NewInterestInfo = NewInterestInfo
-  -- | The borrower's staking credential.
-  { _borrowerCred :: Credential
-  -- | The lender's address.
-  , _lenderAddress :: Address
-  -- | The asset to be loaned out.
-  , _loanAsset :: Asset
-  -- | The size of the loan.
-  , _loanPrincipal :: Integer
-  -- | The frequency at which interest must be applied.
-  , _epochDuration :: Maybe POSIXTime
-  -- | The last time interest was applied.
-  , _lastEpochBoundary :: POSIXTime
-  -- | How long the loan is active once accepted.
-  , _loanTerm :: POSIXTime
-  -- | The interest that must be periodically applied.
-  , _loanInterest :: Fraction
-  -- | Whether the interest is compounding.
-  , _compoundingInterest :: Bool
-  -- | The minimum loan partial payment that can be made.
-  , _minPayment :: Integer
-  -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
-  , _penalty :: Penalty
-  -- | The relative values of the collateral assets.
-  , _collateralization :: [(Asset,Fraction)]
-  -- | Whether collateral can be swapped out during a loan payment.
-  , _collateralIsSwappable :: Bool
-  -- | The time at which the lender's claim period will expire.
-  , _claimExpiration :: POSIXTime
-  -- | The time at which the loan will expire.
-  , _loanExpiration :: POSIXTime
-  -- | The loan's remaining unpaid balance.
-  , _loanOutstanding :: Fraction
-  -- | The total payments made this loan epoch.
-  , _totalEpochPayments :: Integer
-  -- | The loan's unique indentifier.
-  , _loanId :: LoanId
-  -- | Number of times to apply the interest.
-  , _numberOfTimes :: Integer
-  } deriving (Generic,Show)
-
--- | Convert the active info to the ActiveDatum without checking any invariants. 
-unsafeCreatePostInterestActiveDatum :: NewInterestInfo -> ActiveDatum
-unsafeCreatePostInterestActiveDatum NewInterestInfo{..} = ActiveDatum
-  { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
-  , _paymentObserverHash = scriptHash paymentObserverScript
-  , _interestObserverHash = scriptHash interestObserverScript
-  , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
-  , _borrowerId = genBorrowerId _borrowerCred
-  , _lenderAddress = _lenderAddress
-  , _loanAsset = _loanAsset
-  , _assetBeacon = genLoanAssetBeaconName _loanAsset
-  , _loanPrincipal = _loanPrincipal
-  , _epochDuration = _epochDuration
-  , _loanTerm = _loanTerm
-  , _loanInterest = _loanInterest
-  , _compoundingInterest = _compoundingInterest
-  , _minPayment = _minPayment
-  , _penalty = _penalty
-  , _collateralization = Collateralization _collateralization
-  , _collateralIsSwappable = _collateralIsSwappable
-  , _lastEpochBoundary = _lastEpochBoundary + fromMaybe 0 _epochDuration
-  , _claimExpiration = _claimExpiration
-  , _loanExpiration = _loanExpiration
-  , _loanOutstanding = 
-        applyInterestNTimes 
-          (_minPayment > _totalEpochPayments) 
-          _penalty 
-          _numberOfTimes 
-          (if _compoundingInterest then _loanInterest else Fraction(0,1))
-          _loanOutstanding
-  , _totalEpochPayments = 0
-  , _loanId = _loanId
-  }
-
-createPostInterestActiveDatum :: Integer -> ActiveDatum -> ActiveDatum
-createPostInterestActiveDatum numberOfTimes activeDatum@ActiveDatum{..} =
-  activeDatum
-    { _lastEpochBoundary = _lastEpochBoundary + maybe 0 (fromInteger numberOfTimes *) _epochDuration
-    , _loanOutstanding = 
-        applyInterestNTimes 
-          (_minPayment > _totalEpochPayments) 
-          _penalty 
-          numberOfTimes 
-          (if _compoundingInterest then _loanInterest else Fraction(0,1))
-          _loanOutstanding
-    , _totalEpochPayments = 0
-    }
+createPostPaymentActiveDatum :: Integer -> POSIXTime -> ActiveDatum -> ActiveDatum
+createPostPaymentActiveDatum paymentAmount invalidHereafter activeDatum@ActiveDatum{..} =
+  case _epochDuration of
+    Just freq ->
+      let numberOfTimes = (invalidHereafter - _lastEpochBoundary - 1) `div` freq
+          postInterestOutstanding =
+            applyInterestNTimes
+                  (_minPayment > _totalEpochPayments) -- Check for penalty before rollover
+                  _penalty
+                  (getPOSIXTime numberOfTimes)
+                  (if _compoundingInterest then _loanInterest else Fraction (0, 1))
+                  _loanOutstanding
+          newEpochBoundary = _lastEpochBoundary + numberOfTimes * fromMaybe 0 _epochDuration
+          priorTotal = if numberOfTimes > 0 then 0 else _totalEpochPayments
+      in activeDatum
+            { _loanOutstanding = subtractPayment paymentAmount postInterestOutstanding
+            , _totalEpochPayments = priorTotal + paymentAmount
+            , _lastEpochBoundary = newEpochBoundary
+            }
+    Nothing ->
+      activeDatum
+        { _loanOutstanding = subtractPayment paymentAmount _loanOutstanding
+        , _totalEpochPayments = _totalEpochPayments + paymentAmount
+        }
 
 data NewAddressInfo = NewAddressInfo
   -- | The borrower's staking credential.
@@ -898,7 +845,6 @@ unsafeCreatePostAddressUpdateActiveDatum :: NewAddressInfo -> ActiveDatum
 unsafeCreatePostAddressUpdateActiveDatum NewAddressInfo{..} = ActiveDatum
   { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
   , _paymentObserverHash = scriptHash paymentObserverScript
-  , _interestObserverHash = scriptHash interestObserverScript
   , _addressUpdateObserverHash = scriptHash addressUpdateObserverScript
   , _borrowerId = genBorrowerId _borrowerCred
   , _lenderAddress = _lenderAddress
