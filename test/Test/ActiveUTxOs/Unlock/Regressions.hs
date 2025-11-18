@@ -1206,6 +1206,8 @@ regressionTest5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -1230,7 +1232,8 @@ regressionTest5 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -1242,8 +1245,6 @@ regressionTest5 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $

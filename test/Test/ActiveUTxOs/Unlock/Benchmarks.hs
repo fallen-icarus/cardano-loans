@@ -580,9 +580,9 @@ benchTest2 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 18
-  , mustSucceed "benchTest2" $ benchTest2 16
+  , mustSucceed "benchTest2" $ benchTest2 17
 
     -- Performance Increase Tests
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 19
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
   ]

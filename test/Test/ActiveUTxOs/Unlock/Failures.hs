@@ -235,6 +235,8 @@ beaconFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -244,7 +246,8 @@ beaconFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -256,8 +259,6 @@ beaconFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -547,6 +548,8 @@ beaconFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -556,7 +559,8 @@ beaconFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -568,8 +572,6 @@ beaconFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -859,6 +861,8 @@ beaconFailure3 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -868,7 +872,8 @@ beaconFailure3 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -880,8 +885,6 @@ beaconFailure3 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1208,6 +1211,8 @@ beaconFailure4 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1217,7 +1222,8 @@ beaconFailure4 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1229,8 +1235,6 @@ beaconFailure4 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1569,6 +1573,8 @@ beaconFailure5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1578,7 +1584,8 @@ beaconFailure5 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1590,8 +1597,6 @@ beaconFailure5 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1930,6 +1935,8 @@ beaconFailure6 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1939,7 +1946,8 @@ beaconFailure6 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1951,8 +1959,6 @@ beaconFailure6 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $

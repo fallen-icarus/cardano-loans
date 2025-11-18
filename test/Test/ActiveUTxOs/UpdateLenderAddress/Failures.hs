@@ -11753,293 +11753,9 @@ datumFailure18 = do
           }
       }
 
--- | The collateral datum has the wrong interest observer hash.
+-- | The collateral datum has the wrong address update observer hash.
 datumFailure19 :: MonadEmulator m => m ()
 datumFailure19 = do
-  let -- Borrower Info
-      borrowerWallet = Mock.knownMockWallet 1
-      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
-      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
-      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
-      borrowerCred = PV2.PubKeyCredential borrowerPubKey
-      borrowerBeacon = genBorrowerId borrowerCred
-      loanAddress = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
-                    (Just $ PV2.StakingHash borrowerCred)
-
-      -- Lender Info
-      lenderWallet = Mock.knownMockWallet 2
-      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
-      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
-      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
-      lenderCred = PV2.PubKeyCredential lenderPubKey
-      lenderBeacon = genLenderId lenderCred
-      lenderAddr = 
-        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
-                    (Just $ PV2.StakingHash lenderCred)
-      newLenderAddr = 
-        PV2.Address lenderCred Nothing
-
-      -- Loan Info
-      loanAsset = Asset (adaSymbol,adaToken)
-      collateral1 = Asset (testTokenSymbol,"TestToken1")
-      loanBeacon = genLoanAssetBeaconName loanAsset
-      askDatum = unsafeCreateAskDatum $ NewAskInfo
-        { _borrowerId = borrowerCred
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _loanTerm = 3600
-        , _collateral = [collateral1]
-        }
-      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
-        { _lenderId = lenderCred
-        , _lenderAddress = lenderAddr
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _epochDuration = Nothing
-        , _loanTerm = 3600
-        , _loanInterest = Fraction (1,10)
-        , _compoundingInterest = True
-        , _minPayment = 0
-        , _penalty = NoPenalty
-        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
-        , _collateralIsSwappable = False
-        , _claimPeriod = 3600
-        , _offerDeposit = 4_000_000
-        , _offerExpiration = Nothing
-        }
-
-  -- Initialize scenario
-  References{negotiationRef,activeRef,loanRef,addressUpdateObserverRef,proxyRef} <- initializeReferenceScripts 
-  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
-
-  -- Create the Ask UTxO.
-  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum askDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      }
-
-  -- Create the Offer UTxO.
-  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLenderId lenderBeacon,1)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-                  ]
-              , outputDatum = OutputDatum $ toDatum offerDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [lenderPubKey]
-      }
-
-  startSlot <- currentSlot
-
-  askRef <- 
-    txOutRefWithValue $ 
-      utxoValue 3_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , uncurry PV2.singleton (_unAsset collateral1) 1
-        ]
-
-  offerRef <-
-    txOutRefWithValue $ 
-      utxoValue 4_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-        ]
-
-  let activeDatum = 
-        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
-      loanIdBeacon = genLoanId offerRef
-
-  -- Accept the offer.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens = 
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",-1)
-                  , ("Ask",-1)
-                  , (_unAssetBeacon loanBeacon,-2)
-                  , (_unLenderId lenderBeacon,-1)
-                  ]
-              , mintRedeemer = toRedeemer BurnNegotiationBeacons
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          , TokenMint
-              { mintTokens = 
-                  [ ("Active",1)
-                  , (_unBorrowerId borrowerBeacon,1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLoanId loanIdBeacon,2)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = 
-          [ Input
-              { inputId = offerRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          , Input
-              { inputId = askRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 10
-                  ]
-              , outputDatum = OutputDatum $ toDatum activeDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
-              , outputDatum = 
-                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Just startSlot
-          , validityRangeUpperBound = Nothing
-          }
-      }
-
-  activeUTxOs <-
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      loanAddress 
-      (activeBeaconCurrencySymbol,"Active")
-
-  keyUTxOs <- fmap concat $ forM activeUTxOs $ \(_,Just ad@ActiveDatum{_loanId}) ->
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      (toCardanoApiAddress lenderAddr) 
-      (activeBeaconCurrencySymbol,_unLoanId _loanId)
-
-  let samplePayments acs = flip concatMap acs $ 
-        \(_,Just ad@ActiveDatum{..}) ->
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 10
-                  ]
-              , outputDatum = OutputDatum $ toDatum @ActiveDatum 
-                  ad{ _lenderAddress = lenderAddr
-                    , _interestObserverHash = ""
-                    }
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress newLenderAddr
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1]
-              , outputDatum = 
-                  OutputDatum $ toDatum $ 
-                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-
-  updateSlot <- (1+) <$> currentSlot
-
-  -- Try to update the lender's address.
-  void $ transact lenderPersonalAddr [toCardanoApiAddress lenderAddr,loanAddress,refScriptAddress] [lenderPayPrivKey] $
-    emptyTxParams
-      { inputs = flip concatMap (zip activeUTxOs keyUTxOs) $ \((activeUtxoRef,_),(keyRef,_)) ->
-          [ Input
-              { inputId = activeUtxoRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ UpdateLenderAddress newLenderAddr 0)
-              }
-          , Input
-              { inputId = keyRef
-              , inputWitness = 
-                  SpendWithPlutusReference proxyRef InlineDatum (toRedeemer ())
-              }
-          ]
-      , outputs = samplePayments activeUTxOs
-      , withdrawals =
-          [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential $ scriptHash addressUpdateObserverScript
-              , withdrawalAmount = 0
-              , withdrawalWitness = 
-                  StakeWithPlutusReference addressUpdateObserverRef $ 
-                    toRedeemer ObserveAddressUpdate
-              }
-          ]
-      , referenceInputs = [addressUpdateObserverRef,loanRef,proxyRef]
-      , extraKeyWitnesses = [lenderPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just updateSlot
-          }
-      }
-
--- | The collateral datum has the wrong address update observer hash.
-datumFailure20 :: MonadEmulator m => m ()
-datumFailure20 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -12322,8 +12038,8 @@ datumFailure20 = do
       }
 
 -- | The collateral datum is a datum hash.
-datumFailure21 :: MonadEmulator m => m ()
-datumFailure21 = do
+datumFailure20 :: MonadEmulator m => m ()
+datumFailure20 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -12603,8 +12319,8 @@ datumFailure21 = do
       }
 
 -- | The collateral datum is not an ActiveDatum.
-datumFailure22 :: MonadEmulator m => m ()
-datumFailure22 = do
+datumFailure21 :: MonadEmulator m => m ()
+datumFailure21 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -12884,8 +12600,8 @@ datumFailure22 = do
       }
 
 -- | The input does not have an ActiveDatum.
-datumFailure23 :: MonadEmulator m => m ()
-datumFailure23 = do
+datumFailure22 :: MonadEmulator m => m ()
+datumFailure22 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -12972,8 +12688,8 @@ datumFailure23 = do
       }
 
 -- | The collateral datum has the wrong penalty.
-datumFailure24 :: MonadEmulator m => m ()
-datumFailure24 = do
+datumFailure23 :: MonadEmulator m => m ()
+datumFailure23 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -13256,8 +12972,8 @@ datumFailure24 = do
       }
 
 -- | The collateral datum has the wrong totalEpochPayments.
-datumFailure25 :: MonadEmulator m => m ()
-datumFailure25 = do
+datumFailure24 :: MonadEmulator m => m ()
+datumFailure24 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -16426,17 +16142,14 @@ tests =
       "Not all required outputs found"
       datumFailure21
   , scriptMustFailWithError "datumFailure22" 
-      "Not all required outputs found"
+      "UTxO is not an Active UTxO"
       datumFailure22
   , scriptMustFailWithError "datumFailure23" 
-      "UTxO is not an Active UTxO"
+      "Not all required outputs found"
       datumFailure23
   , scriptMustFailWithError "datumFailure24" 
       "Not all required outputs found"
       datumFailure24
-  , scriptMustFailWithError "datumFailure25" 
-      "Not all required outputs found"
-      datumFailure25
 
     -- Output Order Failures
   , scriptMustFailWithError "orderFailure1" 

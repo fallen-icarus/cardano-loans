@@ -252,6 +252,8 @@ benchTest1 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -263,7 +265,8 @@ benchTest1 number = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -275,8 +278,6 @@ benchTest1 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -301,7 +302,7 @@ benchTest1 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -536,6 +537,8 @@ benchTest2 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -547,8 +550,6 @@ benchTest2 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -586,7 +587,7 @@ benchTest2 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -821,6 +822,8 @@ benchTest3 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((offerRef,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -845,7 +848,8 @@ benchTest3 number = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -857,8 +861,6 @@ benchTest3 number = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -906,7 +908,7 @@ benchTest3 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -1140,6 +1142,8 @@ benchTest4 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1153,7 +1157,8 @@ benchTest4 number = do
                   , uncurry PV2.singleton (_unAsset collateral2) 2
                   , uncurry PV2.singleton (_unAsset collateral3) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1165,8 +1170,6 @@ benchTest4 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1191,7 +1194,7 @@ benchTest4 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -1440,6 +1443,8 @@ benchTest5 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1451,8 +1456,6 @@ benchTest5 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1490,7 +1493,7 @@ benchTest5 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -1739,6 +1742,8 @@ benchTest6 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((offerRef,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -1765,7 +1770,8 @@ benchTest6 number = do
                     , uncurry PV2.singleton (_unAsset collateral2) 2
                     , uncurry PV2.singleton (_unAsset collateral3) 1
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -1777,8 +1783,6 @@ benchTest6 number = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1826,7 +1830,7 @@ benchTest6 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -2065,6 +2069,8 @@ benchTest7 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -2078,7 +2084,8 @@ benchTest7 number = do
                   , uncurry PV2.singleton (_unAsset collateral2) 2
                   , uncurry PV2.singleton (_unAsset collateral3) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -2091,8 +2098,6 @@ benchTest7 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -2117,7 +2122,7 @@ benchTest7 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -2356,6 +2361,8 @@ benchTest8 number = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(offerRef,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -2368,8 +2375,6 @@ benchTest8 number = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentTime <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -2407,7 +2412,7 @@ benchTest8 number = do
       , extraKeyWitnesses = [borrowerPubKey]
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentTime
+          , validityRangeUpperBound = Just paymentSlot
           }
       }
 
@@ -2418,21 +2423,21 @@ benchTest8 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 14
-  , mustSucceed "benchTest2" $ benchTest2 16
+  , mustSucceed "benchTest2" $ benchTest2 17
   , mustSucceed "benchTest3" $ benchTest3 16
   , mustSucceed "benchTest4" $ benchTest4 10
-  , mustSucceed "benchTest5" $ benchTest5 16
+  , mustSucceed "benchTest5" $ benchTest5 17
   , mustSucceed "benchTest6" $ benchTest6 13
   , mustSucceed "benchTest7" $ benchTest7 10
-  , mustSucceed "benchTest8" $ benchTest8 15
+  , mustSucceed "benchTest8" $ benchTest8 14
 
     -- Performance Increase Tests
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 15
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
   , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 17
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 11
-  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 17
+  , mustExceedTxLimits "perfIncreaseTest5" $ benchTest5 18
   , mustExceedTxLimits "perfIncreaseTest6" $ benchTest6 14
   , mustExceedTxLimits "perfIncreaseTest7" $ benchTest7 11
-  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 16
+  , mustExceedTxLimits "perfIncreaseTest8" $ benchTest8 15
   ]

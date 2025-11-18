@@ -15,6 +15,7 @@ import qualified Ledger.CardanoWallet as Mock
 import Test.Tasty (TestTree)
 import Data.Maybe (isJust)
 import Control.Monad (forM_)
+import Data.Maybe (fromMaybe)
 
 import CardanoLoans
 
@@ -237,6 +238,8 @@ beaconFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -246,7 +249,8 @@ beaconFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -258,8 +262,6 @@ beaconFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -510,6 +512,8 @@ beaconFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -520,7 +524,8 @@ beaconFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -532,8 +537,6 @@ beaconFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -733,17 +736,18 @@ beaconFailure3 = do
 
   activeUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @ActiveDatum loanAddress 
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{}) ->
           [ Output
               { outputAddress = loanAddress
               , outputValue = utxoValue 4_000_000 $ mconcat [ ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1024,6 +1028,8 @@ beaconFailure4 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -1035,7 +1041,8 @@ beaconFailure4 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 11_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 11_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -1058,7 +1065,7 @@ beaconFailure4 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -1070,8 +1077,6 @@ beaconFailure4 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1331,6 +1336,8 @@ beaconFailure5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1342,7 +1349,8 @@ beaconFailure5 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1354,8 +1362,6 @@ beaconFailure5 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1598,6 +1604,8 @@ beaconFailure6 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1609,7 +1617,8 @@ beaconFailure6 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1621,8 +1630,6 @@ beaconFailure6 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -1865,6 +1872,8 @@ beaconFailure7 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -1876,7 +1885,8 @@ beaconFailure7 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 0
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -1888,8 +1898,6 @@ beaconFailure7 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -2213,6 +2221,8 @@ beaconFailure8 = do
       loanAddress1
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments [(_,Just ad1),(_,Just ad2)] =
         [ Output
             { outputAddress = loanAddress1
@@ -2223,7 +2233,8 @@ beaconFailure8 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad1
+            , outputDatum = OutputDatum $ toDatum $
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad1
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -2244,7 +2255,8 @@ beaconFailure8 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad2
+            , outputDatum = OutputDatum $ toDatum $ 
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad2
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -2257,8 +2269,6 @@ beaconFailure8 = do
             , outputReferenceScript = toReferenceScript Nothing
             }
         ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr1 [loanAddress1,refScriptAddress] [borrowerPayPrivKey1] $
@@ -2583,6 +2593,8 @@ beaconFailure9 = do
       loanAddress1
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments [(_,Just ad1),(_,Just ad2)] =
         [ Output
             { outputAddress = loanAddress1
@@ -2593,7 +2605,8 @@ beaconFailure9 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad1
+            , outputDatum = OutputDatum $ toDatum $
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad1
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -2614,7 +2627,8 @@ beaconFailure9 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad2
+            , outputDatum = OutputDatum $ toDatum $
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad2
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -2627,8 +2641,6 @@ beaconFailure9 = do
             , outputReferenceScript = toReferenceScript Nothing
             }
         ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr1 [loanAddress1,refScriptAddress] [borrowerPayPrivKey1] $
@@ -3065,6 +3077,8 @@ beaconFailure11 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -3076,7 +3090,8 @@ beaconFailure11 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 0
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -3088,8 +3103,6 @@ beaconFailure11 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -3338,6 +3351,8 @@ addressFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -3349,7 +3364,8 @@ addressFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -3361,8 +3377,6 @@ addressFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -3605,6 +3619,8 @@ addressFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -3616,7 +3632,8 @@ addressFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -3628,8 +3645,6 @@ addressFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -3976,6 +3991,8 @@ addressFailure3 = do
       loanAddress2
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments loanAddress acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -3987,7 +4004,8 @@ addressFailure3 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -3999,8 +4017,6 @@ addressFailure3 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to rollover a loan.
   void $ transact 
@@ -4331,6 +4347,8 @@ addressFailure4 = do
       loanAddress1
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments [(_,Just ad1),(_,Just ad2)] =
         [ Output
             { outputAddress = loanAddress1
@@ -4341,7 +4359,8 @@ addressFailure4 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad1._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad1
+            , outputDatum = OutputDatum $ toDatum $ 
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad1
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -4362,7 +4381,8 @@ addressFailure4 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId $ ad2._loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5 ad2
+            , outputDatum = OutputDatum $ toDatum $ 
+                createPostPaymentActiveDatum 5 (slotToPosixTime paymentSlot) ad2
             , outputReferenceScript = toReferenceScript Nothing
             }
         , Output
@@ -4375,8 +4395,6 @@ addressFailure4 = do
             , outputReferenceScript = toReferenceScript Nothing
             }
         ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr1 [loanAddress1,refScriptAddress] [borrowerPayPrivKey1] $
@@ -4622,6 +4640,8 @@ approvalFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -4633,7 +4653,8 @@ approvalFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -4645,8 +4666,6 @@ approvalFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact lenderPersonalAddr [loanAddress,refScriptAddress] [lenderPayPrivKey] $
@@ -4892,6 +4911,9 @@ timeFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  currentSlot >>= awaitTime . (+3600) . slotToPosixTime
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -4903,7 +4925,8 @@ timeFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -4915,9 +4938,6 @@ timeFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  currentSlot >>= awaitTime . (+3600) . slotToPosixTime
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -5160,6 +5180,8 @@ timeFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -5171,7 +5193,8 @@ timeFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -5183,8 +5206,6 @@ timeFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -5213,8 +5234,7 @@ timeFailure2 = do
           }
       }
 
--- | An interest application is required. There is no penalty but interest is compounding and
--- > 0.
+-- | Interest needs to be applied by the new datum doesn't account for it.
 timeFailure3 :: MonadEmulator m => m ()
 timeFailure3 = do
   let -- Borrower Info
@@ -5247,7 +5267,7 @@ timeFailure3 = do
         { _borrowerId = borrowerCred
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _loanTerm = 3600
+        , _loanTerm = 10_000
         , _collateral = [collateral1]
         }
       offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
@@ -5255,8 +5275,8 @@ timeFailure3 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _epochDuration = Just 3600
-        , _loanTerm = 10000
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
         , _loanInterest = Fraction (1,10)
         , _compoundingInterest = True
         , _minPayment = 0
@@ -5269,7 +5289,8 @@ timeFailure3 = do
         }
 
   -- Initialize scenario
-  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- initializeReferenceScripts 
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- 
+    initializeReferenceScripts 
   mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
 
   -- Create the Ask UTxO.
@@ -5428,273 +5449,9 @@ timeFailure3 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
-  let samplePayments acs = flip concatMap acs $ 
-        \(_,Just ad@ActiveDatum{..}) ->
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 6
-                  ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 5_000_000 mempty
-              , outputDatum = 
-                  OutputDatum $ toDatum $ 
-                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-
-  currentSlot >>= awaitTime . (+3600) . slotToPosixTime
+  priorSlot <- currentSlot
+  currentSlot >>= awaitTime . slotToPosixTime . (+50)
   paymentSlot <- (1+) <$> currentSlot
-
-  -- Try to make a partial payment.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
-          Input
-            { inputId = activeUtxoRef
-            , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
-            }
-      , outputs = samplePayments activeUTxOs
-      , withdrawals =
-          [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
-              , withdrawalAmount = 0
-              , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer ObservePayment
-              }
-          ]
-      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Nothing
-          , validityRangeUpperBound = Just paymentSlot
-          }
-      }
-
--- | An interest application is required. The interest is non-compounding but there is a penalty.
-timeFailure4 :: MonadEmulator m => m ()
-timeFailure4 = do
-  let -- Borrower Info
-      borrowerWallet = Mock.knownMockWallet 1
-      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
-      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
-      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
-      borrowerCred = PV2.PubKeyCredential borrowerPubKey
-      borrowerBeacon = genBorrowerId borrowerCred
-      loanAddress = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
-                    (Just $ PV2.StakingHash borrowerCred)
-
-      -- Lender Info
-      lenderWallet = Mock.knownMockWallet 2
-      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
-      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
-      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
-      lenderCred = PV2.PubKeyCredential lenderPubKey
-      lenderBeacon = genLenderId lenderCred
-      lenderAddr = 
-        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
-                    (Just $ PV2.StakingHash lenderCred)
-
-      -- Loan Info
-      loanAsset = Asset (adaSymbol,adaToken)
-      collateral1 = Asset (testTokenSymbol,"TestToken1")
-      loanBeacon = genLoanAssetBeaconName loanAsset
-      askDatum = unsafeCreateAskDatum $ NewAskInfo
-        { _borrowerId = borrowerCred
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _loanTerm = 3600
-        , _collateral = [collateral1]
-        }
-      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
-        { _lenderId = lenderCred
-        , _lenderAddress = lenderAddr
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _epochDuration = Just 3600
-        , _loanTerm = 10000
-        , _loanInterest = Fraction (1,10)
-        , _compoundingInterest = False
-        , _minPayment = 1_000_000
-        , _penalty = FixedFee 1_000_000
-        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
-        , _collateralIsSwappable = False
-        , _claimPeriod = 3600
-        , _offerDeposit = 4_000_000
-        , _offerExpiration = Nothing
-        }
-
-  -- Initialize scenario
-  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- initializeReferenceScripts 
-  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
-
-  -- Create the Ask UTxO.
-  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum askDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      }
-
-  -- Create the Offer UTxO.
-  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLenderId lenderBeacon,1)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-                  ]
-              , outputDatum = OutputDatum $ toDatum offerDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [lenderPubKey]
-      }
-
-  startSlot <- currentSlot
-
-  askRef <- 
-    txOutRefWithValue $ 
-      utxoValue 3_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , uncurry PV2.singleton (_unAsset collateral1) 1
-        ]
-
-  offerRef <-
-    txOutRefWithValue $ 
-      utxoValue 4_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-        ]
-
-  let activeDatum = 
-        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
-      loanIdBeacon = genLoanId offerRef
-
-  -- Accept the offer.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens = 
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",-1)
-                  , ("Ask",-1)
-                  , (_unAssetBeacon loanBeacon,-2)
-                  , (_unLenderId lenderBeacon,-1)
-                  ]
-              , mintRedeemer = toRedeemer BurnNegotiationBeacons
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          , TokenMint
-              { mintTokens = 
-                  [ ("Active",1)
-                  , (_unBorrowerId borrowerBeacon,1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLoanId loanIdBeacon,2)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = 
-          [ Input
-              { inputId = offerRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          , Input
-              { inputId = askRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 10
-                  ]
-              , outputDatum = OutputDatum $ toDatum activeDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
-              , outputDatum = 
-                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Just startSlot
-          , validityRangeUpperBound = Nothing
-          }
-      }
-
-  activeUTxOs <-
-    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
-      loanAddress 
-      (activeBeaconCurrencySymbol,"Active")
 
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
@@ -5707,21 +5464,19 @@ timeFailure4 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 6_000_000 (slotToPosixTime priorSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
               { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 5_000_000 mempty
+              , outputValue = utxoValue 6_000_000 mempty
               , outputDatum = 
                   OutputDatum $ toDatum $ 
                     PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  currentSlot >>= awaitTime . (+3600) . slotToPosixTime
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -5730,7 +5485,7 @@ timeFailure4 = do
           Input
             { inputId = activeUtxoRef
             , inputWitness = 
-                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 6_000_000)
             }
       , outputs = samplePayments activeUTxOs
       , withdrawals =
@@ -6055,6 +5810,8 @@ orderFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -6087,7 +5844,8 @@ orderFailure1 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6126,7 +5884,8 @@ orderFailure1 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6136,8 +5895,6 @@ orderFailure1 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -6468,6 +6225,8 @@ orderFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -6499,7 +6258,8 @@ orderFailure2 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6539,7 +6299,8 @@ orderFailure2 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6549,8 +6310,6 @@ orderFailure2 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -6881,6 +6640,8 @@ orderFailure3 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -6913,7 +6674,8 @@ orderFailure3 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6953,7 +6715,8 @@ orderFailure3 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -6963,8 +6726,6 @@ orderFailure3 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -7295,6 +7056,8 @@ orderFailure4 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap (zip acs [1::Int ..]) $ 
         \((_,Just ad@ActiveDatum{..}),i) ->
           if even i then
@@ -7327,7 +7090,8 @@ orderFailure4 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -7367,7 +7131,8 @@ orderFailure4 = do
                     , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                     , uncurry PV2.singleton (_unAsset collateral1) 6
                     ]
-                , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+                , outputDatum = OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             , Output
@@ -7377,8 +7142,6 @@ orderFailure4 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
             ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -7659,6 +7422,8 @@ orderFailure5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let extraOutput = 
         [ Output
             { outputAddress = borrowerPersonalAddr
@@ -7679,7 +7444,8 @@ orderFailure5 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+            , outputDatum = OutputDatum $ toDatum $ 
+                createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
             , outputReferenceScript = toReferenceScript Nothing
             }
 
@@ -7693,8 +7459,6 @@ orderFailure5 = do
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
             , outputReferenceScript = toReferenceScript Nothing
             }
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -7981,6 +7745,8 @@ orderFailure6 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let extraOutput = 
         [ Output
             { outputAddress = borrowerPersonalAddr
@@ -8001,7 +7767,8 @@ orderFailure6 = do
                 , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                 , uncurry PV2.singleton (_unAsset collateral1) 6
                 ]
-            , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+            , outputDatum = OutputDatum $ toDatum $ 
+                createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
             , outputReferenceScript = toReferenceScript Nothing
             }
 
@@ -8015,8 +7782,6 @@ orderFailure6 = do
                   PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
             , outputReferenceScript = toReferenceScript Nothing
             }
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -8268,6 +8033,8 @@ collateralFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -8279,7 +8046,8 @@ collateralFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 4
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -8291,8 +8059,6 @@ collateralFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -8550,6 +8316,8 @@ collateralFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -8561,7 +8329,8 @@ collateralFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral2) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -8573,8 +8342,6 @@ collateralFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -8820,6 +8587,8 @@ paymentFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -8831,7 +8600,8 @@ paymentFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -8843,8 +8613,6 @@ paymentFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -9087,6 +8855,8 @@ paymentFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -9098,7 +8868,8 @@ paymentFailure2 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -9110,8 +8881,6 @@ paymentFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -9355,6 +9124,8 @@ paymentFailure3 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -9366,7 +9137,8 @@ paymentFailure3 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 10
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum (-1) ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum (-1) (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -9378,8 +9150,6 @@ paymentFailure3 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -9636,6 +9406,8 @@ paymentFailure4 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -9647,12 +9419,11 @@ paymentFailure4 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral2) 10
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 0 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 0 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -9895,6 +9666,8 @@ paymentFailure5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -9906,7 +9679,8 @@ paymentFailure5 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -9918,8 +9692,6 @@ paymentFailure5 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -10162,6 +9934,8 @@ paymentFailure6 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -10173,7 +9947,8 @@ paymentFailure6 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ 
+                  createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -10185,8 +9960,6 @@ paymentFailure6 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -10432,6 +10205,8 @@ datumFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -10444,7 +10219,8 @@ datumFailure1 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = 
+                        createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ 
                       toDatum @ActiveDatum newDatum{_activeBeaconId = ActiveBeaconId ""}
               , outputReferenceScript = toReferenceScript Nothing
@@ -10458,8 +10234,6 @@ datumFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -10702,6 +10476,8 @@ datumFailure2 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -10714,7 +10490,7 @@ datumFailure2 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ 
                       toDatum @ActiveDatum newDatum{_borrowerId = BorrowerId ""}
               , outputReferenceScript = toReferenceScript Nothing
@@ -10728,8 +10504,6 @@ datumFailure2 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -10972,6 +10746,8 @@ datumFailure3 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -10984,7 +10760,7 @@ datumFailure3 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_lenderAddress = PV2.Address borrowerCred Nothing}
               , outputReferenceScript = toReferenceScript Nothing
@@ -10998,8 +10774,6 @@ datumFailure3 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -11242,6 +11016,8 @@ datumFailure4 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -11254,7 +11030,7 @@ datumFailure4 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanAsset = Asset (testTokenSymbol,"TestToken1")}
               , outputReferenceScript = toReferenceScript Nothing
@@ -11268,8 +11044,6 @@ datumFailure4 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -11512,6 +11286,8 @@ datumFailure5 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -11524,7 +11300,7 @@ datumFailure5 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_assetBeacon = AssetBeacon ""}
               , outputReferenceScript = toReferenceScript Nothing
@@ -11538,8 +11314,6 @@ datumFailure5 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -11782,6 +11556,8 @@ datumFailure6 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -11794,7 +11570,7 @@ datumFailure6 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanPrincipal = 0}
               , outputReferenceScript = toReferenceScript Nothing
@@ -11808,8 +11584,6 @@ datumFailure6 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -12052,6 +11826,8 @@ datumFailure7 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -12064,7 +11840,7 @@ datumFailure7 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_epochDuration = Just 999}
               , outputReferenceScript = toReferenceScript Nothing
@@ -12078,8 +11854,6 @@ datumFailure7 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -12322,6 +12096,8 @@ datumFailure8 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -12334,7 +12110,7 @@ datumFailure8 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_lastEpochBoundary = 999}
               , outputReferenceScript = toReferenceScript Nothing
@@ -12348,8 +12124,6 @@ datumFailure8 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -12592,6 +12366,8 @@ datumFailure9 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -12604,7 +12380,7 @@ datumFailure9 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanTerm = 0}
               , outputReferenceScript = toReferenceScript Nothing
@@ -12618,8 +12394,6 @@ datumFailure9 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -12862,6 +12636,8 @@ datumFailure10 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -12874,7 +12650,7 @@ datumFailure10 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanInterest = Fraction (0,10)}
               , outputReferenceScript = toReferenceScript Nothing
@@ -12888,8 +12664,6 @@ datumFailure10 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -13132,6 +12906,8 @@ datumFailure11 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -13144,7 +12920,7 @@ datumFailure11 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_minPayment = -1}
               , outputReferenceScript = toReferenceScript Nothing
@@ -13158,8 +12934,6 @@ datumFailure11 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -13402,6 +13176,8 @@ datumFailure12 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -13414,7 +13190,7 @@ datumFailure12 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_collateralization = Collateralization []}
               , outputReferenceScript = toReferenceScript Nothing
@@ -13428,8 +13204,6 @@ datumFailure12 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -13672,6 +13446,8 @@ datumFailure13 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -13684,7 +13460,7 @@ datumFailure13 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_collateralIsSwappable = True}
               , outputReferenceScript = toReferenceScript Nothing
@@ -13698,8 +13474,6 @@ datumFailure13 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -13942,6 +13716,8 @@ datumFailure14 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -13954,7 +13730,7 @@ datumFailure14 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_claimExpiration = 0}
               , outputReferenceScript = toReferenceScript Nothing
@@ -13968,8 +13744,6 @@ datumFailure14 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -14212,6 +13986,8 @@ datumFailure15 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -14224,7 +14000,7 @@ datumFailure15 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanExpiration = 0}
               , outputReferenceScript = toReferenceScript Nothing
@@ -14238,8 +14014,6 @@ datumFailure15 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -14482,6 +14256,8 @@ datumFailure16 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -14494,7 +14270,7 @@ datumFailure16 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanOutstanding = Fraction (0,0)}
               , outputReferenceScript = toReferenceScript Nothing
@@ -14508,8 +14284,6 @@ datumFailure16 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -14752,6 +14526,8 @@ datumFailure17 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -14764,7 +14540,7 @@ datumFailure17 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_loanId = LoanId ""}
               , outputReferenceScript = toReferenceScript Nothing
@@ -14778,8 +14554,6 @@ datumFailure17 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -15022,6 +14796,8 @@ datumFailure18 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -15033,7 +14809,7 @@ datumFailure18 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatumHash $ datumHash $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatumHash $ datumHash $ createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -15045,8 +14821,6 @@ datumFailure18 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -15289,6 +15063,8 @@ datumFailure19 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -15300,7 +15076,7 @@ datumFailure19 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -15312,8 +15088,6 @@ datumFailure19 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -15556,6 +15330,8 @@ datumFailure20 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -15579,8 +15355,6 @@ datumFailure20 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -15823,6 +15597,8 @@ datumFailure21 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -15835,7 +15611,7 @@ datumFailure21 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
                        newDatum{_paymentObserverHash = ""}
               , outputReferenceScript = toReferenceScript Nothing
@@ -15849,8 +15625,6 @@ datumFailure21 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -15879,7 +15653,7 @@ datumFailure21 = do
           }
       }
 
--- | The collateral datum has the wrong interest observer hash.
+-- | The collateral datum has the wrong address update observer hash.
 datumFailure22 :: MonadEmulator m => m ()
 datumFailure22 = do
   let -- Borrower Info
@@ -16093,6 +15867,8 @@ datumFailure22 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -16105,9 +15881,9 @@ datumFailure22 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
-                       newDatum{_interestObserverHash = ""}
+                       newDatum{_addressUpdateObserverHash = ""}
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -16119,8 +15895,6 @@ datumFailure22 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -16149,7 +15923,7 @@ datumFailure22 = do
           }
       }
 
--- | The collateral datum has the wrong address update observer hash.
+-- | The collateral datum has the wrong penalty.
 datumFailure23 :: MonadEmulator m => m ()
 datumFailure23 = do
   let -- Borrower Info
@@ -16363,6 +16137,8 @@ datumFailure23 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -16375,9 +16151,9 @@ datumFailure23 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
-                       newDatum{_addressUpdateObserverHash = ""}
+                       newDatum{_penalty = FixedFee 1000}
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -16389,8 +16165,6 @@ datumFailure23 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -16419,7 +16193,7 @@ datumFailure23 = do
           }
       }
 
--- | The collateral datum has the wrong penalty.
+-- | The collateral datum has the wrong total epoch payments after the first payment.
 datumFailure24 :: MonadEmulator m => m ()
 datumFailure24 = do
   let -- Borrower Info
@@ -16633,6 +16407,8 @@ datumFailure24 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -16645,9 +16421,9 @@ datumFailure24 = do
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
-                       newDatum{_penalty = FixedFee 1000}
+                       newDatum{_totalEpochPayments = 0}
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -16659,8 +16435,6 @@ datumFailure24 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -16689,7 +16463,8 @@ datumFailure24 = do
           }
       }
 
--- | The collateral datum has the wrong total epoch payments.
+-- | The collateral datum has the wrong total epoch payments after the second payment. The second
+-- payment happens after applying interest.
 datumFailure25 :: MonadEmulator m => m ()
 datumFailure25 = do
   let -- Borrower Info
@@ -16730,12 +16505,12 @@ datumFailure25 = do
         , _lenderAddress = lenderAddr
         , _loanAsset = loanAsset
         , _loanPrincipal = 10_000_000
-        , _epochDuration = Nothing
-        , _loanTerm = 3600
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
         , _loanInterest = Fraction (1,10)
         , _compoundingInterest = True
-        , _minPayment = 0
-        , _penalty = NoPenalty
+        , _minPayment = 1_000_000
+        , _penalty = FixedFee 1_000_000
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -16903,6 +16678,9 @@ datumFailure25 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  currentSlot >>= awaitTime . slotToPosixTime . (+50)
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -16912,12 +16690,12 @@ datumFailure25 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 6
+                  , uncurry PV2.singleton (_unAsset collateral1) 7
                   ]
               , outputDatum = 
-                  let newDatum = createPostPaymentActiveDatum 5_000_000 ad
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
                   in OutputDatum $ toDatum @ActiveDatum 
-                       newDatum{_totalEpochPayments = 0}
+                       newDatum{_totalEpochPayments = 5_000_000}
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -16929,8 +16707,6 @@ datumFailure25 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -16956,6 +16732,1282 @@ datumFailure25 = do
       , validityRange = ValidityRange
           { validityRangeLowerBound = Nothing
           , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
+  newActiveUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+50)
+  secondPaymentSlot <- (1+) <$> currentSlot
+
+  let newSamplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 6
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 2_000_000 (slotToPosixTime secondPaymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{_totalEpochPayments = 7_000_000}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 2_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map newActiveUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 2_000_000)
+            }
+      , outputs = newSamplePayments newActiveUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just secondPaymentSlot
+          }
+      }
+
+-- | The collateral datum has the wrong last epoch boundary after the second payment. The second
+-- payment happens after applying interest twice, but the last epoch boundary is only moved forward
+-- one epoch.
+datumFailure26 :: MonadEmulator m => m ()
+datumFailure26 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 3600
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Accept the offer.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+50)
+  paymentSlot <- (1+) <$> currentSlot
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 7
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{_totalEpochPayments = 5_000_000}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 5_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
+  newActiveUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+100)
+  secondPaymentSlot <- (1+) <$> currentSlot
+
+  let newSamplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 6
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 2_000_000 (slotToPosixTime secondPaymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{
+                         _lastEpochBoundary = 
+                           _lastEpochBoundary + 1 * fromMaybe 0 _epochDuration
+                       }
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 2_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map newActiveUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 2_000_000)
+            }
+      , outputs = newSamplePayments newActiveUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just secondPaymentSlot
+          }
+      }
+
+-- | The collateral datum does not apply the required penalty even when no interest is required.
+datumFailure27 :: MonadEmulator m => m ()
+datumFailure27 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 10_000
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
+        , _loanInterest = Fraction (0,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = FixedFee 10_000_000
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- 
+    initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Accept the offer.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+50)
+  paymentSlot <- (1+) <$> currentSlot
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 8
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{_loanOutstanding = Fraction(5_000_000, 1)}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 5_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
+-- | The collateral datum does not apply the required penalty when two epochs are skipped.
+datumFailure28 :: MonadEmulator m => m ()
+datumFailure28 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 10_000
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
+        , _loanInterest = Fraction (0,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = FixedFee 10_000_000
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- 
+    initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Accept the offer.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+100)
+  paymentSlot <- (1+) <$> currentSlot
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{_loanOutstanding = Fraction(15_000_000, 1)}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 5_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
+-- | The penalty is not applied when the interest is applied even though it is required.
+datumFailure29 :: MonadEmulator m => m ()
+datumFailure29 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
+      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      borrowerBeacon = genBorrowerId borrowerCred
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 3600
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 50_000
+        , _loanTerm = 1_000_000
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = FixedFee 1_000_000
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,paymentObserverRef} <- initializeReferenceScripts 
+  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Accept the offer.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  paymentSlot <- (1+) <$> currentSlot
+
+  let samplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 7
+                  ]
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 5_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map activeUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 5_000_000)
+            }
+      , outputs = samplePayments activeUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just paymentSlot
+          }
+      }
+
+  newActiveUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress 
+      (activeBeaconCurrencySymbol,"Active")
+
+  currentSlot >>= awaitTime . slotToPosixTime . (+100)
+  secondPaymentSlot <- (1+) <$> currentSlot
+
+  let newSamplePayments acs = flip concatMap acs $ 
+        \(_,Just ad@ActiveDatum{..}) ->
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon _assetBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId _borrowerId) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 6
+                  ]
+              , outputDatum = 
+                  let newDatum = createPostPaymentActiveDatum 2_000_000 (slotToPosixTime secondPaymentSlot) ad
+                  in OutputDatum $ toDatum @ActiveDatum 
+                       newDatum{_loanOutstanding = subtractPayment 2_000_000 $
+                         applyInterestNTimes True _penalty 2 _loanInterest _loanOutstanding }
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr
+              , outputValue = utxoValue 2_000_000 mempty
+              , outputDatum = 
+                  OutputDatum $ toDatum $ 
+                    PaymentDatum (activeBeaconCurrencySymbol,_unLoanId _loanId)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+
+  -- Try to make a partial payment.
+  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
+    emptyTxParams
+      { inputs = flip map newActiveUTxOs $ \(activeUtxoRef,_) ->
+          Input
+            { inputId = activeUtxoRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer $ MakePayment 2_000_000)
+            }
+      , outputs = newSamplePayments newActiveUTxOs
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash paymentObserverScript
+              , withdrawalAmount = 0
+              , withdrawalWitness = 
+                  StakeWithPlutusReference paymentObserverRef $ 
+                    toRedeemer ObservePayment
+              }
+          ]
+      , referenceInputs = [paymentObserverRef,negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just secondPaymentSlot
           }
       }
 
@@ -17176,6 +18228,8 @@ observerRedeemerFailure1 = do
       loanAddress 
       (activeBeaconCurrencySymbol,"Active")
 
+  paymentSlot <- (1+) <$> currentSlot
+
   let samplePayments acs = flip concatMap acs $ 
         \(_,Just ad@ActiveDatum{..}) ->
           [ Output
@@ -17187,7 +18241,7 @@ observerRedeemerFailure1 = do
                   , PV2.singleton activeBeaconCurrencySymbol (_unLoanId _loanId) 1
                   , uncurry PV2.singleton (_unAsset collateral1) 6
                   ]
-              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 ad
+              , outputDatum = OutputDatum $ toDatum $ createPostPaymentActiveDatum 5_000_000 (slotToPosixTime paymentSlot) ad
               , outputReferenceScript = toReferenceScript Nothing
               }
           , Output
@@ -17199,8 +18253,6 @@ observerRedeemerFailure1 = do
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
-
-  paymentSlot <- (1+) <$> currentSlot
 
   -- Try to make a partial payment.
   void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
@@ -17297,11 +18349,8 @@ tests =
       "invalid-hereafter not specified"
       timeFailure2
   , scriptMustFailWithError "timeFailure3" 
-      "Next interest and/or penalty application required"
+      "Not all required collateral outputs found"
       timeFailure3
-  , scriptMustFailWithError "timeFailure4" 
-      "Next interest and/or penalty application required"
-      timeFailure4
       
     -- Output Order Failure Tests
   , scriptMustFailWithError "orderFailure1" 
@@ -17427,6 +18476,18 @@ tests =
   , scriptMustFailWithError "datumFailure25" 
       "Not all required collateral outputs found"
       datumFailure25
+  , scriptMustFailWithError "datumFailure26" 
+      "Not all required collateral outputs found"
+      datumFailure26
+  , scriptMustFailWithError "datumFailure27" 
+      "Not all required collateral outputs found"
+      datumFailure27
+  , scriptMustFailWithError "datumFailure28" 
+      "Not all required collateral outputs found"
+      datumFailure28
+  , scriptMustFailWithError "datumFailure29" 
+      "Not all required collateral outputs found"
+      datumFailure29
 
     -- Observer Redeemer Failures
   , scriptMustFailWithError "observerRedeemerFailure1" 
