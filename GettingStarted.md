@@ -26,11 +26,9 @@ template scripts to come up with your own remote node template scripts for carda
 - [Closing an Offer UTxO](#closing-an-offer-utxo)
 - [Accepting an Offer](#accepting-an-offer)
 - [Making a Loan Payment](#making-a-loan-payment)
-- [Applying Interest](#applying-interest)
 - [Updating a Lender Address](#updating-a-lender-address)
 - [Claiming Expired Collateral](#claiming-expired-collateral)
 - [Unlocking Lost Collateral](#unlocking-lost-collateral)
-- [Time Conversions](#time-conversions)
 - [Queries](#queries)
   - [Querying Personal Addresses](#querying-personal-addresses)
   - [Querying Ask UTxOs](#querying-ask-utxos)
@@ -39,6 +37,10 @@ template scripts to come up with your own remote node template scripts for carda
   - [Querying the Current Time](#querying-the-current-time)
   - [Querying a Borrower's Credit History](#querying-a-borrowers-credit-history)
   - [Querying a Loan's History](#querying-a-loans-history)
+  - [Query Loan Balance](#query-loan-balance)
+- [Time](#time)
+  - [Conversions](#conversions)
+  - [Rounding to Nearest Minute](#rounding-to-nearest-minute)
 
 ## Installing
 
@@ -303,7 +305,6 @@ registered, *they cannot be deregistered*.
 The following protocol scripts requires staking executions, and therefore, require registration:
 - Negotiation Beacon Script
 - Payment Observer Script
-- Interest Observer Script
 - Address Update Observer Script
 
 Registering the scripts involve:
@@ -325,10 +326,6 @@ cardano-loans scripts \
   --out-file payment_observer.plutus
 
 cardano-loans scripts \
-  --interest-script \
-  --out-file interest_observer.plutus
-
-cardano-loans scripts \
   --address-update-script \
   --out-file address_update_observer.plutus
 ```
@@ -342,10 +339,6 @@ cardano-cli conway stake-address registration-certificate \
 cardano-cli conway stake-address registration-certificate \
   --stake-script-file payment_observer.plutus \
   --out-file payment_observer.cert
-
-cardano-cli conway stake-address registration-certificate \
-  --stake-script-file interest_observer.plutus \
-  --out-file interest_observer.cert
 
 cardano-cli conway stake-address registration-certificate \
   --stake-script-file address_update_observer.plutus \
@@ -1105,137 +1098,6 @@ To see how to build the transaction using a local node, refer
 [here](scripts/local-node/make-payment.sh). There is an example `cardano-cli conway transaction
 build` for both full payments and partial payments.
 
-## Applying Interest and/or Penalties
-
-Applying interest to a loan requires:
-1. Calculate the invalid-hereafter slot number based on the loan's expiration.
-1. Calculate the hash of the borrower's staking credential.
-2. Create the required spending script redeemer.
-3. Create the post-interest ActiveDatum for each payment made.
-3. Create the required observer script redeemer.
-7. Create the required staking address for the interest observer script.
-8. Submit the transaction.
-
-> [!IMPORTANT] 
-> This step is required even if a loan is interest-free or non-compounding. These periodic rollovers
-> are required in order for the protocol to check if any penalties are required, and apply them when
-> necessary. The only time this step is *not* required is when the loan is **both** interest-free
-> and has no penalty.
-
-#### Convert the next deadline (in POSIX time) to a slot number
-```bash
-deadlineSlot=$(cardano-loans convert-time \
-  --posix-time 1712768154000 \
-  --testnet)
-```
-
-You need to prove to the script that the loan's expiration has not passed yet so you need to set the
-invalid-hereafter of the transaction to the loan expiration time. When applying interest to multiple
-loans, the invalid-hereafter should be set to the earliest time.
-
-#### Calculate the hash of the staking credential used in the borrower address
-```bash
-borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
-  --stake-verification-key-file borrower_stake.vkey)
-```
-
-If you are using a staking script credential, you can create the credential hash with this command:
-```bash
-borrowerStakeScriptHash=$(cardano-cli conway transaction policyid \
-  --script-file stake_script.plutus)
-```
-
-While the above command is technically meant for minting policies, it works for generating the hash
-of any script.
-
-#### Create the interest observer's staking address
-This address is needed to execute the script as a staking script.
-
-```bash
-cardano-loans scripts \
-  --interest-script \
-  --out-file payment_observer.plutus
-
-observerAddress=$(cardano-cli conway stake-address build \
-  --testnet-magic 1 \
-  --stake-script-file interest_observer.plutus)
-```
-
-#### Creating the required ActiveDatum
-There are two ways to create the required ActiveDatum: manually or automatically.
-
-You can create the ActiveDatum automatically with this command:
-```bash
-cardano-loans datums active post-interest auto \
-  --testnet \
-  --loan-ref '234f86d19e550469b654fb9ee9e1cc94c19a481a16192df015a362125697e812#0' \
-  --times-applied 1 \
-  --out-file $activeDatumFile
-  --out-file post_interest_active_datum.json
-```
-
-This command will query Koios to find that Active UTxO. It will create the new ActiveDatum off of
-the current Active UTxO's ActiveDatum.
-
-If you would like to create the ActiveDatum manually (without requiring internet), you can do so 
-with this command:
-```bash
-cardano-loans datums active post-interest manual \
-  --payment-address addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm \
-  --loan-asset 'lovelace' \
-  --principal 10000000 \
-  --loan-term '3600 slots' \
-  --interest '3602879701896397 / 36028797018963968' \
-  --compounding-interest \
-  --epoch-duration '1200 slots' \
-  --minimum-payment 2000000 \
-  --fixed-penalty 500000 \
-  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a' \
-  --relative-rate '1 / 1000000' \
-  --collateral-asset 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31' \
-  --relative-rate '1 / 500000' \
-  --claim-expiration '1712756592000' \
-  --loan-expiration '1712752992000' \
-  --last-epoch-boundary '1712749392000' \
-  --total-epoch-payments 0 \
-  --outstanding-balance '3096224743817216015625 / 281474976710656' \
-  --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
-  --loan-id '0f7deb6eca31425e357b1a7a9284f0e60782f5b2a36c80c5ef4b89bcbc4b5ced' \
-  --times-applied 1 \
-  --out-file post_interest_active_datum.json
-```
-
-*All fields must match the current ActiveDatum exactly*. While the fields that accept fractions can
-also accept decimals, it is more accurate to use fractions directly. Converting decimals to
-fractions is subject to the imprecision of floating-point numbers.
-
-#### Create the required redeemers.
-```bash
-cardano-loans redeemers interest-script observe-interest \
-  --out-file observer_interest.json
-
-cardano-loans redeemers loan-script apply-interest \
-  --deposit-increase 0 \
-  --times-applied 1 \
-  --out-file make_payment.json
-```
-
-If you need to increase the amount of ada stored in the Active UTxO, you must specify the increase
-with the `deposit-increase` field.
-
-The `times-aplied` field tells the script how many times to apply the interest. If you need to apply
-the interest several times to catch up to the current loan epoch, you can use this field to
-do them all in one transaction.
-
-#### Building the transaction
-You need to set the invalid-hereafter of this transaction to the `$deadlineSlot` variable.
-
-When applying interest to multiple loans, make sure the required outputs are in the same order as
-the inputs!
-
-To see how to build the transaction using a local node, refer
-[here](scripts/local-node/apply-interest.sh). 
-
 ## Updating a Lender Address
 
 Updating the lender address requires the following steps:
@@ -1477,16 +1339,6 @@ You need to set the invalid-before flag to the `$tipSlot` variable.
 To see how to build the transaction using a local node, refer
 [here](scripts/local-node/unlock-lost.sh). 
 
-## Time Conversions
-Since plutus scripts use POSIX time (in milliseconds) while cardano-cli uses slot numbers for the
-transaction validity intervals, you need a way to convert between the two units.
-
-``` Bash
-cardano-loans convert-time --testnet --slot 26668590
-
-cardano-loans convert-time --testnet --posix-time 1682351790000
-```
-
 ## Queries
 
 - All queries use Koios.
@@ -1657,10 +1509,52 @@ command. The `loan-id` field is the target loan's Loan ID.
 
 The response will have every action taken against that loan's Active UTxO. For example, you can see:
 - What payments were made, when, and for how much?
-- When was interest applied, and how many times?
 - When was the lender's address updated?
 
 The loan information attached to each event is the state *at the time of the event*; the information
 does not show the results of the event.
 
 This query can complement the borrower's credit history query.
+
+### Query Loan Balance
+
+Sometimes it can be hard to know what the current outstanding-balance is given that the datum is a
+snapshot at one point in time. If a user wants to make a full payment after missing two loan epochs,
+how much do they need to pay? The following command gives the answer:
+
+```bash
+cardano-loans query loan-balance \
+  --testnet \
+  --loan-ref c5dbae46e7ac34b4be3075841cc54761f794d4b25bc7349afce791cda320ac85#1
+```
+
+The `loan-ref` is the UTxO output reference for the loan.
+
+> [!NOTE]
+> The CLI could be updated to accept the LoanID instead.
+
+### Time
+
+##### Conversions
+Since plutus scripts use POSIX time (in milliseconds) while cardano-cli uses slot numbers for the
+transaction validity intervals, you need a way to convert between the two units.
+
+``` Bash
+cardano-loans time convert-time --testnet --slot 26668590
+
+cardano-loans time convert-time --testnet --posix-time 1682351790000
+```
+
+##### Next Loan Epoch Boundary
+
+Since the `invalid-hereafter` flag needs to be set to the start of the next loan epoch (or loan
+expiration), this command can be used to easily figure out what that value should be. This is
+especially useful if several loan epochs have passed before the next payment. Make sure all units
+are in POSIX time.
+
+```bash
+cardano-loans time calc-next-boundary \
+  --last-epoch-boundary 1682351790000 \
+  --epoch-duration 30000 \
+  --current-time 1782351790000 
+```
