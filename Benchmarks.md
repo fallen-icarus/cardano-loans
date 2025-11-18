@@ -16,7 +16,6 @@ the same parameters as the mainnet.
 - [Accepting Offers](#accepting-offers)
 - [Making Partial Payment](#making-partial-payments)
 - [Making Full Payment](#making-full-payments)
-- [Applying Interest](#applying-interest)
 - [Updating Lender Addresses](#updating-lender-addresses)
 - [Claiming Expired Collateral](#claiming-expired-collateral)
 - [Unlocking Lost Collateral](#unlocking-lost-collateral)
@@ -26,11 +25,10 @@ the same parameters as the mainnet.
 
 | Script | Deposit |
 |:------:|:-------:|
-| loan spending script | 23 ADA |
-| negotiation beacon script | 37 ADA |
-| active beacon script | 51 ADA |
-| payment observer script | 39 ADA |
-| interest observer script | 24 ADA |
+| loan spending script | 21 ADA |
+| negotiation beacon script | 36 ADA |
+| active beacon script | 50 ADA |
+| payment observer script | 44 ADA |
 | address update observer script | 24 ADA |
 | proxy script | 4 ADA |
 
@@ -219,22 +217,6 @@ could be as high as 18 payments/tx.
 
 Max: 15 Full Payments  
 Bottleneck: Memory
-
-## Applying Interest
-All scenarios tested had similar performance.
-
-#### Apply interest once to multiple loans where a percent fee penalty is applied to all loans.
-| Loans Updated | Tx Fee | Req. Collateral |
-|:--:|:--:|:--:|
-| 1 | 0.280379 ADA | 0.420569 ADA |
-| 5 | 0.597155 ADA | 0.895733 ADA |
-| 10 | 0.997717 ADA | 1.496576 ADA |
-| 15 | 1.403136 ADA | 2.104704 ADA |
-| 20 | 1.813411 ADA | 2.720117 ADA |
-| 21 | 1.896226 ADA | 2.844339 ADA |
-
-Max: 21 Loans Updated  
-Bottleneck: Tx Size
 
 ## Updating Lender Addresses
 #### Update the address for multiple loans where each loan uses three assets as collateral. The Key NFTs are all in different UTxOs.
