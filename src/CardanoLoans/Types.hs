@@ -80,7 +80,10 @@ instance ToJSON Fraction where
 instance Pretty Fraction where
   pretty (Fraction (num,den)) = 
     pretty num <+> "/" <+> pretty den <+> 
-      tupled [pretty @Double (fromIntegral num / fromIntegral den)]
+      tupled [pretty ceilingResult]
+    where
+      -- Must always round up since you can't pay 1.2 Lovelace.
+      ceilingResult = (num + den - 1) `div` den
 
 -- | The penalty to apply whenever the minimum payment is not met.
 data Penalty
