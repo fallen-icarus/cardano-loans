@@ -482,13 +482,6 @@ processLoanHistory loanId Transaction{..} = do
           , show amount
           , "."
           ]
-        ApplyInterest deposit times -> mconcat
-          [ "Applied interest "
-          , show times
-          , " time(s) with deposit increase of "
-          , show deposit
-          , " lovelace."
-          ]
         SpendWithKeyNFT -> "Defaulted collateral claimed by lender."
         UpdateLenderAddress _ deposit -> mconcat
           [ "Lender changed the required payment address"
