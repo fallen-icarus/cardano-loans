@@ -8,10 +8,10 @@ tmpDir="${mainDir}tmp/"
 
 paymentObserverScript="${loanDir}payment_observer.plutus"
 
-lenderAddress="addr_test1vpz6g5ecxv6mc036lckg6w06wmj7vr073j73llzpsn5t0pguw7m5u"
+lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
+borrowerLoanAddr="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -22,9 +22,9 @@ loanAsset='lovelace'
 collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a'
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
-paymentAmount=14500000
-loanUTxO='5c43cd80fb435163364854733c7db24af17984ab031e9a6a9aed8f0ff7b5ed28#0'
-loanIdTokenName='9d364a309553f27e02028d0cef816bfcb3cfdd6ae60556c15e49eb557f52a368'
+paymentAmount=12650001
+loanUTxO='c5dbae46e7ac34b4be3075841cc54761f794d4b25bc7349afce791cda320ac85#1'
+loanIdTokenName='a463a0657a6fb4ddcf0032ada4e8fa87aa4cd49c973c869705d8d0a65effc4ea'
 
 # Either the next epoch boundary or the loan expiration; whichever is first. This is used for 
 # invalid-hereafter.
@@ -33,12 +33,19 @@ loanIdTokenName='9d364a309553f27e02028d0cef816bfcb3cfdd6ae60556c15e49eb557f52a36
 ### transaction. This is because hardforks can change slot lengths and, therefore, the node doesn't
 ### want to make guarantees about time too far into the future. If the loan's expiration is more
 ### than 1.5 days away, set the invalid-hereafter to be: `current_slot + 129600`.
-expirationTime=$((1726408979000+1200000))
+lastEpochBoundary=1763399954000
+epochDuration=3600000
+currentSlot=$(cardano-loans query current-slot --testnet)
+currentTime=$(cardano-loans time convert-time --slot $currentSlot --testnet)
+boundaryTime=$(cardano-loans time calc-next-boundary \
+  --last-epoch-boundary $lastEpochBoundary \
+  --epoch-duration $epochDuration \
+  --current-time $currentTime)
 
 ## Convert the posix time to a slot number for invalid-hereafter.
 echo "Calculating the required slot number..."
-expirationSlot=$(cardano-loans convert-time \
-  --posix-time $expirationTime \
+boundarySlot=$(cardano-loans time convert-time \
+  --posix-time $boundaryTime \
   --testnet)
 
 ## Generate the hash for the staking verification key.
@@ -65,6 +72,7 @@ cardano-loans datums active post-payment auto \
   --testnet \
   --loan-ref $loanUTxO \
   --payment-amount $paymentAmount \
+  --next-epoch-boundary $boundaryTime \
   --out-file $activeDatumFile
 
 # cardano-loans datums active post-payment manual \
@@ -89,6 +97,7 @@ cardano-loans datums active post-payment auto \
 #   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
 #   --loan-id $loanIdTokenName \
 #   --payment-amount $paymentAmount \
+#   --next-epoch-boundary $boundaryTime \
 #   --out-file $activeDatumFile
 
 ## Create the required redeemers.
@@ -139,58 +148,50 @@ cardano-loans redeemers active-script burn-all \
 # Full payment transaction.
 cardano-cli conway transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
+  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in c835095f3339fd84276e87539a329615e8a11f286e3f76dbf9daeef93b0a0ea8#1 \
-  --tx-in 5c43cd80fb435163364854733c7db24af17984ab031e9a6a9aed8f0ff7b5ed28#1 \
-  --tx-in 85783aed629ea0fdee95e63d234f10c71775794c365299ca408e1bd6b8218911#1 \
+  --tx-in 09e8d9de43a1befa42943bf13094ad345cb819bb703d8a96ecdc3bb2db171ea9#0 \
   --tx-out "${lenderAddress} + ${paymentAmount} ${loanAsset}" \
   --tx-out-inline-datum-file $paymentDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 8 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 4 ${collateral2}" \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -1 ${loanId}" \
-  --mint-tx-in-reference 03d6221ffb7a85284a8871a18b6276788f99ec5caff69af098d7e9b4a6e14dec#0 \
+  --mint-tx-in-reference 47f7e129697675944421aea3c2faa4cf0ee9e90b9445fffe145567e5d6476bcc#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference 670526b45c968321def17ca18cf0e507383e7fd596c45dd5a87b92d1f97943bc#0 \
+  --withdrawal-tx-in-reference 6ad871a70308dd5d0e63ab6b1c7bf747c00a03c839ffdef7232b480097d6b3ac#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --required-signer-hash $borrowerStakePubKeyHash \
   --change-address "$(cat ${walletDir}01.addr)" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --testnet-magic 1 \
-  --invalid-hereafter $expirationSlot \
+  --invalid-hereafter $boundarySlot \
   --out-file "${tmpDir}tx.body"
 
 # # Parial payment transaction.
 # cardano-cli conway transaction build \
 #   --tx-in $loanUTxO \
-#   --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
+#   --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
 #   --spending-plutus-script-v2 \
 #   --spending-reference-tx-in-inline-datum-present \
 #   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-#   --tx-in c835095f3339fd84276e87539a329615e8a11f286e3f76dbf9daeef93b0a0ea8#1 \
-#   --tx-in 95de5a789ccedbf1444b8668e5724aa4ed95d799d616aae1e4d408d56c2c3485#0 \
-#   --tx-in 85783aed629ea0fdee95e63d234f10c71775794c365299ca408e1bd6b8218911#1 \
+#   --tx-in e653cd28e2e08011362481967f8494a65c651b42c3d53e021aae2c775a97be59#0 \
 #   --tx-out "${lenderAddress} + ${paymentAmount} ${loanAsset}" \
 #   --tx-out-inline-datum-file $paymentDatumFile \
-#   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 2 ${collateral2}" \
+#   --tx-out "${borrowerLoanAddr} + 5000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 3 ${collateral2}" \
 #   --tx-out-inline-datum-file $activeDatumFile \
-#   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 8 ${collateral1}" \
-#   --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 2 ${collateral2}" \
 #   --withdrawal "${observerAddress}+0" \
-#   --withdrawal-tx-in-reference 670526b45c968321def17ca18cf0e507383e7fd596c45dd5a87b92d1f97943bc#0 \
+#   --withdrawal-tx-in-reference 6ad871a70308dd5d0e63ab6b1c7bf747c00a03c839ffdef7232b480097d6b3ac#0 \
 #   --withdrawal-plutus-script-v2 \
 #   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
 #   --required-signer-hash $borrowerStakePubKeyHash \
 #   --change-address "$(cat ${walletDir}01.addr)" \
 #   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
 #   --testnet-magic 1 \
-#   --invalid-hereafter $expirationSlot \
+#   --invalid-hereafter $boundarySlot \
 #   --out-file "${tmpDir}tx.body"
 
 cardano-cli conway transaction sign \
