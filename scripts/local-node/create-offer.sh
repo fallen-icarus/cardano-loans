@@ -6,7 +6,7 @@ walletDir="${mainDir}wallets/"
 loanDir="${mainDir}loan-files/"
 tmpDir="${mainDir}tmp/"
 
-borrowerAddress="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
+borrowerAddress="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
 
 paymentAddress=$(cat "${walletDir}02.addr")
 lenderStakePubKeyFile="${walletDir}02Stake.vkey"
@@ -36,8 +36,8 @@ cardano-loans datums offer \
   --loan-term '10800 slots' \
   --interest '0.1' \
   --compounding-interest \
-  --epoch-duration '1200 slots' \
-  --minimum-payment 2000000 \
+  --epoch-duration '3600 slots' \
+  --minimum-payment 1000000 \
   --fixed-penalty 500000 \
   --collateral-asset $collateral1 \
   --relative-rate '1 / 1000000' \
@@ -76,12 +76,11 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli conway transaction build \
-  --tx-in a8d0f74ffd7bdb60e8a286e2a994af22b67c617a09e10849aeb7d06e37c52fc0#0 \
-  --tx-in 8498f8e46ed2d1edef10ed90be4adf2a3d1620e6164ce6a5ca513d983c430c16#1 \
+  --tx-in 7ec3a3a7bd0459fe4a295536d866ea9f8567d6f129ce1d5a11094dd0f9d98644#1 \
   --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrincipal} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
-  --mint-tx-in-reference a3ae17130ddbf4ce3117e218c920d219599ff935d024fac0d3ca4ef9ad6e4fde#0 \
+  --mint-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \

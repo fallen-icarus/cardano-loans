@@ -10,17 +10,14 @@ tmpDir="${mainDir}tmp/"
 
 negotiationScript="${loanDir}negotiation_beacons.plutus"
 paymentScript="${loanDir}payment_observer.plutus"
-interestScript="${loanDir}interest_observer.plutus"
 addressUpdateScript="${loanDir}address_update_observer.plutus"
 
 negotiationRedeemer="${loanDir}negotiation_beacons_redeemer.plutus"
 paymentRedeemer="${loanDir}payment_observer_redeemer.plutus"
-interestRedeemer="${loanDir}interest_observer_redeemer.plutus"
 addressUpdateRedeemer="${loanDir}address_update_observer_redeemer.plutus"
 
 negotiationCert="${tmpDir}negotiation_beacons.cert"
 paymentCert="${tmpDir}payment_observer.cert"
-interestCert="${tmpDir}interest_observer.cert"
 addressUpdateCert="${tmpDir}address_update_observer.cert"
 
 ## Export the scripts.
@@ -34,10 +31,6 @@ cardano-loans scripts \
   --out-file $paymentScript
 
 cardano-loans scripts \
-  --interest-script \
-  --out-file $interestScript
-
-cardano-loans scripts \
   --address-update-script \
   --out-file $addressUpdateScript
 
@@ -48,34 +41,22 @@ cardano-loans redeemers negotiation-script register \
 cardano-loans redeemers payment-script register \
   --out-file $paymentRedeemer
 
-cardano-loans redeemers interest-script register \
-  --out-file $interestRedeemer
-
 cardano-loans redeemers address-update-script register \
   --out-file $addressUpdateRedeemer
 
 ## Create the registration certificates.
 echo "Creating the registration certificates..."
 cardano-cli conway stake-address registration-certificate \
-  --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $negotiationScript \
   --out-file $negotiationCert
 
 cardano-cli conway stake-address registration-certificate \
-  --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $paymentScript \
   --out-file $paymentCert
 
 cardano-cli conway stake-address registration-certificate \
-  --conway-era \
-  --key-reg-deposit-amt 2000000 \
-  --stake-script-file $interestScript \
-  --out-file $interestCert
-
-cardano-cli conway stake-address registration-certificate \
-  --conway-era \
   --key-reg-deposit-amt 2000000 \
   --stake-script-file $addressUpdateScript \
   --out-file $addressUpdateCert
@@ -83,25 +64,21 @@ cardano-cli conway stake-address registration-certificate \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli conway transaction build \
-  --tx-in 670526b45c968321def17ca18cf0e507383e7fd596c45dd5a87b92d1f97943bc#1 \
+  --tx-in 6ad871a70308dd5d0e63ab6b1c7bf747c00a03c839ffdef7232b480097d6b3ac#1 \
   --change-address "$(cat "${walletDir}01.addr")" \
   --certificate-file $negotiationCert \
-  --certificate-tx-in-reference a3ae17130ddbf4ce3117e218c920d219599ff935d024fac0d3ca4ef9ad6e4fde#0 \
+  --certificate-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $negotiationRedeemer \
   --certificate-file $paymentCert \
-  --certificate-tx-in-reference 670526b45c968321def17ca18cf0e507383e7fd596c45dd5a87b92d1f97943bc#0 \
+  --certificate-tx-in-reference 6ad871a70308dd5d0e63ab6b1c7bf747c00a03c839ffdef7232b480097d6b3ac#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $paymentRedeemer \
-  --certificate-file $interestCert \
-  --certificate-tx-in-reference afb8696b7025e9cea04bd7a51834d6a18af2936ffd8c7947ebf673631a9dbb3d#0 \
-  --certificate-plutus-script-v2 \
-  --certificate-reference-tx-in-redeemer-file $interestRedeemer \
   --certificate-file $addressUpdateCert \
-  --certificate-tx-in-reference fd9a97914e3553996c6cf631c53f9077bdd4289ca06e1eb34fcbb4d0e4c351ff#0 \
+  --certificate-tx-in-reference c07da9e3f71e7582f6d11efb2e92d3d2c3ca2f23017373b0a9cd63f03138eeb0#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $addressUpdateRedeemer \
-  --tx-in-collateral 95de5a789ccedbf1444b8668e5724aa4ed95d799d616aae1e4d408d56c2c3485#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 

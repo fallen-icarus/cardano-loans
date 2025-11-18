@@ -26,7 +26,7 @@ borrowerStakePubKeyHash=$(cardano-cli conway stake-address key-hash \
 
 ## Convert the posix time to a slot number for invalid-before.
 echo "Calculating the required slot number..."
-unlockSlot=$(cardano-loans convert-time \
+unlockSlot=$(cardano-loans time convert-time \
   --posix-time $unlockTime \
   --testnet)
 

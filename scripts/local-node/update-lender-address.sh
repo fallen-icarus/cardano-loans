@@ -32,7 +32,7 @@ newAddress=$(cat "${walletDir}03.addr")
 ### want to make guarantees about time too far into the future. If the loan's expiration is more
 ### than 1.5 days away, set the invalid-hereafter to be: `current_slot + 129600`.
 echo "Calculating the required slot number..."
-updateSlot=$(cardano-loans convert-time \
+updateSlot=$(cardano-loans time convert-time \
   --posix-time $updateTime \
   --testnet)
 

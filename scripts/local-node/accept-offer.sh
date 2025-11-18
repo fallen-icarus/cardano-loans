@@ -10,7 +10,7 @@ lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 lenderId="00623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zzc8hkkr9ygdfs02gf0d4hu8awlp8yeefm3kvglf0cw3fnpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqwr65gm"
+borrowerLoanAddr="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -23,9 +23,9 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-offerUTxO='005a659339f221cbb3ee05c6290a835753d57050f7a18382b4c36398b11db099#0'
+offerUTxO='8c4184114086e79620b1d8d1b720dcb68f7cb89fe565c11f04572c0d4dda785e#0'
 
-askUTxO='6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#0'
+askUTxO='8865c607f541efc7c374b0c486ba76beae5cba358f4de6759ec797b54684a076#0'
 
 ## Get the latest slot number.
 ### IMPORTANT: A local node may trail behind the actual blockchain by a few slots. So Koios may
@@ -39,7 +39,7 @@ startSlot=$(cardano-cli conway query tip --testnet-magic 1 | jq .slot)
 
 ## Convert the slot number to the required posix time.
 echo "Calculating the slot's posix time..."
-startTime=$(cardano-loans convert-time \
+startTime=$(cardano-loans time convert-time \
   --slot $startSlot \
   --testnet)
 
@@ -139,30 +139,27 @@ cardano-loans datums payment \
 ## Create and submit the transaction.
 cardano-cli conway transaction build \
   --tx-in $offerUTxO \
-  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
+  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
   --tx-in $askUTxO \
-  --spending-tx-in-reference 50f14254697370b7db435f93abff6e5952a6e0b7f267b033d96bac22d88c766b#0 \
+  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#1 \
-  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#2 \
-  --tx-in 6bf071d2768f4b5b879e1092752b0533033f6593aa25216cae49e22f02e89270#3 \
+  --tx-in 833c7fca3c73e692ef945f763aac27ce89158dcf2cc9f7e43373ffe07423c20b#2 \
+  --tx-in aae9b47200c5eb99d8cdc07297d50ad47a939e90bec6123fe275d8d7676385d0#1 \
   --tx-out "${lenderAddress} + ${offerDeposit} lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 1 ${collateral1}" \
-  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 75 ${collateral2}" \
   --mint "-1 ${askBeacon} + -2 ${negotiationAssetBeacon} + -1 ${offerBeacon} + -1 ${lenderIdBeacon} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 1 ${borrowerId} + 2 ${loanId}" \
-  --mint-tx-in-reference a3ae17130ddbf4ce3117e218c920d219599ff935d024fac0d3ca4ef9ad6e4fde#0 \
+  --mint-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $negotiationRedeemerFile \
   --policy-id $negotiationPolicyId \
-  --mint-tx-in-reference 03d6221ffb7a85284a8871a18b6276788f99ec5caff69af098d7e9b4a6e14dec#0 \
+  --mint-tx-in-reference 47f7e129697675944421aea3c2faa4cf0ee9e90b9445fffe145567e5d6476bcc#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \
