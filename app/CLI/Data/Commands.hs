@@ -16,17 +16,20 @@ data Command
   | CreateDatum NewDatum FilePath
   | CreateRedeemer NewRedeemer FilePath
   | BeaconName BeaconName Output
-  | ConvertTime ConvertTime Network
+  | Time Time
   | Query Query
   | SubmitTx Network ApiService FilePath
   | EvaluateTx Network ApiService FilePath
   | ExportParams Network Output
 
+data Time
+  = ConvertTime ConvertTime Network
+  | CalcNextBoundary POSIXTime POSIXTime POSIXTime
+
 data Script 
   = NegotiationBeaconScript
   | ActiveBeaconScript
   | PaymentObserverScript
-  | InterestObserverScript
   | AddressUpdateObserverScript
   | LoanScript
   | ProxyScript
@@ -38,9 +41,7 @@ data NewDatum
   | NewActiveAuto Network ApiService TxOutRef POSIXTime Credential
   | NewPayment LoanId
   | NewPostPaymentActiveManual NewPaymentInfo
-  | NewPostPaymentActiveAuto Network ApiService TxOutRef Integer
-  | NewPostInterestActiveManual NewInterestInfo
-  | NewPostInterestActiveAuto Network ApiService TxOutRef Integer
+  | NewPostPaymentActiveAuto Network ApiService TxOutRef Integer POSIXTime
   | NewPostAddressUpdateActiveManual NewAddressInfo
   | NewPostAddressUpdateActiveAuto Network ApiService TxOutRef Address
 
@@ -49,7 +50,6 @@ data NewRedeemer
   | NewLoan LoanRedeemer
   | NewActive ActiveBeaconsRedeemer
   | NewPaymentObserver PaymentObserverRedeemer
-  | NewInterestObserver InterestObserverRedeemer
   | NewAddressUpdateObserver AddressUpdateObserverRedeemer
 
 data BeaconName
@@ -84,3 +84,5 @@ data Query
   | QueryBorrowerCreditHistory Network ApiService BorrowerId Format Output
   -- | Query the loan's history.
   | QueryLoanHistory Network ApiService LoanId Format Output
+  -- | Query the loan's outstanding balance.
+  | QueryBalance Network ApiService TxOutRef

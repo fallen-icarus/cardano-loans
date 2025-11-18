@@ -43,12 +43,17 @@ runCommand cmd = case cmd of
   CreateRedeemer newRedeemer file -> runCreateRedeemer newRedeemer file
   BeaconName info output -> runBeaconName info output
   Query query -> runQuery query
-  ConvertTime convert network -> runTimeConversion convert network
+  Time time -> runTimeCommand time
   SubmitTx network api txFile -> 
     runSubmitTx network api txFile >>= LBS.putStr . encode
   EvaluateTx network api txFile -> 
     runEvaluateTx network api txFile >>= LBS.putStr . encode
   ExportParams network output -> runExportParams network output
+
+runTimeCommand :: Time -> IO ()
+runTimeCommand (ConvertTime convert network) = runTimeConversion convert network
+runTimeCommand (CalcNextBoundary lastBoundary epochDuration currentTime) = 
+  print $ getPOSIXTime $ nextBoundary lastBoundary epochDuration currentTime
 
 runExportParams :: Network -> Output -> IO ()
 runExportParams network output = case (network,output) of
@@ -64,7 +69,6 @@ runExportScriptCmd script file = do
       NegotiationBeaconScript -> negotiationBeaconScript
       ActiveBeaconScript -> activeBeaconScript
       PaymentObserverScript -> paymentObserverScript
-      InterestObserverScript -> interestObserverScript
       AddressUpdateObserverScript -> addressUpdateObserverScript
       LoanScript -> loanScript
       ProxyScript -> proxyScript
@@ -74,7 +78,6 @@ runCreateRedeemer (NewNegotiation redeemer) file = writeData file redeemer
 runCreateRedeemer (NewLoan redeemer) file = writeData file redeemer
 runCreateRedeemer (NewActive redeemer) file = writeData file redeemer
 runCreateRedeemer (NewPaymentObserver redeemer) file = writeData file redeemer
-runCreateRedeemer (NewInterestObserver redeemer) file = writeData file redeemer
 runCreateRedeemer (NewAddressUpdateObserver redeemer) file = writeData file redeemer
 
 runBeaconName :: BeaconName -> Output -> IO ()
@@ -119,21 +122,17 @@ runCreateDatum (NewActiveAuto network endpoint offerId start borrowerCred) file 
     _ -> error "Not an Offer UTxO."
 runCreateDatum (NewPayment loanId) file = 
   writeData file $ PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanId)
-runCreateDatum (NewPostPaymentActiveManual datum) file = 
-  writeData file $ unsafeCreatePostPaymentActiveDatum datum
-runCreateDatum (NewPostPaymentActiveAuto network endpoint loanRef paymentAmount) file = do
+runCreateDatum (NewPostPaymentActiveManual datum@NewPaymentInfo{_invalidHereafter, _lastEpochBoundary}) file = 
+  if _invalidHereafter < _lastEpochBoundary
+  then putStrLn "Payment Datum Error: invalid-hereafter is before last epoch boundary"
+  else writeData file $ unsafeCreatePostPaymentActiveDatum datum
+runCreateDatum (NewPostPaymentActiveAuto network endpoint loanRef paymentAmount nextEpoch) file = do
   utxo <- runQuerySpecificLoanUTxO network endpoint loanRef
   case utxo of
-    [LoanUTxO{_loanDatum=Just (Active datum)}] -> 
-      writeData file $ createPostPaymentActiveDatum paymentAmount datum
-    _ -> error "Not an Active UTxO."
-runCreateDatum (NewPostInterestActiveManual datum) file = 
-  writeData file $ unsafeCreatePostInterestActiveDatum datum
-runCreateDatum (NewPostInterestActiveAuto network endpoint loanRef numberOfTimes) file = do
-  utxo <- runQuerySpecificLoanUTxO network endpoint loanRef
-  case utxo of
-    [LoanUTxO{_loanDatum=Just (Active datum)}] -> 
-      writeData file $ createPostInterestActiveDatum numberOfTimes datum
+    [LoanUTxO{_loanDatum=Just (Active datum@ActiveDatum{_lastEpochBoundary})}] -> 
+      if nextEpoch < _lastEpochBoundary
+      then putStrLn "Payment Datum Error: invalid-hereafter is before last epoch boundary"
+      else writeData file $ createPostPaymentActiveDatum paymentAmount nextEpoch datum
     _ -> error "Not an Active UTxO."
 runCreateDatum (NewPostAddressUpdateActiveManual datum) file = 
   writeData file $ unsafeCreatePostAddressUpdateActiveDatum datum
@@ -193,6 +192,21 @@ runQuery query = case query of
       JSON -> toJSONOutput output
       Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettyLoanHistory network)
       Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettyLoanHistory network)
+  QueryBalance network endpoint loanRef -> do
+    slotTip <- runQuerySlotTip network endpoint
+    let config = case network of
+          PreProdTestnet -> preprodConfig
+          Mainnet -> mainnetConfig
+        currentTime = slotToPOSIXTime config (Slot slotTip)
+    utxo <- runQuerySpecificLoanUTxO network endpoint loanRef
+    case utxo of
+      [LoanUTxO{_loanDatum=Just (Active datum@ActiveDatum{_lastEpochBoundary})}] -> 
+        if currentTime < _lastEpochBoundary
+        then putStrLn "Payment Datum Error: invalid-hereafter is before last epoch boundary"
+        else do 
+          let ActiveDatum{_loanOutstanding} = createPostPaymentActiveDatum 0 currentTime datum
+          putStrLn $ show $ pretty _loanOutstanding
+      _ -> error "Not an Active UTxO."
 
 -------------------------------------------------
 -- Helper Functions

@@ -28,8 +28,8 @@ parseCommand = hsubparser $ mconcat
       info parseCreateRedeemer $ progDesc "Create a redeemer for the protocol."
   , command "beacon-name" $
       info parseBeaconName $ progDesc "Calculate a beacon policy id or asset name."
-  , command "convert-time" $
-      info pConvertTime $ progDesc "Convert POSIXTime <--> Slot."
+  , command "time" $
+      info pTimeCommand $ progDesc "Work with time formats."
   , command "query" $
       info parseQuery $ progDesc "Query the blockchain."
   , command "submit" $
@@ -53,7 +53,6 @@ parseExportScript =
     pScript = pNegotiationScript
           <|> pActiveScript
           <|> pPaymentScript
-          <|> pInterestScript
           <|> pAddressUpdateScript
           <|> pLoanScript
           <|> pProxyScript
@@ -74,12 +73,6 @@ parseExportScript =
     pPaymentScript = flag' PaymentObserverScript
       (  long "payment-script"
       <> help "Export the payment observer script."
-      )
-
-    pInterestScript :: Parser Script
-    pInterestScript = flag' InterestObserverScript
-      (  long "interest-script"
-      <> help "Export the interest observer script."
       )
 
     pAddressUpdateScript :: Parser Script
@@ -167,8 +160,6 @@ pCreateActiveDatum = hsubparser $ mconcat
       info pCreateNewActiveInfo $ progDesc "Create a new ActiveDatum."
   , command "post-payment" $
       info pCreatePostPaymentActive $ progDesc "Create a post-payment ActiveDatum."
-  , command "post-interest" $
-      info pCreatePostInterestActive $ progDesc "Create a post-interest ActiveDatum."
   , command "post-address-update" $
       info pCreatePostAddressUpdateActive $ progDesc "Create a post-address-update ActiveDatum."
   ]
@@ -259,6 +250,7 @@ pCreatePostPaymentActiveManual =
         <*> pTotalEpochPayments
         <*> pLoanId
         <*> pPaymentAmount
+        <*> pNextEpochBoundary
 
 pCreatePostPaymentActiveAuto :: Parser Command
 pCreatePostPaymentActiveAuto =
@@ -273,59 +265,7 @@ pCreatePostPaymentActiveAuto =
         <*> pApiService
         <*> pLoanRef
         <*> pPaymentAmount
-
-pCreatePostInterestActive :: Parser Command
-pCreatePostInterestActive = hsubparser $ mconcat
-    [ command "manual" $
-        info pCreatePostInterestActiveManual $ 
-          progDesc "Create a post-interest ActiveDatum manually."
-    , command "auto" $
-        info pCreatePostInterestActiveAuto $ 
-          progDesc "Create a post-interest ActiveDatum by looking up the loan UTxO."
-    ]
-
-pCreatePostInterestActiveManual :: Parser Command
-pCreatePostInterestActiveManual =
-    CreateDatum
-      <$> pNewInterestInfo
-      <*> pOutputFile
-  where
-    pNewInterestInfo :: Parser NewDatum
-    pNewInterestInfo =
-      fmap NewPostInterestActiveManual $ NewInterestInfo
-        <$> pUserCredential "borrower"
-        <*> pPaymentAddress
-        <*> pAsset "loan"
-        <*> pPrincipal
-        <*> (pEpochDuration <|> pure Nothing)
-        <*> pLastEpochBoundary
-        <*> pLoanTerm
-        <*> pInterest
-        <*> pIsCompounding
-        <*> pMinPayment
-        <*> pPenalty
-        <*> pCollateralization
-        <*> pIsSwappable
-        <*> pClaimExpiration
-        <*> pLoanExpiration
-        <*> pLoanOutstanding
-        <*> pTotalEpochPayments
-        <*> pLoanId
-        <*> pNumberOfInterestApplications
-
-pCreatePostInterestActiveAuto :: Parser Command
-pCreatePostInterestActiveAuto =
-    CreateDatum
-      <$> pNewInterest
-      <*> pOutputFile
-  where
-    pNewInterest :: Parser NewDatum
-    pNewInterest =
-      NewPostInterestActiveAuto
-        <$> pNetwork
-        <*> pApiService
-        <*> pLoanRef
-        <*> pNumberOfInterestApplications
+        <*> pNextEpochBoundary
 
 pCreatePostAddressUpdateActive :: Parser Command
 pCreatePostAddressUpdateActive = hsubparser $ mconcat
@@ -392,8 +332,6 @@ parseCreateRedeemer = hsubparser $ mconcat
         info pActiveRedeemer $ progDesc "Create a redeemer for the active script."
     , command "payment-script" $
         info pPaymentObserverRedeemer $ progDesc "Create a redeemer for the payment observer script."
-    , command "interest-script" $
-        info pInterestObserverRedeemer $ progDesc "Create a redeemer for the interest observer script."
     , command "address-update-script" $
         info pAddressUpdateObserverRedeemer $ 
           progDesc "Create a redeemer for the address update observer script."
@@ -491,9 +429,6 @@ pLoanRedeemer = hsubparser $ mconcat
     , command "make-payment" $
         info pMakePayment $ 
           progDesc "Create the redeemer for making a loan payment."
-    , command "apply-interest" $
-        info pApplyInterest $ 
-          progDesc "Create the redeemer for applying interest to a loan."
     , command "claim-expired-collateral" $
         info pSpendWithKeyNFT $ 
           progDesc "Create the redeemer for claiming an expired loan's collateral."
@@ -527,12 +462,6 @@ pLoanRedeemer = hsubparser $ mconcat
     pMakePayment = 
       CreateRedeemer
         <$> (NewLoan . MakePayment <$> pPaymentAmount)
-        <*> pOutputFile
-
-    pApplyInterest :: Parser Command
-    pApplyInterest = 
-      CreateRedeemer
-        <$> (fmap NewLoan . ApplyInterest <$> pDepositIncrease <*> pNumberOfInterestApplications)
         <*> pOutputFile
 
     pUpdateLenderAddress :: Parser Command
@@ -573,28 +502,6 @@ pPaymentObserverRedeemer = hsubparser $ mconcat
     pRegisterPaymentObserverScript =
       CreateRedeemer 
         <$> pure (NewPaymentObserver RegisterPaymentObserverScript)
-        <*> pOutputFile
-
-pInterestObserverRedeemer :: Parser Command
-pInterestObserverRedeemer = hsubparser $ mconcat
-    [ command "observe-interest" $
-        info pObserveInterest $ 
-          progDesc "Create the redeemer for observing loan interest applications."
-    , command "register" $
-        info pRegisterInterestObserverScript $ 
-          progDesc "Create the redeemer for registering the script."
-    ]
-  where
-    pObserveInterest :: Parser Command
-    pObserveInterest = 
-      CreateRedeemer 
-        <$> pure (NewInterestObserver ObserveInterest)
-        <*> pOutputFile
-
-    pRegisterInterestObserverScript :: Parser Command
-    pRegisterInterestObserverScript =
-      CreateRedeemer 
-        <$> pure (NewInterestObserver RegisterInterestObserverScript)
         <*> pOutputFile
 
 pAddressUpdateObserverRedeemer :: Parser Command
@@ -688,11 +595,22 @@ parseBeaconName = hsubparser $ mconcat
         <*> pOutput
 
 -------------------------------------------------
--- ConvertTime Parser
+-- Time Parser
 -------------------------------------------------
+pTimeCommand :: Parser Command
+pTimeCommand = hsubparser $ mconcat
+    [ command "convert-time" $
+        info pConvertTime $ progDesc "Convert POSIXTime <---> Slot."
+    , command "calc-next-boundary" $
+        info pCalcNextBoundary $ progDesc "Calculate the next valid boundary."
+    ]
+
 pConvertTime :: Parser Command
-pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
+pConvertTime = Time <$> pConvert
   where
+    pConvert :: Parser Time
+    pConvert = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
+
     pPOSIXTime :: Parser ConvertTime
     pPOSIXTime = POSIXTimeToSlot . POSIXTime <$> option auto
       (  long "posix-time"
@@ -705,6 +623,19 @@ pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
       (  long "slot"
       <> metavar "INT"
       <> help "Convert slot number to POSIX time."
+      )
+
+pCalcNextBoundary :: Parser Command
+pCalcNextBoundary = Time <$> pCalc
+  where
+    pCalc :: Parser Time
+    pCalc = CalcNextBoundary <$> pLastEpochBoundary <*> pEpoch <*> pCurrentTime
+
+    pEpoch :: Parser POSIXTime
+    pEpoch = POSIXTime <$> option auto
+      (  long "epoch-duration"
+      <> metavar "INT"
+      <> help "Epoch duration in POSIXTime."
       )
 
 -------------------------------------------------
@@ -726,6 +657,8 @@ parseQuery = fmap Query . hsubparser $ mconcat
       info pQueryBorrowerCreditHistory $ progDesc "Query the borrower's credit history."
   , command "loan-history" $
       info pQueryLoanHistory $ progDesc "Query the loan's event history."
+  , command "loan-balance" $
+      info pQueryLoanBalance $ progDesc "Query the loan's current outstanding balance."
   ]
 
 pQueryPersonal :: Parser Query
@@ -800,6 +733,13 @@ pQueryLoanHistory =
     <*> pLoanId
     <*> pFormat
     <*> pOutput
+
+pQueryLoanBalance :: Parser Query
+pQueryLoanBalance =
+  QueryBalance
+    <$> pNetwork
+    <*> pApiService
+    <*> pLoanRef
 
 -------------------------------------------------
 -- Submit Parser
@@ -1037,13 +977,6 @@ pPaymentAmount = option auto
   <> help "The amount of the loan asset repaid."
   )
 
-pNumberOfInterestApplications :: Parser Integer
-pNumberOfInterestApplications = option auto
-  (  long "times-applied"
-  <> metavar "INT"
-  <> help "The number of times to apply the interest."
-  )
-
 pOutput :: Parser Output
 pOutput = pStdOut <|> File <$> pOutputFile
   where
@@ -1135,4 +1068,18 @@ pTxFile = strOption
   (  long "tx-file"
   <> metavar "STRING"
   <> help "Transaction file path."
+  )
+
+pNextEpochBoundary :: Parser POSIXTime
+pNextEpochBoundary = POSIXTime <$> option auto
+  (  long "next-epoch-boundary"
+  <> metavar "TIME"
+  <> help "The time the current loan epoch ends. In POSIX time (milliseconds)."
+  )
+
+pCurrentTime :: Parser POSIXTime
+pCurrentTime = POSIXTime <$> option auto
+  (  long "current-time"
+  <> metavar "INT"
+  <> help "Current POSIXTime."
   )
