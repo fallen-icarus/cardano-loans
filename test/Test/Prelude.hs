@@ -355,7 +355,6 @@ data References = References
   , loanRef :: TxOutRef
   , proxyRef :: TxOutRef
   , paymentObserverRef :: TxOutRef
-  , interestObserverRef :: TxOutRef
   , addressUpdateObserverRef :: TxOutRef
   } deriving (Show)
 
@@ -450,28 +449,6 @@ initializeReferenceScripts = do
               { outputAddress = refScriptAddress
               , outputValue = LV.lovelaceToValue 24_000_000
               , outputDatum = PV2.NoOutputDatum
-              , outputReferenceScript = toReferenceScript $ Just interestObserverScript
-              }
-          ]
-      , certificates =
-          [ Certificate
-              { certificateCredential = PV2.ScriptCredential $ scriptHash interestObserverScript
-              , certificateWitness = 
-                  StakeWithPlutusScript 
-                    (toVersioned $ toLedgerScript interestObserverScript) 
-                    (toRedeemer RegisterInterestObserverScript)
-              , certificateAction = Register
-              }
-          ]
-      }
-
-  void $ transact (Mock.mockWalletAddress w1) [refScriptAddress] [Mock.paymentPrivateKey w1] $
-    emptyTxParams
-      { outputs =
-          [ Output
-              { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 24_000_000
-              , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just addressUpdateObserverScript
               }
           ]
@@ -493,7 +470,6 @@ initializeReferenceScripts = do
     <*> txOutRefWithReferenceScript (scriptHash loanScript)
     <*> txOutRefWithReferenceScript (scriptHash proxyScript)
     <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
-    <*> txOutRefWithReferenceScript (scriptHash interestObserverScript)
     <*> txOutRefWithReferenceScript (scriptHash addressUpdateObserverScript)
 
 mintTestTokens 
