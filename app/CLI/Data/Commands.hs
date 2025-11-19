@@ -20,7 +20,6 @@ data Command
   | Query Query
   | SubmitTx Network ApiService FilePath
   | EvaluateTx Network ApiService FilePath
-  | ExportParams Network Output
 
 data Time
   = ConvertTime ConvertTime Network
@@ -86,3 +85,5 @@ data Query
   | QueryLoanHistory Network ApiService LoanId Format Output
   -- | Query the loan's outstanding balance.
   | QueryBalance Network ApiService TxOutRef
+  -- | Query the current protocol parameters.
+  | QueryParameters Network Output

@@ -34,8 +34,6 @@ parseCommand = hsubparser $ mconcat
       info parseQuery $ progDesc "Query the blockchain."
   , command "submit" $
       info pSubmitTx $ progDesc "Submit a transaction to the blockchain."
-  , command "protocol-params" $
-      info pExportParams $ progDesc "Export the current protocol parameters."
   , command "evaluate-tx" $
       info pEvaluateTx $ progDesc "Estimate script execution units for a transaction."
   ]
@@ -659,7 +657,15 @@ parseQuery = fmap Query . hsubparser $ mconcat
       info pQueryLoanHistory $ progDesc "Query the loan's event history."
   , command "loan-balance" $
       info pQueryLoanBalance $ progDesc "Query the loan's current outstanding balance."
+  , command "protocol-params" $
+      info pQueryParams $ progDesc "Query the current protocol parameters."
   ]
+
+pQueryParams :: Parser Query
+pQueryParams =
+  QueryParameters
+    <$> pNetwork
+    <*> pOutput
 
 pQueryPersonal :: Parser Query
 pQueryPersonal =
@@ -760,15 +766,6 @@ pEvaluateTx =
     <$> pNetwork
     <*> pApiService
     <*> pTxFile
-
--------------------------------------------------
--- ExportParams Parser
--------------------------------------------------
-pExportParams :: Parser Command
-pExportParams =
-  ExportParams
-    <$> pNetwork
-    <*> pOutput
 
 -------------------------------------------------
 -- Basic Helper Parsers

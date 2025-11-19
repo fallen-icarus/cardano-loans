@@ -13,6 +13,7 @@ module CLI.Query
   , runQueryLoanHistory
   , runSubmitTx
   , runEvaluateTx
+  , runGetParams
   ) where
 
 import Relude
@@ -182,3 +183,14 @@ runEvaluateTx network api txFile = do
           Just response -> return response
           Nothing -> throw e
         Left err -> throw err
+
+runGetParams :: Network -> IO Value
+runGetParams network = do
+  manager' <- newManager tlsManagerSettings
+  either throw return =<< case network of
+    PreProdTestnet -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM Koios.getParams env
+    Mainnet -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM Koios.getParams env
