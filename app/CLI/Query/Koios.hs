@@ -18,6 +18,7 @@ module CLI.Query.Koios
   , queryLoanHistory
   , submitTx
   , evaluateTx
+  , getParams
   ) where
 
 import Relude
@@ -219,6 +220,8 @@ type KoiosApi
   :<|>  ReqBody '[JSON] EvaluateTxCBOR
      :> Post '[JSON] Value
 
+  :<|>  "cli_protocol_params"
+     :> Get '[JSON] Value
 
 personalAddressUTxOsApi 
   :<|> borrowerAddresssUTxOsApi
@@ -231,6 +234,7 @@ personalAddressUTxOsApi
   :<|> loanTxInfoApi 
   :<|> submitTxApi
   :<|> evaluateTxApi
+  :<|> paramsApi
   = client (Proxy :: Proxy KoiosApi)
 
 -------------------------------------------------
@@ -494,3 +498,6 @@ processLoanHistory loanId Transaction{..} = do
           else if balanceNum <= 0 then "Finished loan closed by borrower."
           else "Invalid Active UTxO closed by borrower."
         _ -> error "Other loan redeemer used."
+
+getParams :: ClientM Value
+getParams = paramsApi

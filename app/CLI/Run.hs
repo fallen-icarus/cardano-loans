@@ -10,13 +10,12 @@ module CLI.Run
 
 import Relude
 import Data.Aeson
+import qualified Data.Aeson.Encoding as Aeson
 import qualified Data.ByteString.Lazy as LBS
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
-import qualified Data.ByteString as SBS
-import Data.FileEmbed
 
 import CardanoLoans
 
@@ -30,12 +29,6 @@ import CLI.Data.CreditHistory
 import CLI.Data.LoanHistory
 import CLI.Query
 
-preprodParams :: SBS.ByteString
-preprodParams = $(embedFile "preprod-params.json")
-
-mainnetParams :: SBS.ByteString
-mainnetParams = $(embedFile "mainnet-params.json")
-
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   ExportScript script file -> runExportScriptCmd script file
@@ -48,19 +41,11 @@ runCommand cmd = case cmd of
     runSubmitTx network api txFile >>= LBS.putStr . encode
   EvaluateTx network api txFile -> 
     runEvaluateTx network api txFile >>= LBS.putStr . encode
-  ExportParams network output -> runExportParams network output
 
 runTimeCommand :: Time -> IO ()
 runTimeCommand (ConvertTime convert network) = runTimeConversion convert network
 runTimeCommand (CalcNextBoundary lastBoundary epochDuration currentTime) = 
   print $ getPOSIXTime $ nextBoundary lastBoundary epochDuration currentTime
-
-runExportParams :: Network -> Output -> IO ()
-runExportParams network output = case (network,output) of
-  (PreProdTestnet,Stdout) -> SBS.putStr preprodParams
-  (PreProdTestnet,File file) -> SBS.writeFile file preprodParams
-  (Mainnet,Stdout) -> SBS.putStr mainnetParams
-  (Mainnet,File file) -> SBS.writeFile file mainnetParams
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
@@ -146,6 +131,11 @@ runCreateDatum (NewPostAddressUpdateActiveAuto network endpoint loanRef newAddr)
 runQuery :: Query -> IO ()
 runQuery query = case query of
   QueryCurrentSlot network api -> runQuerySlotTip network api >>= print
+  QueryParameters network output -> runGetParams network >>= \params -> do
+    let toByte = Aeson.encodingToLazyByteString . Aeson.value
+    case output of
+      Stdout -> LBS.putStr $ toByte params
+      File file -> LBS.writeFile file $ toByte params
   QueryPersonal network api addr keysOnly format output ->
     runQueryPersonalAddress network api addr keysOnly >>= 
       case format of
