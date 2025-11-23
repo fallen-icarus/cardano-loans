@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Test.ActiveUTxOs.ClaimExpiredCollateral.Benchmarks where
+module Test.ActiveUTxOs.ClaimDefaultedCollateral.Benchmarks where
 
 import qualified Ledger.Address as LA
 import qualified PlutusLedgerApi.V2 as PV2
@@ -70,6 +70,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -252,7 +253,7 @@ benchTest1 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -333,6 +334,7 @@ benchTest2 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -620,7 +622,7 @@ benchTest2 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -703,6 +705,7 @@ benchTest3 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -923,7 +926,7 @@ benchTest3 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1006,6 +1009,7 @@ benchTest4 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1193,7 +1197,7 @@ benchTest4 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1257,6 +1261,7 @@ benchTest5 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1466,7 +1471,7 @@ benchTest5 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1536,6 +1541,7 @@ benchTest6 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1757,7 +1763,7 @@ benchTest6 number = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1800,15 +1806,15 @@ benchTest6 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 15
-  , mustSucceed "benchTest2" $ benchTest2 18
-  , mustSucceed "benchTest3" $ benchTest3 18
+  , mustSucceed "benchTest2" $ benchTest2 19
+  , mustSucceed "benchTest3" $ benchTest3 17
   , mustSucceed "benchTest4" $ benchTest4 15
   , mustSucceed "benchTest5" $ benchTest5 10
   , mustSucceed "benchTest6" $ benchTest6 10
 
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 16
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 19
-  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 19
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
+  , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 18
   , mustExceedTxLimits "perfIncreaseTest4" $ benchTest4 16
     -- It is hard to test loans from different borrowers since the emulator only has ten keys.
   ]

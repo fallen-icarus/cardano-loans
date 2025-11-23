@@ -58,6 +58,7 @@ regressionTest1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -142,6 +143,7 @@ regressionTest2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1, Fraction(1,1))
             , (collateral2, Fraction(0,1))
@@ -226,6 +228,7 @@ regressionTest3 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -309,6 +312,7 @@ regressionTest4 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -395,6 +399,7 @@ regressionTest5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -415,6 +420,7 @@ regressionTest5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -519,6 +525,7 @@ regressionTest6 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -612,6 +619,7 @@ regressionTest7 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -694,6 +702,7 @@ regressionTest8 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -777,6 +786,7 @@ regressionTest9 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -860,6 +870,7 @@ regressionTest10 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -943,6 +954,7 @@ regressionTest11 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1026,6 +1038,7 @@ regressionTest12 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1109,6 +1122,7 @@ regressionTest13 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = FixedFee 500_000
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1192,6 +1206,7 @@ regressionTest14 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = PercentFee $ Fraction (1,100)
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1275,6 +1290,7 @@ regressionTest15 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1358,7 +1374,92 @@ regressionTest16 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = []
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+-- | Create a single valid Offer UTxO with maxConsecutiveMisses set.
+regressionTest17 :: MonadEmulator m => m ()
+regressionTest17 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 100
+        , _loanTerm = 10800
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Just 3
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
@@ -1422,4 +1523,5 @@ tests =
   , mustSucceed "regressionTest14" regressionTest14
   , mustSucceed "regressionTest15" regressionTest15
   , mustSucceed "regressionTest16" regressionTest16
+  , mustSucceed "regressionTest17" regressionTest17
   ]

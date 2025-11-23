@@ -898,6 +898,7 @@ datumFailure3 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600

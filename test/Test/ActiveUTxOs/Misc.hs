@@ -64,6 +64,7 @@ regressionTest1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -420,6 +421,7 @@ regressionTest2 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -775,6 +777,7 @@ regressionTest3 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1170,6 +1173,7 @@ regressionTest4 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1463,7 +1467,7 @@ regressionTest4 = do
                 , (_unBorrowerId _borrowerId,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1581,6 +1585,7 @@ failureTest1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1934,6 +1939,7 @@ failureTest2 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2293,7 +2299,7 @@ failureTest2 = do
       }
 
 -- | Claim expired collateral in the same transaction where a full payment is made. The BorrowerId
--- is burned with BurnKeyAndClaimExpired.
+-- is burned with BurnKeyAndClaimDefaulted.
 failureTest3 :: MonadEmulator m => m ()
 failureTest3 = do
   let borrowerWallet1 = Mock.knownMockWallet 1
@@ -2336,6 +2342,7 @@ failureTest3 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2629,7 +2636,7 @@ failureTest3 = do
                 , (_unBorrowerId _borrowerId,-2)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }

@@ -58,6 +58,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -142,6 +143,7 @@ benchTest2 number = do
             , _compoundingInterest = True
             , _minPayment = 0
             , _penalty = NoPenalty
+            , _maxConsecutiveMisses = Nothing
             , _collateralization = [(col,Fraction(1,1))]
             , _collateralIsSwappable = False
             , _claimPeriod = 3600
@@ -192,9 +194,9 @@ benchTest2 number = do
 -- | A `TestTree` containing all benchmark scenarios for creating Offer UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 33
+  [ mustSucceed "benchTest1" $ benchTest1 32
   , mustSucceed "benchTest2" $ benchTest2 24
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 34
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 33
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 25
   ]

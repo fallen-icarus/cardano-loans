@@ -68,6 +68,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -339,6 +340,7 @@ benchTest2 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1_000_000))
             , (collateral2,Fraction(1,1_000_000))
@@ -579,10 +581,10 @@ benchTest2 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 18
+  [ mustSucceed "benchTest1" $ benchTest1 16
   , mustSucceed "benchTest2" $ benchTest2 17
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 19
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 17
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 18
   ]
