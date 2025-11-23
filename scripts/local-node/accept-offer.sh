@@ -10,7 +10,7 @@ lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 lenderId="00623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
+borrowerLoanAddr="addr_test1zz8g9s4nkamzh6jcgsfnjcgafrwh46sxpd7l5ajf8rzln0eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqy79dk4"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -23,9 +23,9 @@ collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
 offerDeposit=4000000
-offerUTxO='8c4184114086e79620b1d8d1b720dcb68f7cb89fe565c11f04572c0d4dda785e#0'
+offerUTxO='0517795a270cf535deec2c393a70d00e5833cda0e68e20b58a261a63f71917e2#0'
 
-askUTxO='8865c607f541efc7c374b0c486ba76beae5cba358f4de6759ec797b54684a076#0'
+askUTxO='a87b675bdc60d907b50548f982d2ddfdcca527f6b40220894e22088570b2ec3d#0'
 
 ## Get the latest slot number.
 ### IMPORTANT: A local node may trail behind the actual blockchain by a few slots. So Koios may
@@ -76,6 +76,7 @@ cardano-loans datums active new auto \
 #   --borrower-staking-pubkey-hash $borrowerStakePubKeyHash \
 #   --offer-id $offerUTxO \
 #   --start-time $startTime \
+#   --max-missed-payments 3 \
 #   --out-file $activeDatumFile
 
 ## Create the required redeemers.
@@ -139,27 +140,26 @@ cardano-loans datums payment \
 ## Create and submit the transaction.
 cardano-cli conway transaction build \
   --tx-in $offerUTxO \
-  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
+  --spending-tx-in-reference 575c63eff95683a81f97e4f34fc7caedac5045bdb0c7ed79d93bb6905dcebc31#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
   --tx-in $askUTxO \
-  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
+  --spending-tx-in-reference 575c63eff95683a81f97e4f34fc7caedac5045bdb0c7ed79d93bb6905dcebc31#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 833c7fca3c73e692ef945f763aac27ce89158dcf2cc9f7e43373ffe07423c20b#2 \
-  --tx-in aae9b47200c5eb99d8cdc07297d50ad47a939e90bec6123fe275d8d7676385d0#1 \
+  --tx-in bb6f2dccf504ac11c6dc1150780fd660aa19ab9d7a048a3f2c045b5dd127c011#1 \
   --tx-out "${lenderAddress} + ${offerDeposit} lovelace + 1 ${loanId}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --tx-out "${borrowerLoanAddr} + 4000000 lovelace + 1 ${loanId} + 1 ${borrowerId} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 8 ${collateral1} + 4 ${collateral2}" \
   --tx-out-inline-datum-file $activeDatumFile \
   --mint "-1 ${askBeacon} + -2 ${negotiationAssetBeacon} + -1 ${offerBeacon} + -1 ${lenderIdBeacon} + 1 ${activeBeacon} + 1 ${activeAssetBeacon} + 1 ${borrowerId} + 2 ${loanId}" \
-  --mint-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
+  --mint-tx-in-reference 6ccbd6cdff5c6305db5f249765941a79bd4fd12c1eaf451156795fbb194a5662#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $negotiationRedeemerFile \
   --policy-id $negotiationPolicyId \
-  --mint-tx-in-reference 47f7e129697675944421aea3c2faa4cf0ee9e90b9445fffe145567e5d6476bcc#0 \
+  --mint-tx-in-reference 106d811ab7f51d2c84a16ac00e8c091d80c92b893809ac8c898c0b277361ad6d#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \

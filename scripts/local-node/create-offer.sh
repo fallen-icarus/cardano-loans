@@ -6,7 +6,7 @@ walletDir="${mainDir}wallets/"
 loanDir="${mainDir}loan-files/"
 tmpDir="${mainDir}tmp/"
 
-borrowerAddress="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
+borrowerAddress="addr_test1zz8g9s4nkamzh6jcgsfnjcgafrwh46sxpd7l5ajf8rzln0eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqy79dk4"
 
 paymentAddress=$(cat "${walletDir}02.addr")
 lenderStakePubKeyFile="${walletDir}02Stake.vkey"
@@ -45,6 +45,7 @@ cardano-loans datums offer \
   --relative-rate '2 / 1000000' \
   --claim-period '3600 slots' \
   --offer-deposit $offerDeposit \
+  --max-missed-payments 3 \
   --out-file $offerDatumFile
 
 ## Create the required redeemer.
@@ -76,11 +77,11 @@ lenderId="${beaconPolicyId}.${lenderIdTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli conway transaction build \
-  --tx-in 7ec3a3a7bd0459fe4a295536d866ea9f8567d6f129ce1d5a11094dd0f9d98644#1 \
+  --tx-in 4743707d8e94b35520670acd31c6e5404c9bba583a5de20bbd38b1de0d78e1a2#1 \
   --tx-out "${borrowerAddress} + ${offerDeposit} lovelace + ${loanPrincipal} ${loanAsset} + 1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
   --tx-out-inline-datum-file $offerDatumFile \
   --mint "1 ${offerBeacon} + 1 ${assetBeacon} + 1 ${lenderId}" \
-  --mint-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
+  --mint-tx-in-reference 6ccbd6cdff5c6305db5f249765941a79bd4fd12c1eaf451156795fbb194a5662#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \
