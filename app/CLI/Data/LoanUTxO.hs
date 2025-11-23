@@ -131,6 +131,7 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                NoPenalty -> "none"
                FixedFee fee -> pretty fee <+> tupled ["fixed-fee"] 
                PercentFee fee -> pretty fee <+> tupled ["precent-fee"] 
+           , annotate (colorDull Cyan) "max_consecutive_missed_payments:" <+> maybe "No Limit" pretty _maxConsecutiveMisses
            , annotate (colorDull Cyan) "swappable_collateral:" <+> pretty _collateralIsSwappable
            , let time = getPOSIXTime _claimPeriod in
                annotate (colorDull Cyan) "claim_period:" 
@@ -171,7 +172,9 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                NoPenalty -> "none"
                FixedFee fee -> pretty fee <+> tupled ["fixed-fee"] 
                PercentFee fee -> pretty fee <+> tupled ["precent-fee"] 
+           , annotate (colorDull Cyan) "max_consecutive_missed_payments:" <+> maybe "No Limit" pretty _maxConsecutiveMisses
            , annotate (colorDull Cyan) "total_payments_this_epoch:" <+> pretty _totalEpochPayments
+           , annotate (colorDull Cyan) "current_missed_payment_streak:" <+> pretty _currentConsecutiveMisses
            , annotate (colorDull Cyan) "swappable_collateral:" <+> pretty _collateralIsSwappable
            , let time = getPOSIXTime _claimExpiration in
                annotate (colorDull Cyan) "claim_expiration:" 
