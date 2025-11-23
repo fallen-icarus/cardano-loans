@@ -144,6 +144,11 @@ data OfferDatum = OfferDatum
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The maximum allowed missed consecutive epochs. If the borrower misses more epochs than this,
+  -- the lender can terminate the loan early. However, if the borrower satisfies the minimum
+  -- payment again before the lender has a chance to claim the defaulted collateral, the loan will
+  -- be in good standing again (i.e., no longer in default). This setting is optional.
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: Collateralization
   -- | Whether collateral can be swapped out during a loan payment.
@@ -171,6 +176,7 @@ instance ToJSON OfferDatum where
            , "compounding_interest" .= _compoundingInterest
            , "minimum_payment" .= _minPayment
            , "penalty" .= _penalty
+           , "max_consecutive_misses" .= _maxConsecutiveMisses
            , "collateralization" .= _collateralization
            , "collateral_is_swappable" .= _collateralIsSwappable
            , "claim_period" .= _claimPeriod
@@ -209,6 +215,11 @@ data ActiveDatum = ActiveDatum
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The maximum allowed missed consecutive epochs. If the borrower misses more epochs than this,
+  -- the lender can terminate the loan early. However, if the borrower satisfies the minimum
+  -- payment again before the lender has a chance to claim the defaulted collateral, the loan will
+  -- be in good standing again (i.e., no longer in default).
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: Collateralization
   -- | Whether collateral can be swapped out during a loan payment.
@@ -221,6 +232,10 @@ data ActiveDatum = ActiveDatum
   , _loanOutstanding :: Fraction
   -- | The total payments made this loan epoch.
   , _totalEpochPayments :: Integer
+  -- | The current consecutive loan epochs missed. If it is greater than the `maxConsecutiveMisses`,
+  -- the lender can terminate the loan early and confiscate the collateral. This gets reset to
+  -- zero whenever the borrower meets the `minPayment` requirement of the current loan epoch.
+  , _currentConsecutiveMisses :: Integer
   -- | The loan's unique indentifier.
   , _loanId :: LoanId
   } deriving (Generic,Show)
@@ -242,12 +257,14 @@ instance ToJSON ActiveDatum where
            , "compounding_interest" .= _compoundingInterest
            , "minimum_payment" .= _minPayment
            , "penalty" .= _penalty
+           , "max_consecutive_misses" .= _maxConsecutiveMisses
            , "collateralization" .= _collateralization
            , "collateral_is_swappable" .= _collateralIsSwappable
            , "claim_expiration" .= _claimExpiration
            , "loan_expiration" .= _loanExpiration
            , "loan_outstanding" .= _loanOutstanding
            , "total_payment_this_epoch" .= _totalEpochPayments
+           , "current_consecutive_misses" .= _currentConsecutiveMisses
            , "loan_id" .= _loanId
            ]
 
@@ -274,7 +291,7 @@ data LoanRedeemer
   | AcceptOffer
   -- | Make a payment on a loan. The amount is the size of the payment.
   | MakePayment { _paymentAmount :: Integer }
-  -- | Claim collateral for an expired loan using the Key NFT.
+  -- | Claim collateral for a defaulted loan using the Key NFT.
   | SpendWithKeyNFT
   -- | Update the address where loan payments must go. Optionally deposit additional ada if needed.
   | UpdateLenderAddress { _newAddress :: Address, _depositIncrease :: Integer }
@@ -314,8 +331,8 @@ data ActiveBeaconsRedeemer
   -- | Create some Active UTxOs (1 or more) for the borrower. The CurrencySymbol is the 
   -- policy id for the negotiation beacons.
   = CreateActive { _negotiationPolicyId :: CurrencySymbol }
-  -- | Burn the lock and key NFT to claim expired collateral.
-  | BurnKeyAndClaimExpired
+  -- | Burn the lock and key NFT to claim defaulted collateral.
+  | BurnKeyAndClaimDefaulted
   -- Burn all beacons and claim "Lost" collateral.
   | BurnAndUnlockLost
   -- | Burn any beacons.
@@ -543,6 +560,8 @@ data NewOfferInfo = NewOfferInfo
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The allowed number of missed consecutive epochs.
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: [(Asset,Fraction)]
   -- | Whether collateral can be swapped out during a loan payment.
@@ -572,6 +591,7 @@ unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
   , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
+  , _maxConsecutiveMisses = _maxConsecutiveMisses
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
   , _claimPeriod = _claimPeriod
@@ -598,6 +618,8 @@ data NewActiveInfo = NewActiveInfo
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The allowed number of missed consecutive epochs.
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: [(Asset,Fraction)]
   -- | Whether collateral can be swapped out during a loan payment.
@@ -629,6 +651,7 @@ unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
+  , _maxConsecutiveMisses = _maxConsecutiveMisses
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
   , _lastEpochBoundary = _startTime
@@ -636,6 +659,7 @@ unsafeCreateActiveDatum NewActiveInfo{..} = ActiveDatum
   , _loanExpiration = _startTime + _loanTerm
   , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
   , _totalEpochPayments = 0
+  , _currentConsecutiveMisses = 0
   , _loanId = genLoanId _offerId
   }
 
@@ -657,6 +681,7 @@ createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = A
   , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
+  , _maxConsecutiveMisses = _maxConsecutiveMisses
   , _collateralization = _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
   , _lastEpochBoundary = startTime
@@ -664,6 +689,7 @@ createAcceptanceDatumFromOffer borrowerCred offerId startTime OfferDatum{..} = A
   , _loanExpiration = startTime + _loanTerm
   , _loanOutstanding = applyInterest (Fraction (_loanPrincipal,1)) _loanInterest
   , _totalEpochPayments = 0
+  , _currentConsecutiveMisses = 0
   , _loanId = genLoanId offerId
   }
 
@@ -690,6 +716,8 @@ data NewPaymentInfo = NewPaymentInfo
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The allowed number of missed consecutive epochs.
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: [(Asset,Fraction)]
   -- | Whether collateral can be swapped out during a loan payment.
@@ -702,6 +730,8 @@ data NewPaymentInfo = NewPaymentInfo
   , _loanOutstanding :: Fraction
   -- | The total payments made this loan epoch.
   , _totalEpochPayments :: Integer
+  -- | The total number of consecutive missed epochs.
+  , _currentConsecutiveMisses :: Integer
   -- | The loan's unique indentifier.
   , _loanId :: LoanId
   -- | Payment amount.
@@ -725,6 +755,11 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} =
                   _loanOutstanding
           newEpochBoundary = _lastEpochBoundary + numberOfTimes * fromMaybe 0 _epochDuration
           priorTotal = if numberOfTimes > 0 then 0 else _totalEpochPayments
+          newEpochTotal = priorTotal + _paymentAmount
+          newTotalMisses = 
+            if newEpochTotal >= _minPayment 
+            then 0 
+            else _currentConsecutiveMisses + getPOSIXTime numberOfTimes
       in ActiveDatum
             { _activeBeaconId = ActiveBeaconId activeBeaconCurrencySymbol
             , _paymentObserverHash = scriptHash paymentObserverScript
@@ -740,13 +775,15 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} =
             , _compoundingInterest = _compoundingInterest
             , _minPayment = _minPayment
             , _penalty = _penalty
+            , _maxConsecutiveMisses = _maxConsecutiveMisses
             , _collateralization = Collateralization _collateralization
             , _collateralIsSwappable = _collateralIsSwappable
             , _lastEpochBoundary = newEpochBoundary
             , _claimExpiration = _claimExpiration
             , _loanExpiration = _loanExpiration
             , _loanOutstanding = subtractPayment _paymentAmount postInterestOutstanding
-            , _totalEpochPayments = priorTotal + _paymentAmount
+            , _totalEpochPayments = newEpochTotal
+            , _currentConsecutiveMisses = newTotalMisses
             , _loanId = _loanId
             }
 
@@ -766,6 +803,7 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} =
         , _compoundingInterest = _compoundingInterest
         , _minPayment = _minPayment
         , _penalty = _penalty
+        , _maxConsecutiveMisses = _maxConsecutiveMisses
         , _collateralization = Collateralization _collateralization
         , _collateralIsSwappable = _collateralIsSwappable
         , _lastEpochBoundary = _lastEpochBoundary
@@ -773,6 +811,7 @@ unsafeCreatePostPaymentActiveDatum NewPaymentInfo{..} =
         , _loanExpiration = _loanExpiration
         , _loanOutstanding = subtractPayment _paymentAmount _loanOutstanding
         , _totalEpochPayments = _totalEpochPayments + _paymentAmount
+        , _currentConsecutiveMisses = 0
         , _loanId = _loanId
         }
 
@@ -824,6 +863,8 @@ data NewAddressInfo = NewAddressInfo
   , _minPayment :: Integer
   -- | The penalty that gets applied if the minimum payment has not been met this loan epoch.
   , _penalty :: Penalty
+  -- | The allowed number of missed consecutive epochs.
+  , _maxConsecutiveMisses :: Maybe Integer
   -- | The relative values of the collateral assets.
   , _collateralization :: [(Asset,Fraction)]
   -- | Whether collateral can be swapped out during a loan payment.
@@ -836,6 +877,8 @@ data NewAddressInfo = NewAddressInfo
   , _loanOutstanding :: Fraction
   -- | The total payments made this loan epoch.
   , _totalEpochPayments :: Integer
+  -- | The total number of consecutive missed epochs.
+  , _currentConsecutiveMisses :: Integer
   -- | The loan's unique indentifier.
   , _loanId :: LoanId
   } deriving (Generic,Show)
@@ -857,6 +900,7 @@ unsafeCreatePostAddressUpdateActiveDatum NewAddressInfo{..} = ActiveDatum
   , _compoundingInterest = _compoundingInterest
   , _minPayment = _minPayment
   , _penalty = _penalty
+  , _maxConsecutiveMisses = _maxConsecutiveMisses
   , _collateralization = Collateralization _collateralization
   , _collateralIsSwappable = _collateralIsSwappable
   , _lastEpochBoundary = _lastEpochBoundary
@@ -864,5 +908,6 @@ unsafeCreatePostAddressUpdateActiveDatum NewAddressInfo{..} = ActiveDatum
   , _loanExpiration = _loanExpiration
   , _loanOutstanding = _loanOutstanding
   , _totalEpochPayments = _totalEpochPayments
+  , _currentConsecutiveMisses = _currentConsecutiveMisses
   , _loanId = _loanId
   }
