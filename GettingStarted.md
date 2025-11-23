@@ -27,7 +27,7 @@ template scripts to come up with your own remote node template scripts for carda
 - [Accepting an Offer](#accepting-an-offer)
 - [Making a Loan Payment](#making-a-loan-payment)
 - [Updating a Lender Address](#updating-a-lender-address)
-- [Claiming Expired Collateral](#claiming-expired-collateral)
+- [Claiming Defaulted Collateral](#claiming-defaulted-collateral)
 - [Unlocking Lost Collateral](#unlocking-lost-collateral)
 - [Queries](#queries)
   - [Querying Personal Addresses](#querying-personal-addresses)
@@ -625,6 +625,7 @@ cardano-loans datums offer \
   --claim-period '3600 slots' \
   --offer-deposit 4000000 \
   --offer-expiration 1712752992000 \
+  --max-missed-payments 3 \
   --payment-address lender_personal.addr \
   --out-file offer_datum.json
 ```
@@ -660,6 +661,9 @@ The penalty field can either be: `--no-penalty`, `--fixed-penalty INT`, `--perce
 The `PERCENT` can be specified as either a decimal or a fraction. This penalty will be applied
 whenever the `minimum-payment` is missed in a given loan epoch. *It is possible to enforce a
 penalty on interest-free and non-compounding interest loans.*
+
+The `--max-missed-payments` flag is optional but sets the upper limit on how many payments the
+borrower can miss in a row before it is grounds for early loan termination.
 
 The `collateral-asset` fields *must* be in lexicographical order. If you reverse the order of the two
 collateral assets above, the negotiation beacon script will crash with an error saying your
@@ -1216,9 +1220,9 @@ as the associated inputs!
 To see how to build the transaction using a local node, refer
 [here](scripts/local-node/update-lender-address.sh). 
 
-## Claiming Expired Collateral
+## Claiming Defaulted Collateral
 
-Claiming expired collateral requires the following steps:
+Claiming defaulted collateral requires the following steps:
 1. Calculate the invalid-before slot number based on the current chain tip.
 3. Create the required spending script redeemer.
 3. Create the required active beacon script redeemer.
@@ -1234,10 +1238,10 @@ The invalid-before of the transaction must be at least the loan expiration time 
 
 #### Create the required redeemers.
 ```bash
-cardano-loans redeemers active-script claim-expired \
-  --out-file burn_and_claim_expired.json
+cardano-loans redeemers active-script claim-defaulted \
+  --out-file burn_and_claim_defaulted.json
 
-cardano-loans redeemers loan-script claim-expired-collateral \
+cardano-loans redeemers loan-script claim-defaulted-collateral \
   --out-file spend_with_key.json
 ```
 
@@ -1267,8 +1271,9 @@ loanId="${activePolicyId}.${loanIdTokenName}"
 #### Building the transaction
 You need to set the invalid-before flag to the `$tipSlot` variable.
 
-To see how to build the transaction using a local node, refer
-[here](scripts/local-node/claim-expired.sh). 
+To see how to build the transaction using a local node, refer to one of these:
+- Claiming a loan that has expired: [here](scripts/local-node/claim-expired.sh). 
+- Terminating a loan early due to payment delinquincy: [here](scripts/local-node/terminate-early.sh). 
 
 ## Unlocking Lost Collateral
 
