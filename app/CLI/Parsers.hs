@@ -146,6 +146,7 @@ pCreateNewOfferInfo =
         <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
+        <*> (pMaxAllowedMissedPayments <|> pure Nothing)
         <*> pCollateralization
         <*> pIsSwappable
         <*> pClaimPeriod
@@ -188,6 +189,7 @@ pCreateNewActiveInfoManual =
         <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
+        <*> (pMaxAllowedMissedPayments <|> pure Nothing)
         <*> pCollateralization
         <*> pIsSwappable
         <*> pClaimPeriod
@@ -240,12 +242,14 @@ pCreatePostPaymentActiveManual =
         <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
+        <*> (pMaxAllowedMissedPayments <|> pure Nothing)
         <*> pCollateralization
         <*> pIsSwappable
         <*> pClaimExpiration
         <*> pLoanExpiration
         <*> pLoanOutstanding
         <*> pTotalEpochPayments
+        <*> pCurrentConsecutiveMisses
         <*> pLoanId
         <*> pPaymentAmount
         <*> pNextEpochBoundary
@@ -295,12 +299,14 @@ pCreatePostAddressUpdateActiveManual =
         <*> pIsCompounding
         <*> pMinPayment
         <*> pPenalty
+        <*> (pMaxAllowedMissedPayments <|> pure Nothing)
         <*> pCollateralization
         <*> pIsSwappable
         <*> pClaimExpiration
         <*> pLoanExpiration
         <*> pLoanOutstanding
         <*> pTotalEpochPayments
+        <*> pCurrentConsecutiveMisses
         <*> pLoanId
 
 pCreatePostAddressUpdateActiveAuto :: Parser Command
@@ -378,9 +384,9 @@ pActiveRedeemer = hsubparser $ mconcat
     [ command "accept-offers" $
         info pAcceptOffers $ 
           progDesc "Create the redeemer for accepting loan offers."
-    , command "claim-expired" $
-        info pBurnKeyAndClaimExpired $ 
-          progDesc "Create the redeemer for claiming expired collateral."
+    , command "claim-defaulted" $
+        info pBurnKeyAndClaimDefaulted $ 
+          progDesc "Create the redeemer for claiming defaulted collateral."
     , command "unlock" $
         info pBurnRemainderOrUnlockLost $ 
           progDesc "Create the redeemer for unlocking Active UTxOs."
@@ -395,10 +401,10 @@ pActiveRedeemer = hsubparser $ mconcat
         <$> pure (NewActive $ CreateActive negotiationBeaconCurrencySymbol)
         <*> pOutputFile
 
-    pBurnKeyAndClaimExpired :: Parser Command
-    pBurnKeyAndClaimExpired = 
+    pBurnKeyAndClaimDefaulted :: Parser Command
+    pBurnKeyAndClaimDefaulted = 
       CreateRedeemer
-        <$> pure (NewActive BurnKeyAndClaimExpired)
+        <$> pure (NewActive BurnKeyAndClaimDefaulted)
         <*> pOutputFile
 
     pBurnRemainderOrUnlockLost :: Parser Command
@@ -427,9 +433,9 @@ pLoanRedeemer = hsubparser $ mconcat
     , command "make-payment" $
         info pMakePayment $ 
           progDesc "Create the redeemer for making a loan payment."
-    , command "claim-expired-collateral" $
+    , command "claim-defaulted-collateral" $
         info pSpendWithKeyNFT $ 
-          progDesc "Create the redeemer for claiming an expired loan's collateral."
+          progDesc "Create the redeemer for claiming a defaulted loan's collateral."
     , command "update-lender-address" $
         info pUpdateLenderAddress $ 
           progDesc "Create the redeemer for changing the lender address."
@@ -1079,4 +1085,18 @@ pCurrentTime = POSIXTime <$> option auto
   (  long "current-time"
   <> metavar "INT"
   <> help "Current POSIXTime."
+  )
+
+pMaxAllowedMissedPayments :: Parser (Maybe Integer)
+pMaxAllowedMissedPayments = Just <$> option auto
+  (  long "max-missed-payments"
+  <> metavar "INT"
+  <> help "The maximum number of payments a borrower can miss before triggering early termination."
+  )
+
+pCurrentConsecutiveMisses :: Parser Integer
+pCurrentConsecutiveMisses = option auto
+  (  long "current-consecutive-misses"
+  <> metavar "INT"
+  <> help "The current number of consecutive missed payments."
   )
