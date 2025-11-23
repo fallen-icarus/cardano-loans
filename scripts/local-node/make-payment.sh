@@ -11,7 +11,7 @@ paymentObserverScript="${loanDir}payment_observer.plutus"
 lenderAddress="addr_test1vzhq6qq52k59tekqp7v04yrpq284cqxjj7fx8qau2qd795s7wfhhm"
 
 borrowerStakePubKeyFile="${walletDir}01Stake.vkey"
-borrowerLoanAddr="addr_test1zzz0x4advysvysx9wvxzhxlk26fc7cyh2swn9jx8a2z8mv3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqu6j55s"
+borrowerLoanAddr="addr_test1zz8g9s4nkamzh6jcgsfnjcgafrwh46sxpd7l5ajf8rzln0eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqy79dk4"
 
 activeDatumFile="${loanDir}activeDatum.json"
 paymentDatumFile="${loanDir}paymentDatum.json"
@@ -22,9 +22,9 @@ loanAsset='lovelace'
 collateral1='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a'
 collateral2='c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31'
 
-paymentAmount=12650001
-loanUTxO='c5dbae46e7ac34b4be3075841cc54761f794d4b25bc7349afce791cda320ac85#1'
-loanIdTokenName='a463a0657a6fb4ddcf0032ada4e8fa87aa4cd49c973c869705d8d0a65effc4ea'
+paymentAmount=11000001
+loanUTxO='8e781e2edcff81a31bd0c82359890036db85b7f9b7006231f96c86a5d325ab3a#1'
+loanIdTokenName='d58bc66b3f3778e572797ee4d96d0f81adda164f7865c452e682cf28bcec6362'
 
 # Either the next epoch boundary or the loan expiration; whichever is first. This is used for 
 # invalid-hereafter.
@@ -33,7 +33,7 @@ loanIdTokenName='a463a0657a6fb4ddcf0032ada4e8fa87aa4cd49c973c869705d8d0a65effc4e
 ### transaction. This is because hardforks can change slot lengths and, therefore, the node doesn't
 ### want to make guarantees about time too far into the future. If the loan's expiration is more
 ### than 1.5 days away, set the invalid-hereafter to be: `current_slot + 129600`.
-lastEpochBoundary=1763399954000
+lastEpochBoundary=1763920160000
 epochDuration=3600000
 currentSlot=$(cardano-loans query current-slot --testnet)
 currentTime=$(cardano-loans time convert-time --slot $currentSlot --testnet)
@@ -148,20 +148,20 @@ cardano-loans redeemers active-script burn-all \
 # Full payment transaction.
 cardano-cli conway transaction build \
   --tx-in $loanUTxO \
-  --spending-tx-in-reference 73b65770934204111b8916156c0275bfe5d52f0aa8f856d4d7359c10b7876a29#0 \
+  --spending-tx-in-reference 575c63eff95683a81f97e4f34fc7caedac5045bdb0c7ed79d93bb6905dcebc31#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $loanRedeemerFile \
-  --tx-in 09e8d9de43a1befa42943bf13094ad345cb819bb703d8a96ecdc3bb2db171ea9#0 \
+  --tx-in 0afac3458b96ea93232777a701f27051f2fff0a61bf0ae88481e3be83d649cfa#3 \
   --tx-out "${lenderAddress} + ${paymentAmount} ${loanAsset}" \
   --tx-out-inline-datum-file $paymentDatumFile \
   --mint "-1 ${borrowerId} + -1 ${activeBeacon} + -1 ${activeAssetBeacon} + -1 ${loanId}" \
-  --mint-tx-in-reference 47f7e129697675944421aea3c2faa4cf0ee9e90b9445fffe145567e5d6476bcc#0 \
+  --mint-tx-in-reference 106d811ab7f51d2c84a16ac00e8c091d80c92b893809ac8c898c0b277361ad6d#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $activeRedeemerFile \
   --policy-id $activePolicyId \
   --withdrawal "${observerAddress}+0" \
-  --withdrawal-tx-in-reference 6ad871a70308dd5d0e63ab6b1c7bf747c00a03c839ffdef7232b480097d6b3ac#0 \
+  --withdrawal-tx-in-reference 31555c4be564002ff811f9a15097991107e338a5cc9beaa10a0a037a84b36c21#0 \
   --withdrawal-plutus-script-v2 \
   --withdrawal-reference-tx-in-redeemer-file $observerRedeemerFile \
   --required-signer-hash $borrowerStakePubKeyHash \

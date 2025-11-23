@@ -71,12 +71,12 @@ assetBeacon="${beaconPolicyId}.${assetTokenName}"
 
 ## Create and submit the transaction.
 cardano-cli conway transaction build \
-  --tx-in fc908c46bcf79369a8c861cebbde867d87e7fb6a7da384e2165904cf95001725#2 \
-  --tx-in e03a75fe5b6c698a993faf49512af4e39f3c72ff945fbf5b1a5788b547b308ea#1 \
+  --tx-in 272e49fdf315a90a6fbdd3e2ce2593877b6a5af8c71eabecd0c32210b6eed4cf#1 \
+  --tx-in 2bc79e72cd0cc06fa3d293acf42f322101b5f1796d8a8f5393bc845bdb7a0bdb#2 \
   --tx-out "${borrowerLoanAddr} + 3000000 lovelace + 1 ${askBeacon} + 1 ${assetBeacon} + 1 ${collateral1} + 1 ${collateral2}" \
   --tx-out-inline-datum-file $askDatumFile \
   --mint "1 ${askBeacon} + 1 ${assetBeacon}" \
-  --mint-tx-in-reference 6014d14585f7d9f9c0c8328f63e632986549ca691b5c56a7ecf14773441d8e0e#0 \
+  --mint-tx-in-reference 6ccbd6cdff5c6305db5f249765941a79bd4fd12c1eaf451156795fbb194a5662#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \
