@@ -7,7 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Test.ActiveUTxOs.ClaimExpiredCollateral.Failures where
+module Test.ActiveUTxOs.ClaimDefaultedCollateral.Failures where
 
 import qualified Ledger.Address as LA
 import qualified PlutusLedgerApi.V2 as PV2
@@ -72,6 +72,7 @@ timeFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -253,7 +254,7 @@ timeFailure1 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -334,6 +335,7 @@ timeFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -515,7 +517,7 @@ timeFailure2 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -598,6 +600,7 @@ beaconFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -779,7 +782,7 @@ beaconFailure1 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -860,6 +863,7 @@ beaconFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1041,7 +1045,7 @@ beaconFailure2 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1122,6 +1126,7 @@ beaconFailure3 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1303,7 +1308,7 @@ beaconFailure3 = do
                 , (_unAssetBeacon _assetBeacon,0)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1385,6 +1390,7 @@ beaconFailure4 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1566,7 +1572,7 @@ beaconFailure4 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,0)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1648,6 +1654,7 @@ beaconFailure5 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -1829,7 +1836,7 @@ beaconFailure5 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-1)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -1910,6 +1917,7 @@ beaconFailure6 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2091,7 +2099,7 @@ beaconFailure6 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -2172,6 +2180,7 @@ beaconFailure7 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2353,7 +2362,7 @@ beaconFailure7 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -2434,6 +2443,7 @@ beaconFailure8 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2615,7 +2625,7 @@ beaconFailure8 = do
                 , (_unAssetBeacon _assetBeacon,1)
                 , (_unLoanId loanIdBeacon,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -2697,6 +2707,7 @@ beaconFailure9 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -2878,7 +2889,7 @@ beaconFailure9 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,1)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -2960,6 +2971,7 @@ beaconFailure10 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -3141,7 +3153,7 @@ beaconFailure10 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId loanIdBeacon,-1)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -3215,6 +3227,7 @@ beaconFailure11 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -3405,6 +3418,7 @@ beaconFailure12 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -3594,7 +3608,7 @@ beaconFailure12 = do
                 , (_unBorrowerId _borrowerId,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -3635,7 +3649,7 @@ beaconFailure12 = do
       }
 
 -- | Without spending any UTxOs using the SpendWithKeyNFT spending redeemer, mint an Active beacon using
--- BurnKeyAndClaimExpired.
+-- BurnKeyAndClaimDefaulted.
 beaconFailure13 :: MonadEmulator m => m ()
 beaconFailure13 = do
   let -- Borrower Info
@@ -3682,6 +3696,7 @@ beaconFailure13 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -3810,7 +3825,7 @@ beaconFailure13 = do
       { tokens = 
           [ TokenMint
               { mintTokens = [ ("Active",1) ]
-              , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+              , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
               , mintPolicy = toVersionedMintingPolicy activeBeaconScript
               , mintReference = Just activeRef
               }
@@ -3874,6 +3889,7 @@ typeFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -4072,7 +4088,7 @@ typeFailure1 = do
                 , (_unAssetBeacon _assetBeacon,-1)
                 , (_unLoanId _loanId,-2)
                 ]
-            , mintRedeemer = toRedeemer BurnKeyAndClaimExpired
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
             , mintPolicy = toVersionedMintingPolicy activeBeaconScript
             , mintReference = Just activeRef
             }
@@ -4113,6 +4129,265 @@ typeFailure1 = do
       }
 
 -------------------------------------------------
+-- Default Status Failures
+-------------------------------------------------
+-- | Try to terminate a loan early even though _maxConsecutiveMisses has not been exceeded.
+defaultStatusFailure1 :: MonadEmulator m => m ()
+defaultStatusFailure1 = do
+  let borrowerWallet1 = Mock.knownMockWallet 1
+      borrowerPersonalAddr1 = Mock.mockWalletAddress borrowerWallet1
+      borrowerPayPrivKey1 = Mock.paymentPrivateKey borrowerWallet1
+      borrowerPubKey1 = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet1
+      borrowerCred1 = PV2.PubKeyCredential borrowerPubKey1
+      borrowerBeacon1 = genBorrowerId borrowerCred1
+      loanAddress1 = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) (Just $ PV2.StakingHash borrowerCred1)
+
+      lenderWallet1 = Mock.knownMockWallet 2
+      lenderPersonalAddr1 = Mock.mockWalletAddress lenderWallet1
+      lenderPayPrivKey1 = Mock.paymentPrivateKey lenderWallet1
+      lenderPubKey1 = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet1
+      lenderCred1 = PV2.PubKeyCredential lenderPubKey1
+      lenderBeacon1 = genLenderId lenderCred1
+      lenderAddr1 = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) (Just $ PV2.StakingHash lenderCred1)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      askDatum = unsafeCreateAskDatum $ NewAskInfo
+        { _borrowerId = borrowerCred1
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _loanTerm = 3600
+        , _collateral = [collateral1]
+        }
+      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred1
+        , _lenderAddress = lenderAddr1
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 1_000
+        , _loanTerm = 100_000
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Just 3
+        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,activeRef,loanRef,proxyRef} <- initializeReferenceScripts 
+  mintTestTokens borrowerWallet1 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Ask UTxO.
+  void $ transact borrowerPersonalAddr1 [refScriptAddress] [borrowerPayPrivKey1] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred1
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress1
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum askDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [borrowerPubKey1]
+      }
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr1 [refScriptAddress] [lenderPayPrivKey1] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon1,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred1
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress1
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon1) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum offerDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey1]
+      }
+
+  startSlot <- currentSlot
+
+  askRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , uncurry PV2.singleton (_unAsset collateral1) 1
+        ]
+
+  offerRef <-
+    txOutRefWithValue $ 
+      utxoValue 4_000_000 $ mconcat
+        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon1) 1
+        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+        ]
+
+  let activeDatum = 
+        createAcceptanceDatumFromOffer borrowerCred1 offerRef (slotToPosixTime startSlot) offerDatum
+      loanIdBeacon = genLoanId offerRef
+
+  -- Try to accept the offer.
+  void $ transact borrowerPersonalAddr1 [loanAddress1,refScriptAddress] [borrowerPayPrivKey1] $
+    emptyTxParams
+      { tokens = 
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",-1)
+                  , ("Ask",-1)
+                  , (_unAssetBeacon loanBeacon,-2)
+                  , (_unLenderId lenderBeacon1,-1)
+                  ]
+              , mintRedeemer = toRedeemer BurnNegotiationBeacons
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          , TokenMint
+              { mintTokens = 
+                  [ ("Active",1)
+                  , (_unBorrowerId borrowerBeacon1,1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLoanId loanIdBeacon,2)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
+              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+              , mintReference = Just activeRef
+              }
+          ]
+      , inputs = 
+          [ Input
+              { inputId = offerRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          , Input
+              { inputId = askRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress1
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon1) 1
+                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
+                  , uncurry PV2.singleton (_unAsset collateral1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum activeDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          , Output
+              { outputAddress = toCardanoApiAddress lenderAddr1
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
+              , outputDatum = OutputDatum $ toDatum $ 
+                  PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef,activeRef,loanRef]
+      , extraKeyWitnesses = [borrowerPubKey1]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just startSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+  activeUTxOs <-
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      loanAddress1 
+      (activeBeaconCurrencySymbol,"Active")
+
+  keyUTxOs <- fmap concat $ forM activeUTxOs $ \(_,Just ad@ActiveDatum{_loanId}) ->
+    txOutRefsAndDatumsAtAddressWithBeacon @ActiveDatum 
+      (toCardanoApiAddress lenderAddr1) 
+      (activeBeaconCurrencySymbol,_unLoanId _loanId)
+
+  let sampleKeyBurns acs = flip map acs $
+        \(_,Just ad@ActiveDatum{..}) ->
+          TokenMint
+            { mintTokens = 
+                [ ("Active",-1)
+                , (_unBorrowerId _borrowerId,-1)
+                , (_unAssetBeacon _assetBeacon,-1)
+                , (_unLoanId loanIdBeacon,-2)
+                ]
+            , mintRedeemer = toRedeemer BurnKeyAndClaimDefaulted
+            , mintPolicy = toVersionedMintingPolicy activeBeaconScript
+            , mintReference = Just activeRef
+            }
+
+  claimSlot <- currentSlot
+
+  -- Try to claim the collateral.
+  void $ transact lenderPersonalAddr1 [toCardanoApiAddress lenderAddr1,loanAddress1,refScriptAddress] [lenderPayPrivKey1] $
+    emptyTxParams
+      { tokens = sampleKeyBurns activeUTxOs
+      , inputs = flip concatMap (zip activeUTxOs keyUTxOs) $ \((activeUtxoRef,_),(keyRef,_)) ->
+          [ Input
+              { inputId = activeUtxoRef
+              , inputWitness = 
+                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer SpendWithKeyNFT)
+              }
+          , Input
+              { inputId = keyRef
+              , inputWitness = 
+                  SpendWithPlutusReference proxyRef InlineDatum (toRedeemer ())
+              }
+          ]
+      , referenceInputs = [activeRef,loanRef,proxyRef]
+      , extraKeyWitnesses = [lenderPubKey1]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Just claimSlot
+          , validityRangeUpperBound = Nothing
+          }
+      }
+
+-------------------------------------------------
 -- TestTree
 -------------------------------------------------
 -- | A `TestTree` containing all failure scenarios for claiming expired collateral.
@@ -4123,7 +4398,7 @@ tests =
       "invalid-before not specified"
       timeFailure1
   , scriptMustFailWithError "timeFailure2" 
-      "Loan is not expired"
+      "Loan is not in default"
       timeFailure2
 
     -- Beacon Failures
@@ -4171,4 +4446,9 @@ tests =
   , scriptMustFailWithError "typeFailure1" 
       "UTxO is not an Active UTxO"
       typeFailure1
+
+    -- Default Status Failrues
+  , scriptMustFailWithError "defaultStatusFailure1" 
+      "Loan is not in default"
+      defaultStatusFailure1
   ]

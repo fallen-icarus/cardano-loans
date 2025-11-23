@@ -63,6 +63,7 @@ beaconFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -133,6 +134,7 @@ beaconFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -201,6 +203,7 @@ beaconFailure3 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -268,6 +271,7 @@ beaconFailure4 = do
         , _loanInterest = Fraction (1,10)
         , _compoundingInterest = True
         , _minPayment = 10
+        , _maxConsecutiveMisses = Nothing
         , _penalty = NoPenalty
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
@@ -337,6 +341,7 @@ beaconFailure5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -408,6 +413,7 @@ beaconFailure6 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -493,6 +499,7 @@ beaconFailure7 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -577,6 +584,7 @@ beaconFailure8 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -662,6 +670,7 @@ beaconFailure9 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -746,6 +755,7 @@ beaconFailure10 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -831,6 +841,7 @@ beaconFailure11 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -917,6 +928,7 @@ beaconFailure12 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1002,6 +1014,7 @@ beaconFailure13 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1086,6 +1099,7 @@ beaconFailure14 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1170,6 +1184,7 @@ beaconFailure15 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1254,6 +1269,7 @@ beaconFailure16 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1339,6 +1355,7 @@ beaconFailure17 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1422,6 +1439,7 @@ beaconFailure18 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1510,6 +1528,7 @@ approvalFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1593,6 +1612,7 @@ approvalFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1680,6 +1700,7 @@ datumFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1764,6 +1785,7 @@ datumFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -1917,6 +1939,7 @@ datumFailure4 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2001,6 +2024,7 @@ datumFailure5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2085,6 +2109,7 @@ datumFailure6 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2169,6 +2194,7 @@ datumFailure7 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2252,6 +2278,7 @@ datumFailure8 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2335,6 +2362,7 @@ datumFailure9 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2419,6 +2447,7 @@ datumFailure10 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2503,6 +2532,7 @@ datumFailure11 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2586,6 +2616,7 @@ datumFailure12 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2669,6 +2700,7 @@ datumFailure13 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2752,6 +2784,7 @@ datumFailure14 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2835,6 +2868,7 @@ datumFailure15 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -2918,6 +2952,7 @@ datumFailure16 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3001,6 +3036,7 @@ datumFailure17 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3084,6 +3120,7 @@ datumFailure18 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3167,6 +3204,7 @@ datumFailure19 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3250,6 +3288,7 @@ datumFailure20 = do
         , _compoundingInterest = True
         , _minPayment = -10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3333,6 +3372,7 @@ datumFailure22 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3417,6 +3457,7 @@ datumFailure23 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral2,Fraction(1,1))
             , (collateral1,Fraction(1,1))
@@ -3500,6 +3541,7 @@ datumFailure24 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(-1,1))
             , (collateral2,Fraction(1,1))
@@ -3583,6 +3625,7 @@ datumFailure25 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,-1))
             , (collateral2,Fraction(1,1))
@@ -3666,6 +3709,7 @@ datumFailure26 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,-1))
             , (collateral2,Fraction(1,1))
@@ -3749,6 +3793,7 @@ datumFailure27 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3832,6 +3877,7 @@ datumFailure28 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3915,6 +3961,7 @@ datumFailure29 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -3998,6 +4045,7 @@ datumFailure30 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4081,6 +4129,7 @@ datumFailure31 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4164,6 +4213,7 @@ datumFailure32 = do
         , _compoundingInterest = True
         , _minPayment = 20
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4247,6 +4297,7 @@ datumFailure33 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = FixedFee 0
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4330,6 +4381,7 @@ datumFailure34 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = PercentFee $ Fraction (0,1)
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4413,6 +4465,7 @@ datumFailure35 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = PercentFee $ Fraction (-1,1)
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4496,6 +4549,7 @@ datumFailure36 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = PercentFee $ Fraction (1,0)
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4579,6 +4633,7 @@ datumFailure37 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = PercentFee $ Fraction (1,-1)
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4662,6 +4717,7 @@ datumFailure38 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = FixedFee 10
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4745,6 +4801,259 @@ datumFailure39 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = PercentFee $ Fraction (1,10)
+        , _maxConsecutiveMisses = Nothing
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+-- | Create an Offer with a minPayment of 0, but a maxConsecutiveMisses.
+datumFailure40 :: MonadEmulator m => m ()
+datumFailure40 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 100
+        , _loanTerm = 10800
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 0
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Just 3
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+-- | Create an Offer with a maxConsecutiveMisses of 0.
+datumFailure41 :: MonadEmulator m => m ()
+datumFailure41 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 100
+        , _loanTerm = 10800
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Just 0
+        , _collateralization = 
+            [ (collateral1,Fraction(1,1))
+            , (collateral2,Fraction(1,1))
+            ]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  References{negotiationRef} <- initializeReferenceScripts 
+
+  -- Try to create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+-- | Create an Offer with a negative maxConsecutiveMisses.
+datumFailure42 :: MonadEmulator m => m ()
+datumFailure42 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      collateral2 = Asset (testTokenSymbol,"TestToken2")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Just 100
+        , _loanTerm = 10800
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 1_000_000
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Just (-1)
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4831,6 +5140,7 @@ addressFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -4914,6 +5224,7 @@ addressFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5000,6 +5311,7 @@ valueFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5082,6 +5394,7 @@ valueFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5166,6 +5479,7 @@ valueFailure3 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5249,6 +5563,7 @@ valueFailure4 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5335,6 +5650,7 @@ valueFailure5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5423,6 +5739,7 @@ orderFailure1 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5516,6 +5833,7 @@ orderFailure2 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -5756,6 +6074,15 @@ tests =
   , scriptMustFailWithError "datumFailure39" 
       "Datum has wrong penalty"
       datumFailure39
+  , scriptMustFailWithError "datumFailure40" 
+      "Datum has wrong max consecutive misses"
+      datumFailure40
+  , scriptMustFailWithError "datumFailure41" 
+      "Datum has wrong max consecutive misses"
+      datumFailure41
+  , scriptMustFailWithError "datumFailure42" 
+      "Datum has wrong max consecutive misses"
+      datumFailure42
     
     -- Address Failures
   , scriptMustFailWithError "addressFailure1" 

@@ -62,6 +62,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -79,6 +80,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -200,6 +202,7 @@ benchTest2 number = do
             , _compoundingInterest = True
             , _minPayment = 0
             , _penalty = NoPenalty
+            , _maxConsecutiveMisses = Nothing
             , _collateralization = [(col,Fraction(1,1))]
             , _collateralIsSwappable = False
             , _claimPeriod = 3600
@@ -288,8 +291,8 @@ benchTest2 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 19
-  , mustSucceed "benchTest2" $ benchTest2 19
+  , mustSucceed "benchTest2" $ benchTest2 18
 
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 20
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 20
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 19
   ]

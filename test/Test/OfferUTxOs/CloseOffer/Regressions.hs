@@ -56,6 +56,7 @@ regressionTest1 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -163,6 +164,7 @@ regressionTest2 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -272,6 +274,7 @@ regressionTest3 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -292,6 +295,7 @@ regressionTest3 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -423,6 +427,7 @@ regressionTest4 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -557,6 +562,7 @@ regressionTest5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -577,6 +583,7 @@ regressionTest5 = do
         , _compoundingInterest = True
         , _minPayment = 10
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1))
             , (collateral2,Fraction(1,1))
@@ -706,6 +713,7 @@ regressionTest6 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -789,6 +797,7 @@ regressionTest7 = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600

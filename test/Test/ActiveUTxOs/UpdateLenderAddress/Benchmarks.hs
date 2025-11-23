@@ -69,6 +69,7 @@ benchTest1 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -351,6 +352,7 @@ benchTest2 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = [(collateral1,Fraction(1,1_000_000))]
         , _collateralIsSwappable = False
         , _claimPeriod = 3600
@@ -671,6 +673,7 @@ benchTest3 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1_000_000))
             , (collateral2,Fraction(1,1_000_000))
@@ -969,6 +972,7 @@ benchTest4 number = do
         , _compoundingInterest = True
         , _minPayment = 0
         , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
         , _collateralization = 
             [ (collateral1,Fraction(1,1_000_000))
             , (collateral2,Fraction(1,1_000_000))
