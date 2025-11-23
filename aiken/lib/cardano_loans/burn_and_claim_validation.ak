@@ -53,14 +53,40 @@ fn get_beacons_to_burn(
                   asset_beacon,
                   loan_expiration,
                   loan_id,
+                  max_consecutive_misses,
+                  current_consecutive_misses: prior_misses,
+                  last_epoch_boundary,
+                  epoch_duration,
                   ..
                 } = parse_datum(datum)
 
-                // Check if the loan has expired using the invalid-before as proof that the time
-                // has indeed passed.
+                // Check if the borrower has missed too many payments. Note that the loan status can
+                // be "cured" if the borrower successfully satisfies the current epoch's min_payment
+                // before the lender has a chance to terminate the loan early.
+                let too_many_missed = when (epoch_duration, max_consecutive_misses) is {
+                  // If there is no `epoch_duration`, there can't be any misses.
+                  (None, _) -> False
+
+                  // Can't terminate the loan early if `max_consecutive_misses` isn't used.
+                  (_, None) -> False
+
+                  (Some(freq), Some(max_allowed)) -> {
+                    // Calculate the actual consecutive misses. The protocol can't just blindly
+                    // trust the datum since `max_consecutive_misses` only gets updated if the
+                    // borrower makes a payment. If the borrower never makes a payment,
+                    // `max_consecutive_misses` will always be 0.
+                    let new_misses = (lower_bound - last_epoch_boundary) / freq
+
+                    new_misses + prior_misses > max_allowed
+                  }
+                }
+
+                // The loan must be in default which means either it is expired or the total
+                // consecutive epochs missed is greater than the allowed amount. 
+                // The invalid-before bound is used as proof that the time has indeed passed.
                 expect True = error_if_false(
-                  @"Loan is not expired",
-                  !utils.expiration_has_not_passed(loan_expiration,lower_bound)
+                  @"Loan is not in default",
+                  !utils.expiration_has_not_passed(loan_expiration,lower_bound) || too_many_missed
                 )
 
                 let new_req_burn = req_burn |>
@@ -142,7 +168,7 @@ fn get_beacons_to_burn(
 }
 
 // Check that the required beacons have been burned.
-pub fn valid_expired_claim(
+pub fn valid_defaulted_claim(
   active_beacon_id: ActiveId,
   loan_script_cred: Credential,
   lower_bound: PosixTime,

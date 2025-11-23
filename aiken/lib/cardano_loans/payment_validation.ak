@@ -254,15 +254,17 @@ fn process_input(
       last_epoch_boundary,
       loan_term,
       loan_interest,
-      compounding_interest: compounding_interest,
+      compounding_interest,
       min_payment,
       penalty,
+      max_consecutive_misses,
       collateralization,
       collateral_is_swappable,
       claim_expiration,
       loan_expiration,
       loan_outstanding: initial_loan_outstanding,
       total_epoch_payments,
+      current_consecutive_misses,
       loan_id
     } -> {
       let upper = when upper_bound is {
@@ -315,6 +317,15 @@ fn process_input(
       // 5. Calculate the new epoch boundary.
       let updated_epoch_boundary = 
             last_epoch_boundary + number_of_times * option.or_else(epoch_duration, 0)
+
+      // 6. Calculate the total amount paid this epoch.
+      let new_total_epoch_payments = corrected_total_payments + payment_amount
+
+      // 7. Update the current consecutive misses. If the minimum payment is met, then reset the 
+      //    count to 0. Otherwise, it should be `current_consecutive_misses + number_of_times`.
+      let new_current_consecutive_misses =
+            if new_total_epoch_payments >= min_payment { 0 }
+            else { current_consecutive_misses + number_of_times }
 
       expect True = error_if_false(
         @"Payment inputs use different active beacons",
@@ -380,12 +391,14 @@ fn process_input(
             compounding_interest: compounding_interest,
             min_payment: min_payment,
             penalty: penalty,
+            max_consecutive_misses: max_consecutive_misses,
             collateralization: collateralization,
             collateral_is_swappable: collateral_is_swappable,
             claim_expiration: claim_expiration,
             loan_expiration: loan_expiration,
             loan_outstanding: new_outstanding_balance,
-            total_epoch_payments: corrected_total_payments + payment_amount,
+            total_epoch_payments: new_total_epoch_payments,
+            current_consecutive_misses: new_current_consecutive_misses,
             loan_id: loan_id
           } |> InlineDatum
         )

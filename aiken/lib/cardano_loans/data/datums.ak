@@ -67,6 +67,11 @@ pub type LoanDatum {
     // The penalty that gets applied if the minimum payment has not been met this loan epach.
     // FixedFee and PercentFee must be > 0 if used.
     penalty: Penalty,
+    // The maximum allowed missed consecutive epochs. If the borrower misses more epochs than this,
+    // the lender can terminate the loan early. However, if the borrower satisfies the minimum
+    // payment again before the lender has a chance to claim the defaulted collateral, the loan will
+    // be in good standing again (i.e., no longer in default). This setting is optional.
+    max_consecutive_misses: Option<Int>,
     // The relative values of the collateral assets. It must not be empty, it must be sorted
     // lexicographically, and there cannot be any duplicates in the list. All relative values must
     // have numerators >= 0 and denominators > 0. If a lender does not want a collateral asset used,
@@ -120,6 +125,11 @@ pub type LoanDatum {
     // The penalty that gets applied if the minimum payment has not been met this loan epach.
     // FixedFee and PercentFee must be > 0 if used.
     penalty: Penalty,
+    // The maximum allowed missed consecutive epochs. If the borrower misses more epochs than this,
+    // the lender can terminate the loan early. However, if the borrower satisfies the minimum
+    // payment again before the lender has a chance to claim the defaulted collateral, the loan will
+    // be in good standing again (i.e., no longer in default).
+    max_consecutive_misses: Option<Int>,
     // The relative values of the collateral assets.
     collateralization: List<(Asset,Fraction)>, 
     // Whether collateral can be swapped out during a loan payment.
@@ -133,6 +143,10 @@ pub type LoanDatum {
     loan_outstanding: Fraction, 
     // The total amount paid this loan epoch.
     total_epoch_payments: Int,
+    // The current consecutive loan epochs missed. If it is greater than the `max_consecutive_misses`,
+    // the lender can terminate the loan early and confiscate the collateral. This gets reset to
+    // zero whenever the borrower meets the min_payment requirement of the current loan epoch.
+    current_consecutive_misses: Int,
     // The unique identifier for this loan. It is the sha2_256 hash of the corresponding 
     // Offer UTxO's OutputReference.
     loan_id: AssetName 

@@ -16,7 +16,8 @@ pub type LoanRedeemer {
   // required interest/penalties to the outstanding balance before processing the payment.
   MakePayment{payment_amount: Int}
 
-  // Claim collateral for an expired loan.
+  // Claim collateral for an expired loan. This can also be used to terminate a loan early if the
+  // borrower has missed too many payments.
   SpendWithKeyNFT
 
   // Update the address where loan payments must go. The new_address is the address the lender
@@ -56,8 +57,8 @@ pub type ActiveBeaconsRedeemer {
     negotiation_beacon_id: PolicyId // PolicyId for the negotiation_beacons_script.
   }
 
-  // Burn the lock and key NFTs, and claim expired collateral.
-  BurnKeyAndClaimExpired
+  // Burn the lock and key NFTs, and claim defaulted collateral.
+  BurnKeyAndClaimDefaulted
 
   // Burn all remaining beacons and claim lost collateral. The loan's claim period must
   // have passed.

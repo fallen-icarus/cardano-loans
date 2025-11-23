@@ -104,12 +104,14 @@ fn process_input(
       compounding_interest: compounding_interest,
       min_payment,
       penalty,
+      max_consecutive_misses,
       collateralization,
       collateral_is_swappable,
       claim_expiration,
       loan_expiration,
       loan_outstanding,
       total_epoch_payments,
+      current_consecutive_misses,
       loan_id,
       ..
     } -> {
@@ -155,12 +157,14 @@ fn process_input(
             compounding_interest: compounding_interest,
             min_payment: min_payment,
             penalty: penalty,
+            max_consecutive_misses: max_consecutive_misses,
             collateralization: collateralization,
             collateral_is_swappable: collateral_is_swappable,
             claim_expiration: claim_expiration,
             loan_expiration: loan_expiration,
             loan_outstanding: loan_outstanding,
             total_epoch_payments: total_epoch_payments,
+            current_consecutive_misses: current_consecutive_misses,
             loan_id: loan_id
           } |> InlineDatum
         )
