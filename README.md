@@ -14,7 +14,7 @@ securities and other advanced products.
 
 > [!TIP]
 > The Getting Started instructions can be found [here](./GettingStarted.md) and the benchmarks can
-> be found [here](./Benchmarks/).
+> be found [here](./Benchmarks.md).
 
 ---
 ## Table of Contents 
