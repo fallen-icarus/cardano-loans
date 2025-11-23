@@ -12,9 +12,9 @@ retain **100% self-custody** of your assets and your ADA staking rights at all t
 a trustless on-chain reputation system—the foundational primitives for creating loan-backed
 securities and other advanced products.
 
----
-The Getting Started instructions can be found [here](./GettingStarted.md) and the benchmarks can
-be found [here](./Benchmarks/).
+> [!TIP]
+> The Getting Started instructions can be found [here](./GettingStarted.md) and the benchmarks can
+> be found [here](./Benchmarks/).
 
 ---
 ## Table of Contents 
@@ -476,7 +476,6 @@ mass adoption. The goal is sustainable, grassroots growth. By focusing on sophis
 first, we are not excluding casual users; we are building the stable and liquid foundation upon
 which they will eventually thrive.
 
----
 ## Specification
 
 This section provides the low-level technical specification for the Cardano-Loans protocol. It is
@@ -1415,7 +1414,6 @@ is transparently demonstrated on-chain.
 
 </details>
 
----
 ## Benchmarks and Fee Estimations (YMMV)
 
 **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
