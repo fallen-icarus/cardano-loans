@@ -30,7 +30,7 @@ use cardano_loans/data/redeemers.{
 
     ActiveBeaconsRedeemer,
     CreateActive, 
-    BurnKeyAndClaimExpired,
+    BurnKeyAndClaimDefaulted,
     BurnAndUnlockLost,
     BurnActiveBeacons,
 
@@ -324,7 +324,7 @@ validator() {
       }
 
       SpendWithKeyNFT -> {
-        // Claiming expired Active UTxOs involves burning all beacons attached to the expired UTxOs
+        // Claiming defaulted Active UTxOs involves burning all beacons attached to the defaulted UTxOs
         // as well as the Key NFT for each loan. Because of this burning requirement, the logic is
         // outsourced to the active beacon script. This redeemer just needs to ensure the beacon
         // script is executed with the proper redeemer.
@@ -332,7 +332,8 @@ validator() {
         // By requiring both the Lock NFT and the Key NFT to be burned, only the owner of the
         // Key NFT is able to spend UTxOs with this redeemer.
         //
-        // The loan must be expired. This will be checked by the active beacon script.
+        // For this redeemer to succeed, either the loan must be expired or the borrower must have
+        // missed too many payments. These will be checked by the active beacon script.
 
         // Extract out the required information from the script context.
         expect ScriptContext(Transaction{redeemers,..}, tx.Spend(_)) = ctx
@@ -344,8 +345,8 @@ validator() {
         }
 
         // The active beacon script will check that the required Key is burned in the transaction
-        // and that this loan is actually expired.
-        let req_redeemer: Data = BurnKeyAndClaimExpired
+        // and that this loan is actually in default.
+        let req_redeemer: Data = BurnKeyAndClaimDefaulted
         trace_if_false(
           @"Active beacon script not executed with proper redeemer",
           dict.get(redeemers, Mint(active_beacon_id)) == Some( req_redeemer )
@@ -684,6 +685,7 @@ validator(
         //         - loan_interest == loan_interest from the Offer UTxO.
         //         - min_payment == min_payment from the Offer UTxO.
         //         - penalty == penalty from the Offer UTxO
+        //         - max_consecutive_misses == max_consecutive_misses from the Offer UTxO
         //         - collateralization == collateralization from the Offer UTxO.
         //         - collateral_is_swappable == collateral_is_swappable from the Offer UTxO.
         //         - claim_expiration == invalid-before of this tx 
@@ -693,6 +695,7 @@ validator(
         //         - loan_outstanding == 
         //              loan_principal from the Offer UTxO * (1 + loan_interest from the Offer UTxO)
         //         - total_epoch_payments == 0
+        //         - current_consecutive_misses == 0
         //         - loan_id == sha2_256( offer_tx_hash ++ offer_output_index ) as token name.
         //    c) If the collateral list is non-empty, it must have enough relative collateral to
         //       equal the loan_principal amount.
@@ -777,7 +780,7 @@ validator(
         )
       }
 
-      BurnKeyAndClaimExpired -> {
+      BurnKeyAndClaimDefaulted -> {
         // This redeemer will only process inputs being spent with the SpendWithKeyNFT redeemer.
         // While this allows some intra-protocol compositions, not all compositions are possible
         // since this redeemer will exact match what active beacons are minted/burned.
@@ -786,13 +789,18 @@ validator(
         // and interest applications. Example unsupported compositions are full payments and 
         // offer acceptances.
         //
-        // The invalid-before flag is used to prove that the expiration time has actually
-        // passed. When claiming multiple expired loans, this flag should be set to the latest
-        // expiration time.
+        // If the loan is expired, the invalid-before flag is used to prove that the expiration time
+        // has actually passed. When claiming multiple expired loans, this flag should be set to the
+        // latest expiration time.
         //
-        // To successfully claim the collateral for an expired loan, all of the following must
+        // If the loan has not expired but the borrower has missed too many payments, the lender can
+        // claim the collateral. The invalid-before flag can be set to the current time for this
+        // situation.
+        //
+        // To successfully claim the collateral for a default loan, all of the following must
         // be true:
-        // 1) All loan inputs must be Active loans that have expired.
+        // 1) All loan inputs must be Active loans that have expired or have missed too many
+        //    payments.
         // 2) All loan inputs must still contain the beacons for each loan.
         // 3) Both the lock & key NFT for each loan must be burned.
         // 4) All beacons must be burned.
@@ -800,7 +808,7 @@ validator(
         // Since the Key NFT is actually being burned in this transaction (ie, the UTxO is being
         // consumed), this can be used as a proxy for the lender's approval.
         //
-        // The lender is able to claim the collateral for multiple expired loans in a given
+        // The lender is able to claim the collateral for multiple defaulted loans in a given
         // transaction as long as they control all the required Key NFTs.
         //
         // All loans claimed with this redeemer will count as defaults against the borrower.
@@ -813,7 +821,7 @@ validator(
         ) = ctx
 
         // This has its own trace messages.
-        burn_and_claim.valid_expired_claim(
+        burn_and_claim.valid_defaulted_claim(
           core.to_active_id(active_beacon_id),
           ScriptCredential(loan_script_hash),
           utils.get_lower_bound(validity_range),
@@ -1074,11 +1082,12 @@ validator(proxy_hash: ScriptHash, loan_script_hash: ScriptHash, active_beacon_id
         //    i) loan_interest must have a denominator > 0 and a numerator >= 0
         //    j) min_payment >= 0
         //    k) The penalty must either have a fixed fee > 0, a percent fee > 0, or no penalty.
-        //    l) collateralization list must be sorted, not have any duplicates, and 
+        //    l) max_consecutive_misses must either be `None` or `Some(x)` where `x` > 0.
+        //    m) collateralization list must be sorted, not have any duplicates, and 
         //       all relative prices must have numerators >= 0 and have denominators > 0
-        //    m) claim_period > 0
-        //    n) offer_deposit > 0
-        //    o) offer_expiration > 0 if used.
+        //    n) claim_period > 0
+        //    o) offer_deposit > 0
+        //    p) offer_expiration > 0 if used.
         // 4) The output must contain exactly the principal for the loan + the offer deposit.
         // 5) No other assets are allowed in the output.
         // 6) The lender's credential must signal approval.

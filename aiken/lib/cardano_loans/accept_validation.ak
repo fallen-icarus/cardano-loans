@@ -231,6 +231,7 @@ fn process_input(
     compounding_interest,
     min_payment,
     penalty,
+    max_consecutive_misses,
     collateralization,
     collateral_is_swappable,
     claim_period,
@@ -267,6 +268,7 @@ fn process_input(
     compounding_interest: compounding_interest,
     min_payment: min_payment,
     penalty: penalty,
+    max_consecutive_misses: max_consecutive_misses,
     collateralization: collateralization,
     collateral_is_swappable: collateral_is_swappable,
     claim_expiration: loan_term + claim_period + lower_bound,
@@ -274,6 +276,7 @@ fn process_input(
     loan_outstanding: // Must apply the first interest calculation.
       utils.apply_interest((loan_principal,1),loan_interest),
     total_epoch_payments: 0,
+    current_consecutive_misses: 0,
     loan_id: core.get_loan_id_name(loan_id)
   } |> InlineDatum
 

@@ -130,6 +130,7 @@ fn valid_offer_output(
     loan_interest,
     min_payment,
     penalty,
+    max_consecutive_misses,
     collateralization,
     claim_period,
     offer_deposit,
@@ -224,6 +225,13 @@ fn valid_offer_output(
         NoPenalty -> True
         FixedFee(fee) -> fee > 0 && min_payment > 0
         PercentFee((fee_num,fee_den)) -> fee_num > 0 && fee_den > 0 && min_payment > 0
+      }
+    ),
+    trace_if_false(
+      @"Datum has wrong max consecutive misses",
+      when max_consecutive_misses is {
+        None -> True
+        Some(n) -> n > 0 && min_payment > 0
       }
     ),
 
