@@ -21,10 +21,31 @@ securities and other advanced products.
 - [Motivation: Diagnosing the Flaws in Contemporary DeFi](#motivation-diagnosing-the-flaws-in-contemporary-defi)
 - [Introducing Cardano-Loans: The Solution](#introducing-cardano-loans-the-solution)
 - [Feature Discussion](#feature-discussion)
+- [Ecosystem Synergies and Strategic Impact](#ecosystem-synergies-and-strategic-impact)
 - [Adoption Strategy: Targeting Sophisticated Lenders as the Catalyst for a Grassroots Credit Market](#adoption-strategy-targeting-sophisticated-lenders-as-the-catalyst-for-a-grassroots-credit-market)
 - [Specification](#specification)
 - [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Conclusion](#conclusion)
+
+## Glossary
+
+A brief overview of the key lending terms used in this document.
+
+**Basic Loan Types**
+- *Collateralized Loan:* A loan secured by an asset (collateral) that the lender can seize if the
+loan terms are breached.
+    - *under-collateralized:* the collateral is worth *less* than the outstanding loan amount.
+    - *over-collateralized:* the collateral is worth *more* than the outstanding loan amount.
+- *Unsecured Loan:* A loan issued based solely on the borrower's creditworthiness, without any
+specific asset pledged as collateral.
+
+**Collateral Management Types**
+- *Margin Loan:* A collateralized loan where the lender can **automatically liquidate** the
+collateral if its market price drops below a predetermined threshold. The primary risk to the
+borrower is **market volatility**.
+- *Non-Margin Loan:* A collateralized loan where the collateral can only be seized if the borrower
+**fails to make payments** (i.e., defaults on their obligation). The primary risk to the borrower is
+their own **performance**, not market volatility.
 
 ## Abstract
 
@@ -83,37 +104,7 @@ while neglecting the tools needed for genuine wealth creation.
 > managed this risk for centuries without relying on market volatility induced liquidations. As you
 > will see, this protocol uses the time-tested risk management strategy used by TradFi lenders.
 
-### 2. Preventing Financial Sophistication: The Impossibility of Layering
-
-Mature credit markets create stability and attract vast amounts of capital by managing risk through
-layering. This process is described in detail in this [blog post][1], but the core idea is that
-individual loans (Layer 1) are bundled into diversified loan-backed securities (Layer 2) whose cash
-flows are then sliced into different risk bands called tranches (Layer 3). This process makes
-lending safer and more accessible to a wider range of investors.
-
-> [!IMPORTANT]
-> **It is all about risk management.** Each layer minimizes the risk of the preceding layer which
-> attracts more risk-averse capital into the credit market. For example, there is a higher risk of
-> loss from lending to a single borrower than there is in buying a loan-backed security made up of
-> diversified loans to borrowers. The impact of this layering on the available capital is
-> non-linear: securitized loans can attract 10x more capital than the individual lending market
-> could alone.
-
-Current DeFi protocols make this essential layering impossible due to two critical design flaws:
-
-- **Borrower-Centric Debt Instruments:** Many protocols feature "borrower bonds," which allow the
-borrower to sell their debt obligation to another party without the lender's consent. This
-fundamentally breaks risk management. A lender who vetted Borrower A cannot build a reliable
-loan-backed security if that debt can be unpredictably transferred to the unvetted and potentially
-less creditworthy Borrower B. Borrower bonds force lenders to lose control over their risk, making
-securitization a non-starter. This is why most TradFi loans do not support borrower Bonds.
-- **Lack of Trustless Reputation:** Without a reliable, on-chain credit history, lenders cannot
-accurately price the risk of the individual loans they issue. This opacity makes it nearly
-impossible to confidently package these loans into a security with a predictable risk profile for
-potential investors. A robust reputation system is a prerequisite for a transparent and trustworthy
-layered credit market.
-
-### 3. Betraying the Promise: The Exclusion of the Unbanked
+### 2. Betraying the Promise: The Exclusion of the Unbanked
 
 DeFi’s most noble goal is to "bank the unbanked." Yet, the current system does the exact opposite.
 By demanding that all loans be over-collateralized, DeFi creates an inescapable paradox for those it
@@ -138,7 +129,7 @@ DeFi has cut off the only viable entry point for billions of people.
 
 You can read more about this topic in this [blog post][2].
 
-### 4. The Sovereignty Conflict: Forcing Users to Cede Control
+### 3. The Sovereignty Conflict: Forcing Users to Cede Control
 
 The philosophical foundation of Cardano is user sovereignty, expressed through direct asset custody
 and participation in network consensus and governance via ADA delegation. Prevailing DeFi models
@@ -160,6 +151,36 @@ problem—it is an economic reality. The fact that a staggering [99% of Cardano'
 sits on the sidelines][3], disengaged from its DeFi ecosystem, is a clear market signal. It is a
 rational vote of no-confidence in a system that demands users compromise their core principles of
 sovereignty in exchange for participation.
+
+### 4. Preventing Financial Sophistication: The Impossibility of Layering
+
+Mature credit markets create stability and attract vast amounts of capital by managing risk through
+layering. This process is described in detail in this [blog post][1], but the core idea is that
+individual loans (Layer 1) are bundled into diversified loan-backed securities (Layer 2) whose cash
+flows are then sliced into different risk bands called tranches (Layer 3). This process makes
+lending safer and more accessible to a wider range of investors.
+
+> [!IMPORTANT]
+> **It is all about risk management.** Each layer minimizes the risk of the preceding layer which
+> attracts more risk-averse capital into the credit market. For example, there is a higher risk of
+> loss from lending to a single borrower than there is in buying a loan-backed security made up of
+> diversified loans to borrowers. The impact of this layering on the available capital is
+> non-linear: securitized loans can attract 10x more capital than the individual lending market
+> could alone.
+
+Current DeFi protocols make this essential layering impossible due to two critical design flaws:
+
+- **Borrower-Centric Debt Instruments:** Many protocols feature "borrower bonds," which allow the
+borrower to sell their debt obligation to a different borrower without the lender's consent. This
+fundamentally breaks risk management. A lender who vetted Borrower A cannot build a reliable
+loan-backed security if that debt can be unpredictably transferred to the unvetted and potentially
+less creditworthy Borrower B. Borrower bonds force lenders to lose control over their risk, making
+securitization a non-starter. This is why most TradFi loans do not support borrower Bonds.
+- **Lack of Trustless Reputation:** Without a reliable, on-chain credit history, lenders cannot
+accurately price the risk of the individual loans they issue. This opacity makes it nearly
+impossible to confidently package these loans into a security with a predictable risk profile for
+potential investors. A robust reputation system is a prerequisite for a transparent and trustworthy
+layered credit market.
 
 ## Introducing Cardano-Loans: The Solution
 
@@ -185,7 +206,43 @@ models that power real-world economies.
 > If the value of the collateral ever falls too low **that is the lender's fault**! Why should the
 > borrower be punished because the lender didn't manage the risk properly?
 
-### 2. Built for Composability: A Foundation for Layered Finance
+### 2. Banking the Unbanked: A Framework for Financial Inclusion
+
+Cardano-Loans provides the necessary infrastructure to finally bank the unbanked by natively
+supporting unsecured and under-collateralized loans.
+
+The protocol doesn't pretend to solve the identity problem in a purely anonymous environment.
+Instead, it provides the on-chain rails for a DeFi/TradFi hybrid model. Local lending businesses can
+perform off-chain vetting and due diligence, then use the Cardano-Loans protocol as the trustless
+backend to enforce the loan terms and build the borrower’s on-chain credit history. This allows
+individuals to take their first step onto the financial ladder with a small unsecured loan and build
+the verifiable reputation needed to access more and better credit over time, creating a true path
+toward financial empowerment.
+
+> [!IMPORTANT]
+> Eventually, these new borrowers will have enough of an on-chain reputation to possibly attract an
+> international loan. If they default on this international loan, it will trustlessly impact their
+> reputation and they will get worse rates when they go back to their local lenders. As a
+> consequence, these borrowers are incentivized to still act honestly with these international
+> lenders. This is how the "federated credit network" can evolve into a globally distributed credit
+> network.
+
+### 3. Upholding User Sovereignty: A Model for Safe Participation
+
+A fundamental flaw in most DeFi protocols is the requirement to surrender your assets to large,
+shared smart contracts. This model creates massive, centralized targets for hackers and forces users
+to give up custody of their funds and control over their staking rights.
+
+Cardano-Loans is built on a fundamentally different, sovereign-first architecture. The protocol
+ensures your assets always remain in your own custody, secured by your keys. This design eliminates
+the systemic risk of a central pool being drained and guarantees your right to stake your ADA and
+participate in network governance is never compromised.
+
+By solving this core conflict between participation and security, we provide a trustworthy
+foundation that finally makes participation in DeFi a rational and safe decision for the entire
+Cardano community.
+
+### 4. Built for Composability: A Foundation for Layered Finance
 
 The protocol is explicitly designed to enable the creation of a sophisticated, layered credit
 market. It achieves this by solving the core issues that block financial composition in other
@@ -209,41 +266,6 @@ collateral" that underpins the entire system's integrity.
 > with a good reputation, buyers of a loan backed security containing this loan will be more willing
 > to buy the security.
 
-### 3. Banking the Unbanked: A Framework for Financial Inclusion
-
-Cardano-Loans provides the necessary infrastructure to finally bank the unbanked by natively
-supporting unsecured and under-collateralized loans.
-
-The protocol doesn't pretend to solve the identity problem in a purely anonymous environment.
-Instead, it provides the on-chain rails for a DeFi/TradFi hybrid model. Local lending businesses can
-perform off-chain vetting and due diligence, then use the Cardano-Loans protocol as the trustless
-backend to enforce the loan terms and build the borrower’s on-chain credit history. This allows
-individuals to take their first step onto the financial ladder with a small unsecured loan and build
-the verifiable reputation needed to access more and better credit over time, creating a true path
-toward financial empowerment.
-
-> [!IMPORTANT]
-> Eventually, these new borrowers will have enough of an on-chain reputation to possibly attract an
-> international loan. If they default on this international loan, it will trustlessly impact their
-> reputation and they will get worse rates when they go back to their local lenders. As a
-> consequence, these borrowers are incentivized to still act honestly with these international
-> lenders. This is how the "federated credit network" can evolve into a globally distributed credit
-> network.
-
-### 4. Upholding User Sovereignty: A Model for Safe Participation
-
-A fundamental flaw in most DeFi protocols is the requirement to surrender your assets to large,
-shared smart contracts. This model creates massive, centralized targets for hackers and forces users
-to give up custody of their funds and control over their staking rights.
-
-Cardano-Loans is built on a fundamentally different, sovereign-first architecture. The protocol
-ensures your assets always remain in your own custody, secured by your keys. This design eliminates
-the systemic risk of a central pool being drained and guarantees your right to stake your ADA and
-participate in network governance is never compromised.
-
-By solving this core conflict between participation and security, we provide a trustworthy
-foundation that finally makes participation in DeFi a rational and safe decision for the entire
-Cardano community.
 
 ## Feature Discussion
 
@@ -282,6 +304,11 @@ ensure that payments are routed to the current holder of the Key NFT. This provi
 exit liquidity and, more importantly, creates a stable, predictable asset (the loan's cash flow)
 that can be packaged into loan-backed securities, forming the essential second layer of a mature
 credit market.
+
+> [!IMPORTANT]
+> Thanks to the composability of Cardano-Loans, the loan payment address can be updated in the same
+> transaction where the Key NFT is purchased. This composition completely eliminates the risk of
+> missed payments.
 
 ### Trustless Reputation: The Foundation of Risk Assessment
 
@@ -418,6 +445,67 @@ under-collateralized, and even fully unsecured loans.
 - **Collateral Swapping:** Lenders can choose to make an offer more attractive by enabling the
 `collateralIsSwappable` flag, which allows the borrower to substitute different types of accepted
 collateral during the loan's lifetime, provided the total value requirement is still met.
+
+## Ecosystem Synergies and Strategic Impact
+
+Beyond its core functionality, the Cardano-Loans protocol is designed as a foundational primitive
+that unlocks latent value and solves critical challenges across the entire Cardano ecosystem. Its
+unique features create powerful, positive-sum synergies with other emerging projects.
+
+### 1. Supercharging RealFi and Impact Investing
+
+**The Challenge:** RealFi initiatives aiming to provide capital to Microfinance Institutions (MFIs)
+often struggle with transparency and scale. It is difficult to immutably track loan performance and
+demonstrate a verifiable track record needed to attract larger pools of institutional capital.
+
+**The Synergy:** Cardano-Loans provides the essential infrastructure RealFi needs:
+
+- **Trustless Tracking:** Every loan issued by the protocol — whether to an individual or a small
+business — is recorded on-chain. The resulting on-chain credit history is immutable and transparent.
+- **Attracting Capital:** This verifiable data allows MFIs to build a global, trustless reputation.
+They can then use this track record to attract a much wider base of international lenders and
+package their loans into loan-backed securities for sale on a secondary market, dramatically
+increasing their access to capital.
+
+### 2. Building a True Home for BitcoinDeFi
+
+**The Challenge:** The Bitcoin community, which represents the largest pool of capital in the
+crypto-economy, is philosophically opposed to the prevailing DeFi model. Bitcoiners ("HODLers") are
+unwilling to give up custody of their BTC or expose their core holdings to the risk of forced
+liquidation due to market volatility.
+
+**The Synergy:** Cardano-Loans is engineered with a "sovereign-first" ethos that directly aligns
+with the Bitcoin philosophy:
+
+- **Non-Custodial:** Users never cede control of their assets unless they default.
+- **No Volatility Risk:** The use of non-margin loans means a Bitcoiner can secure a loan against
+their BTC to fund a business or unlock liquidity without ever fearing that a market crash will
+liquidate their position.
+- **Productive Capital:** This finally gives long-term holders a safe and productive way to use
+their assets without selling them, creating a compelling reason for Bitcoin liquidity to flow into
+the Cardano ecosystem.
+
+### 3. Solving Cardano's Stablecoin Liquidity Problem
+
+**The Challenge:** Cardano has historically struggled to attract and retain deep stablecoin
+liquidity. This is largely due to a lack of high-quality, low-risk yield opportunities for
+stablecoin holders compared to other ecosystems.
+
+**The Synergy:** The protocol creates a powerful "liquidity magnet" for stablecoins by enabling the
+creation of what is effectively a risk-free rate on-chain:
+
+- **Low-Risk Yield:** A stablecoin holder can lend their assets to a borrower offering a large
+amount of over-collateralized Bitcoin. For example, lending USDM at 5% interest against a BTC
+position collateralized at 200%.
+- **Capital Inflow:** The ability to earn a safe, predictable yield on stablecoins — backed by the
+most trusted asset in the ecosystem — is one of the most sought-after opportunities in DeFi. This
+will create immense demand and attract significant stablecoin inflows to Cardano, benefiting the
+entire ecosystem.
+
+> [!IMPORTANT]
+> There is also immense demand for ADA-backed loans! Many Cardano community members have been
+> holding ADA since the pre-sale era. This protocol allows them to unlock the value of this ADA
+> without having to sell it.
 
 ## Adoption Strategy: Targeting Sophisticated Lenders as the Catalyst for a Grassroots Credit Market
 
