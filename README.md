@@ -16,7 +16,6 @@ securities and other advanced products.
 > The Getting Started instructions can be found [here](./GettingStarted.md) and the benchmarks can
 > be found [here](./Benchmarks.md).
 
----
 ## Table of Contents 
 - [Abstract](#abstract)
 - [Motivation: Diagnosing the Flaws in Contemporary DeFi](#motivation-diagnosing-the-flaws-in-contemporary-defi)
@@ -67,16 +66,22 @@ potential high returns.
 
 However, this model is fundamentally toxic for real economic enterprise. Imagine an entrepreneur
 securing a loan to fund a startup, using their crypto assets as collateral. A sudden, temporary
-market downturn—or even a faulty price oracle feed—could trigger a forced sale of their collateral,
-instantly bankrupting their business regardless of their intent or ability to repay the loan.
-Similarly, a long-term holder ("HODLer") who has weathered 90% bear markets is unwilling to accept a
-system that could force-sell their core assets due to short-term volatility.
+market downturn — or even a faulty price oracle feed — could trigger a forced sale of their
+collateral, instantly bankrupting their business regardless of their intent or ability to repay the
+loan. Similarly, a long-term holder ("HODLer") who has weathered 90% bear markets is unwilling to
+accept a system that could force-sell their core assets due to short-term volatility.
 
 This stands in stark contrast to traditional finance (TradFi), where the overwhelming majority of
 productive credit, from mortgages to small business loans, are **non-margin loans**. In TradFi,
-collateral is only seized upon a definitive loan default—a failure to pay—not because of unrelated
-market fluctuations. By prioritizing margin loans, DeFi has inadvertently built a casino while
-neglecting the tools needed for genuine wealth creation.
+collateral is only seized upon a definitive loan default — a failure to pay — not because of
+unrelated market fluctuations. By prioritizing margin loans, DeFi has inadvertently built a casino
+while neglecting the tools needed for genuine wealth creation.
+
+> [!IMPORTANT]
+> There is a common misconception in DeFi that automated liquidations are necessary to protect
+> lenders from volatile collateral values. **This is empirically false.** TradFi lenders have
+> managed this risk for centuries without relying on market volatility induced liquidations. As you
+> will see, this protocol uses the time-tested risk management strategy used by TradFi lenders.
 
 ### 2. Preventing Financial Sophistication: The Impossibility of Layering
 
@@ -87,9 +92,9 @@ flows are then sliced into different risk bands called tranches (Layer 3). This 
 lending safer and more accessible to a wider range of investors.
 
 > [!IMPORTANT]
-> **It is all about risk-management.** Each layer minimizes the risk of the preceding layer which
+> **It is all about risk management.** Each layer minimizes the risk of the preceding layer which
 > attracts more risk-averse capital into the credit market. For example, there is a higher risk of
-> loss lending to a single borrower than there is in buying a loan-backed security made up of
+> loss from lending to a single borrower than there is in buying a loan-backed security made up of
 > diversified loans to borrowers. The impact of this layering on the available capital is
 > non-linear: securitized loans can attract 10x more capital than the individual lending market
 > could alone.
@@ -100,8 +105,8 @@ Current DeFi protocols make this essential layering impossible due to two critic
 borrower to sell their debt obligation to another party without the lender's consent. This
 fundamentally breaks risk management. A lender who vetted Borrower A cannot build a reliable
 loan-backed security if that debt can be unpredictably transferred to the unvetted and potentially
-less creditworthy Borrower B. Lenders lose control over their risk, making securitization a
-non-starter. This is why most TradFi loans do not support "Borrower Bonds".
+less creditworthy Borrower B. Borrower bonds force lenders to lose control over their risk, making
+securitization a non-starter. This is why most TradFi loans do not support borrower Bonds.
 - **Lack of Trustless Reputation:** Without a reliable, on-chain credit history, lenders cannot
 accurately price the risk of the individual loans they issue. This opacity makes it nearly
 impossible to confidently package these loans into a security with a predictable risk profile for
@@ -177,7 +182,7 @@ without the existential threat of a forced margin call. It aligns DeFi with the 
 models that power real-world economies.
 
 > [!IMPORTANT]
-> If the value of the collateral ever falls to low **that is the lender's fault**! Why should the
+> If the value of the collateral ever falls too low **that is the lender's fault**! Why should the
 > borrower be punished because the lender didn't manage the risk properly?
 
 ### 2. Built for Composability: A Foundation for Layered Finance
@@ -186,15 +191,13 @@ The protocol is explicitly designed to enable the creation of a sophisticated, l
 market. It achieves this by solving the core issues that block financial composition in other
 protocols:
 
-- **Lender-Centric Design with "Lender Bonds":** When a loan is created, the lender receives a
-unique token representing their position as the creditor. This "Lender Bond" is a tradable on-chain
-asset. The lender can sell or transfer this bond, and the protocol ensures that all future loan
-payments are routed to the new owner. Crucially, the borrower's obligations and the loan's terms
-remain unchanged. This provides potential exit liquidity for lenders while maintaining the integrity
-of the original loan, allowing for predictable risk management—the essential prerequisite for
-creating loan-backed securities.
-- **Integrated Trustless Reputation:** The protocol is a reputation engine. Every loan
-event—origination, timely payment, missed payment, default, and full repayment—is immutably recorded
+- **Lender-Centric Design with "Lender Bonds":** Instead of locking lenders into a loan for its
+entire term, our protocol makes the lender's position a liquid, tradable asset. This creates a
+secondary market for debt, providing lenders with exit flexibility and creating the stable,
+transferable instruments needed to build sophisticated financial products like loan-backed
+securities.
+- **Integrated Trustless Reputation:** The protocol is a reputation engine. Every loan event —
+origination, timely payment, missed payment, default, and full repayment — is immutably recorded
 on-chain and tied to the participants' on-chain identities. This creates a transparent and auditable
 credit history. Lenders can use this data to more accurately assess risk, and borrowers can leverage
 their good history to secure better terms in the future. This reputation becomes a form of "social
@@ -227,22 +230,20 @@ toward financial empowerment.
 > lenders. This is how the "federated credit network" can evolve into a globally distributed credit
 > network.
 
-### 4. Upholding User Sovereignty: The DeFi Kernel Approach
+### 4. Upholding User Sovereignty: A Model for Safe Participation
 
-Cardano-Loans is built as a foundational primitive of the **DeFi Kernel**, ensuring that user
-sovereignty is never compromised. This is achieved through its core architecture:
+A fundamental flaw in most DeFi protocols is the requirement to surrender your assets to large,
+shared smart contracts. This model creates massive, centralized targets for hackers and forces users
+to give up custody of their funds and control over their staking rights.
 
-- **Individual Smart Contract Instances:** Each user interacts with their own dedicated,
-user-controlled smart contract. There are no large, shared pools of capital where assets are
-commingled.
+Cardano-Loans is built on a fundamentally different, sovereign-first architecture. The protocol
+ensures your assets always remain in your own custody, secured by your keys. This design eliminates
+the systemic risk of a central pool being drained and guarantees your right to stake your ADA and
+participate in network governance is never compromised.
 
-- **Guaranteed Self-Custody and Delegation:** Because users interact with their own contracts, they
-never cede custody of their assets or control over their ADA delegation rights. Their funds remain
-theirs, and their voice in the Cardano ecosystem remains their own.
-
-This sovereign-first approach directly solves the conflict that has kept 99% of Cardano's liquidity
-on the sidelines. It makes participation in DeFi a rational, safe, and principled decision, creating
-the trust necessary to unlock the full financial potential of the Cardano community.
+By solving this core conflict between participation and security, we provide a trustworthy
+foundation that finally makes participation in DeFi a rational and safe decision for the entire
+Cardano community.
 
 ## Feature Discussion
 
@@ -274,13 +275,13 @@ To build a layered financial system, the underlying debt instruments must be sta
 from the lender's perspective. The protocol introduces Lender Bonds, represented by a unique "Key
 NFT" minted for each loan. This NFT serves as the lender's proof of ownership over the debt.
 
-The owner of the Key NFT is the sole entity entitled to receive the loan's repayments. The key
-innovation is that this bond can be sold or transferred on a secondary market without affecting the
-borrower's obligations. The new owner of the Key NFT can update the required payment address and the
-protocol will trustlessly ensure that payments are routed to the current holder of the Key NFT. This
-provides lenders with exit liquidity and, more importantly, creates a stable, predictable asset (the
-loan's cash flow) that can be packaged into loan-backed securities, forming the essential second
-layer of a mature credit market.
+The owner of the Key NFT is the sole entity entitled to receive the loan's repayments. This bond can
+be sold or transferred on a secondary market without affecting the borrower's obligations. The new
+owner of the Key NFT can update the required payment address and the protocol will trustlessly
+ensure that payments are routed to the current holder of the Key NFT. This provides lenders with
+exit liquidity and, more importantly, creates a stable, predictable asset (the loan's cash flow)
+that can be packaged into loan-backed securities, forming the essential second layer of a mature
+credit market.
 
 ### Trustless Reputation: The Foundation of Risk Assessment
 
@@ -289,9 +290,9 @@ and lenders.
 
 - **Borrower's Credit History:** A borrower’s on-chain identity is linked to their staking
 credential (the `Borrower ID` beacon). Every loan they undertake is tracked on-chain. The final
-transaction that concludes the loan—whether a full repayment (`MakePayment` redeemer) or a default
-(`SpendWithKeyNFT` redeemer)—serves as a permanent, publicly verifiable record of the outcome. This
-creates a trustless credit history that any future lender can audit to assess risk.
+transaction that concludes the loan — whether a full repayment or a default — serves as a permanent,
+publicly verifiable record of the outcome. This creates a trustless credit history that any future
+lender can audit to assess risk.
 - **Lender's Track Record:** A lender's reputation is built by tracking the performance of all loans
 they originate (identified by their `Lender ID` beacon). By observing the outcomes of the loans
 associated with this `Lender ID`, the market can calculate their success rate. A lender with a
@@ -302,10 +303,10 @@ bonds more valuable and their participation in securitization more attractive.
 
 A powerful consequence of this architecture is the creation of an emergent Decentralized Identifier
 (DID). Because a user's staking credential serves as the consistent identifier for all of their
-activity within Cardano-Loans—and across all other DeFi Kernel protocols—it becomes a persistent,
-pseudonymous on-chain identity. The sum of a user's loan history, DEX trades, and other on-chain
-actions forms a rich, auditable *economic fingerprint*, providing a strong signal that they are a
-real, economically significant participant.
+activity within Cardano-Loans — and across all other DeFi Kernel protocols — it becomes a
+persistent, pseudonymous on-chain identity. The sum of a user's loan history, DEX trades, and other
+on-chain actions forms a rich, auditable *economic fingerprint*, providing a strong signal that they
+are a real, economically significant participant.
 
 This gives rise to a layered and voluntary model for on-chain identity:
 
@@ -332,7 +333,7 @@ see reactive, price-based liquidation as the only form of risk management.
 
 Cardano-Loans rejects this volatile and often destructive model in favor of a return to first
 principles. The protocol empowers lenders to manage risk proactively through diligent underwriting
-and intelligent loan structuring—the same principles that have successfully governed traditional
+and intelligent loan structuring — the same principles that have successfully governed traditional
 credit markets for centuries. The key innovation is implementing these proven strategies in a
 globally accessible, transparent, and trustless on-chain environment.
 
@@ -353,8 +354,8 @@ control over their risk exposure.
     - **Performance Covenants (`maxConsecutiveMisses`):** This is the protocol's crucial,
     performance-based alternative to margin calls. Instead of liquidating based on a volatile price
     feed, default is determined by the borrower's actions. If a borrower fails to make payments and
-    exceeds the `maxConsecutiveMisses` threshold, the lender can terminate the loan and claim the
-    entire collateral. This protects the lender from what truly matters: a non-performing loan.
+    exceeds the `maxConsecutiveMisses` threshold, the lender can terminate the loan early and claim
+    the entire collateral. This protects the lender from what truly matters: a non-performing loan.
 3. **Data-Driven Risk Assessment:** Leveraging the unique advantages of the blockchain.
     - **Trustless Reputation:** Lenders are not operating in a vacuum. They have access to an
     immutable, on-chain credit history via the `Borrower ID`. A borrower's public track record of
@@ -362,10 +363,10 @@ control over their risk exposure.
     allowing lenders to make data-driven decisions. They can offer better terms to reputable
     borrowers and take a more cautious, highly-collateralized approach with new participants.
 4. **Market-Based Exit Liquidity:** Providing flexibility through **Lender Bonds**.
-    - If a lender's risk assessment of a loan changes, they are not locked into the position until
-    maturity. The Lender Bond they hold is a liquid asset. They can sell it on a secondary market at
-    any time, transferring the position to another party at a market-determined price. This provides
-    an immediate and flexible exit strategy, allowing for active portfolio management.
+    - Lender's are not locked into the position until maturity. The Lender Bond they hold is a
+    liquid asset. They can sell it on a secondary market at any time, transferring the position to
+    another party at a market-determined price. This provides an immediate and flexible exit
+    strategy, allowing for active portfolio management.
 
 By combining these tools, Cardano-Loans facilitates a more sophisticated and stable credit market.
 It shifts the paradigm from reactive, automated liquidations to proactive, intelligent underwriting,
@@ -385,7 +386,7 @@ time-sensitive opportunities.
 
 This flexibility does not compromise lender security. Lenders are protected not by a rigid LTV peg,
 but by their on-chain right to terminate a non-performing loan early via the `maxConsecutiveMisses`
-parameter—a clear, performance-based backstop that requires no price oracles.
+parameter — a clear, performance-based backstop that requires no price oracles.
 
 For entrepreneurs, builders, and active market participants, this is a critical feature that allows
 them to manage their capital intelligently and maximize its productive potential, all while
@@ -405,21 +406,18 @@ for an epoch is missed.
 - **Early Loan Termination:** Lenders can set a maximum number of payments a borrower can miss in a
 row before it is grounds for early termination. When a loan is terminated early, the lender claims
 all remaining collateral backing the loan.
-- **Compounding vs. Simple Interest vs. Interest Free:** The protocol supports both compounding,
+- **Compounding vs. Simple Interest vs. Interest Free:** The protocol supports compounding,
 non-compounding, and interest-free loans, offering flexibility for different financial products.
-- **Native Support for All Assets:** All Cardano native assets, both present and future ones, are
-already supported out of the box.
+- **Native Support for All Assets:** All Cardano native assets — present and future, fungible and
+non-fungible — are already supported out of the box.
 - **Multi-Collateral Loans:** Borrowers can use a basket of assets as collateral for a loan, with no
 limit to the number of assets that can be included.
 - **Customizable Collateralization:** Lenders and borrowers can agree to any collateral level they
 choose by setting the relative asset values. This enables over-collateralized, fully-collateralized,
 under-collateralized, and even fully unsecured loans.
 - **Collateral Swapping:** Lenders can choose to make an offer more attractive by enabling the
-`collateralIsSwappable` flag, which allows the borrower to substitute different types of collateral
-during the loan's lifetime, provided the total value requirement is still met.
-
-This flexibility allows the protocol to serve a vast range of use cases, from simple personal loans
-to more complex, structured financial agreements.
+`collateralIsSwappable` flag, which allows the borrower to substitute different types of accepted
+collateral during the loan's lifetime, provided the total value requirement is still met.
 
 ## Adoption Strategy: Targeting Sophisticated Lenders as the Catalyst for a Grassroots Credit Market
 
@@ -445,8 +443,9 @@ Cardano-Loans is a powerful feature, not a burden.
 >
 > In a worldwide market of millions, the probability of attracting at least a handful of pioneering
 > lenders is extremely high. Only one of them needs to issue a successful, profitable loan. That
-> single on-chain success story becomes the verifiable proof—the catalyst—that validates the model
-> and attracts the next wave of lenders (`1 -> 2 -> 4 -> 8...`).
+> single on-chain success story becomes the verifiable proof — the catalyst — that validates the model
+> and attracts the next wave of lenders. One lender becomes 2, then 4, then 8, ... Each loan success
+> fuels more adoption.
 >
 > This dynamic de-risks the launch. The protocol doesn't need to hope for a crowd; it simply needs
 > to be robust enough to ensure its first pioneers can succeed.
@@ -457,7 +456,7 @@ tools to issue stable, non-margin loans, Cardano-Loans becomes the engine for a 
 economic cycle:
 
 1. **Seeding Productive Enterprise:** Sophisticated lenders deploy capital to entrepreneurs in
-   developing markets—the exact demographic that traditional finance cannot efficiently serve.
+   developing markets — the exact demographic that traditional finance cannot efficiently serve.
 2. **Creating Real-World Value:** Borrowers use these non-margin loans to fund businesses, build
    infrastructure (like the internet access mentioned in the [DeFi Adoption Roadmap][7]), and create
 tangible economic wealth.
@@ -472,9 +471,9 @@ Early Adopters. The collateral will be more stable, the success stories will be 
 and the risk will be far easier to manage.
 
 In short, the "challenges" of manual risk management are only challenges if the goal is premature
-mass adoption. The goal is sustainable, grassroots growth. By focusing on sophisticated lenders
-first, we are not excluding casual users; we are building the stable and liquid foundation upon
-which they will eventually thrive.
+mass adoption. But the actual goal is sustainable, grassroots growth. By focusing on sophisticated
+lenders first, the protocol is not excluding casual users; it is building the stable and liquid
+foundation upon which they will eventually thrive.
 
 ## Specification
 
@@ -1460,7 +1459,7 @@ inclusion for the unbanked.
 
 This protocol is more than just set of smart contract; it is a piece of essential public
 infrastructure. It is the bedrock upon which a new generation of financial services can be
-built—services that are open, fair, and accessible to all. It is the key to unlocking the
+built — services that are open, fair, and accessible to all. It is the key to unlocking the
 multi-trillion dollar global credit market and realizing the original vision of decentralized
 finance.
 
