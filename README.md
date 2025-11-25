@@ -588,7 +588,7 @@ over all ADA held at the address.
 - **Identity:** The user's staking credential serves as their cryptographic on-chain identity (e.g,
 Borrower ID or Lender ID) to which their reputation is tied. 
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > Since the user's staking credential can be a script, it is possible for another dApp to act as a
 > borrower or lender for Cardano-Loans.
 
@@ -597,7 +597,7 @@ Borrower ID or Lender ID) to which their reputation is tied.
 The protocol's state is represented by three primary UTxO types, which are made discoverable by
 CIP-89 beacon tokens.
 
-> [!NOTE]
+> **NOTE**  
 > The strings ("Ask", "Offer", "Active", "Asset") in the derivations must be converted to
 > hexidecimal.
 
@@ -639,7 +639,7 @@ the borrower's dApp address and contains the collateral and the loan's current s
         and authorization token. *This is the lender bond.*
         - *Derivation:*  `sha2_256( offer_utxo_tx_hash ++ offer_utxo_output_index )`
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > The Lender ID Beacon name is prefixed to make it distinct from the Borrower ID when the same
 > staking credential is used for both borrowing and lending.
 
@@ -991,7 +991,7 @@ must approve this action.
 - **Without Beacons (Invalid Ask UTxO):**
     - The loan address's staking credential must approve the transaction.
 
-> [!NOTE]
+> **NOTE**  
 > It is possible to close Ask UTxOs for two different borrowers in one transaction by using the
 > negotiation smart contract as a minting policy for one borrower and as a staking script for the
 > other. Both borrowers must approve the transaction.
@@ -1093,7 +1093,7 @@ zero or omitting them from the `collateralization` list.
 lenders can use to make their offers more competitive.
 - The `offerDeposit` is returned to the lender when the borrower accepts the offer.
 
-> [!NOTE]
+> **NOTE**  
 > It is technically possible to specify a staking pubkey hash as a staking script hash and have the
 > offer creation succeed if the staking address is withdrawn from in the same transaction. This does
 > not pose a security risk.
@@ -1120,7 +1120,7 @@ approve this action.
 - **Without Beacons (Invalid Offer UTxO):**
     - The loan address's staking credential must approve the transaction.
 
-> [!NOTE] 
+> **NOTE**  
 > Offer UTxOs for two different lenders can be closed in a single transaction if both lenders
 > approve.
 
@@ -1236,13 +1236,13 @@ immediately accept a lender's counter-offer without having to first update their
 support non-compounding interest.
 - If no Offer UTxOs expire, the `invalid-hereafter` flag can be dropped from the transaction.
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > Even though Offer inputs are not compared against Ask inputs, borrowers must close the same number
 > of Ask UTxOs as the number of offers they accept. This prevents open Ask UTxOs from remaining
 > on-chain after the borrower's need has been met, which would pollute beacon queries for other
 > lenders.
 
-> [!NOTE]
+> **NOTE**  
 > Accepting offers can be composed with other actions that do not interfere with its minting/burning
 > requirements. However, you cannot compose accepting offers with making full loan payments, as full
 > payments have their own specific burning requirements.
@@ -1258,7 +1258,7 @@ dramatically improves performance without significantly impacting composability.
 Borrowers can make partial or full payments on any loan that has not yet expired. Multiple payments
 can be made in a single transaction.
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > Any required interest or penalties are applied to the outstanding balance **before** processing
 > the payment.
 
@@ -1319,11 +1319,11 @@ sum { collateralTaken / relativeValue }           loanRepaid
 sum { startingCollateral / relativeValue }        startingOutstandingBalance
 ```
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > Because applying interest can increase the size of the `ActiveDatum`, the minUTxO requirement for
 > the new Active UTxO may increase when making a payment.
 
-> [!IMPORTANT]
+> **IMPORTANT**  
 > Do not set the `invalid-hereafter` to the loan expiration if there are still loan epochs that have
 > not passed yet! It will cause unnecessary interest/penalty applications.
 
