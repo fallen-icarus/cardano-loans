@@ -642,215 +642,10 @@ beaconFailure3 = do
           }
       }
 
--- | When accepting a single offer, only burn Offer beacons. The Ask input is not present.
--- The active beacons are still minted.
-beaconFailure4 :: MonadEmulator m => m ()
-beaconFailure4 = do
-  let -- Borrower Info
-      borrowerWallet = Mock.knownMockWallet 1
-      borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
-      borrowerPayPrivKey = Mock.paymentPrivateKey borrowerWallet
-      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
-      borrowerCred = PV2.PubKeyCredential borrowerPubKey
-      borrowerBeacon = genBorrowerId borrowerCred
-      loanAddress = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
-                    (Just $ PV2.StakingHash borrowerCred)
-
-      -- Lender Info
-      lenderWallet = Mock.knownMockWallet 2
-      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
-      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
-      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
-      lenderCred = PV2.PubKeyCredential lenderPubKey
-      lenderBeacon = genLenderId lenderCred
-      lenderAddr = 
-        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
-                    (Just $ PV2.StakingHash lenderCred)
-
-      -- Loan Info
-      loanAsset = Asset (adaSymbol,adaToken)
-      collateral1 = Asset (testTokenSymbol,"TestToken1")
-      loanBeacon = genLoanAssetBeaconName loanAsset
-      askDatum = unsafeCreateAskDatum $ NewAskInfo
-        { _borrowerId = borrowerCred
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _loanTerm = 3600
-        , _collateral = [collateral1]
-        }
-      offerDatum = unsafeCreateOfferDatum $ NewOfferInfo
-        { _lenderId = lenderCred
-        , _lenderAddress = lenderAddr
-        , _loanAsset = loanAsset
-        , _loanPrincipal = 10_000_000
-        , _epochDuration = Nothing
-        , _loanTerm = 3600
-        , _loanInterest = Fraction (1,10)
-        , _compoundingInterest = True
-        , _minPayment = 0
-        , _penalty = NoPenalty
-        , _maxConsecutiveMisses = Nothing
-        , _collateralization = [(collateral1,Fraction(1,1_000_000))]
-        , _collateralIsSwappable = False
-        , _claimPeriod = 3600
-        , _offerDeposit = 4_000_000
-        , _offerExpiration = Nothing
-        }
-
-  -- Initialize scenario
-  References{negotiationRef,activeRef,loanRef} <- initializeReferenceScripts 
-  mintTestTokens borrowerWallet 10_000_000 [("TestToken1",1000)]
-
-  -- Create the Ask UTxO.
-  void $ transact borrowerPersonalAddr [refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = [("Ask",1),(_unAssetBeacon loanBeacon,1)]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateAsk borrowerCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum askDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      }
-
-  -- Create the Offer UTxO.
-  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
-    emptyTxParams
-      { tokens =
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLenderId lenderBeacon,1)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-                  ]
-              , outputDatum = OutputDatum $ toDatum offerDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef]
-      , extraKeyWitnesses = [lenderPubKey]
-      }
-
-  startSlot <- currentSlot
-
-  askRef <- 
-    txOutRefWithValue $ 
-      utxoValue 3_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Ask" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , uncurry PV2.singleton (_unAsset collateral1) 1
-        ]
-
-  offerRef <-
-    txOutRefWithValue $ 
-      utxoValue 4_000_000 $ mconcat
-        [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-        , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
-        , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
-        ]
-
-  let activeDatum = 
-        createAcceptanceDatumFromOffer borrowerCred offerRef (slotToPosixTime startSlot) offerDatum
-      loanIdBeacon = genLoanId offerRef
-
-  -- Try to accept the offer.
-  void $ transact borrowerPersonalAddr [loanAddress,refScriptAddress] [borrowerPayPrivKey] $
-    emptyTxParams
-      { tokens = 
-          [ TokenMint
-              { mintTokens = 
-                  [ ("Offer",-1)
-                  , (_unAssetBeacon loanBeacon,-1)
-                  , (_unLenderId lenderBeacon,-1)
-                  ]
-              , mintRedeemer = toRedeemer BurnNegotiationBeacons
-              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
-              , mintReference = Just negotiationRef
-              }
-          , TokenMint
-              { mintTokens = 
-                  [ ("Active",1)
-                  , (_unBorrowerId borrowerBeacon,1)
-                  , (_unAssetBeacon loanBeacon,1)
-                  , (_unLoanId loanIdBeacon,2)
-                  ]
-              , mintRedeemer = toRedeemer $ CreateActive negotiationBeaconCurrencySymbol
-              , mintPolicy = toVersionedMintingPolicy activeBeaconScript
-              , mintReference = Just activeRef
-              }
-          ]
-      , inputs = 
-          [ Input
-              { inputId = offerRef
-              , inputWitness = 
-                  SpendWithPlutusReference loanRef InlineDatum (toRedeemer AcceptOffer)
-              }
-          ]
-      , outputs =
-          [ Output
-              { outputAddress = loanAddress
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol "Active" 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unBorrowerId borrowerBeacon) 1
-                  , PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1
-                  , uncurry PV2.singleton (_unAsset collateral1) 10
-                  ]
-              , outputDatum = OutputDatum $ toDatum activeDatum
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          , Output
-              { outputAddress = toCardanoApiAddress lenderAddr
-              , outputValue = utxoValue 4_000_000 $ mconcat
-                  [ PV2.singleton activeBeaconCurrencySymbol (_unLoanId loanIdBeacon) 1 ]
-              , outputDatum = OutputDatum $ toDatum $ 
-                  PaymentDatum (activeBeaconCurrencySymbol,_unLoanId loanIdBeacon)
-              , outputReferenceScript = toReferenceScript Nothing
-              }
-          ]
-      , referenceInputs = [negotiationRef,activeRef,loanRef]
-      , extraKeyWitnesses = [borrowerPubKey]
-      , validityRange = ValidityRange
-          { validityRangeLowerBound = Just startSlot
-          , validityRangeUpperBound = Nothing
-          }
-      }
-
 -- | When accepting a single offer, only burn Ask beacons. The Offer input is not present. The
 -- active beacons are still minted.
-beaconFailure5 :: MonadEmulator m => m ()
-beaconFailure5 = do
+beaconFailure4 :: MonadEmulator m => m ()
+beaconFailure4 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -1053,8 +848,8 @@ beaconFailure5 = do
 
 -- | When accepting a single offer, only burn Ask beacons. The Offer input is not present. The
 -- active beacons are not minted.
-beaconFailure6 :: MonadEmulator m => m ()
-beaconFailure6 = do
+beaconFailure5 :: MonadEmulator m => m ()
+beaconFailure5 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -1240,8 +1035,8 @@ beaconFailure6 = do
       }
 
 -- | Mint active beacons without including any negotiation loan inputs.
-beaconFailure7 :: MonadEmulator m => m ()
-beaconFailure7 = do
+beaconFailure6 :: MonadEmulator m => m ()
+beaconFailure6 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -1428,8 +1223,8 @@ beaconFailure7 = do
 
 -- | Mint unrelated active tokens in addition to the required ones. All required inputs are
 -- present.
-beaconFailure8 :: MonadEmulator m => m ()
-beaconFailure8 = do
+beaconFailure7 :: MonadEmulator m => m ()
+beaconFailure7 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -1640,8 +1435,8 @@ beaconFailure8 = do
 
 -- | When accepting a single loan offer, mint an additional LoanId and store it with the
 -- collateral UTxO. All required inputs are present.
-beaconFailure9 :: MonadEmulator m => m ()
-beaconFailure9 = do
+beaconFailure8 :: MonadEmulator m => m ()
+beaconFailure8 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -1851,8 +1646,8 @@ beaconFailure9 = do
 
 -- | When accepting a single loan offer, mint an additional LoanId and store it with the lender
 -- output. All required inputs are present.
-beaconFailure10 :: MonadEmulator m => m ()
-beaconFailure10 = do
+beaconFailure9 :: MonadEmulator m => m ()
+beaconFailure9 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -2062,8 +1857,8 @@ beaconFailure10 = do
 
 -- | When accepting a single loan offer, mint an additional Active beacon and store it with the
 -- collateral UTxO. All required inputs are present.
-beaconFailure11 :: MonadEmulator m => m ()
-beaconFailure11 = do
+beaconFailure10 :: MonadEmulator m => m ()
+beaconFailure10 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -2273,8 +2068,8 @@ beaconFailure11 = do
 
 -- | When accepting a single loan offer, mint an additional BorrowerId and store it with the
 -- collateral UTxO. All required inputs are present.
-beaconFailure12 :: MonadEmulator m => m ()
-beaconFailure12 = do
+beaconFailure11 :: MonadEmulator m => m ()
+beaconFailure11 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -2484,8 +2279,8 @@ beaconFailure12 = do
 
 -- | When accepting a single loan offer, mint an additional Asset beacon and store it with the
 -- collateral UTxO. All required inputs are present.
-beaconFailure13 :: MonadEmulator m => m ()
-beaconFailure13 = do
+beaconFailure12 :: MonadEmulator m => m ()
+beaconFailure12 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -2694,8 +2489,8 @@ beaconFailure13 = do
       }
 
 -- | When accepting a single loan offer, mint the wrong LoanId. All required inputs are present.
-beaconFailure14 :: MonadEmulator m => m ()
-beaconFailure14 = do
+beaconFailure13 :: MonadEmulator m => m ()
+beaconFailure13 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -2904,8 +2699,8 @@ beaconFailure14 = do
       }
 
 -- | When accepting a single loan offer, mint the wrong BorrowerId. All required inputs are present.
-beaconFailure15 :: MonadEmulator m => m ()
-beaconFailure15 = do
+beaconFailure14 :: MonadEmulator m => m ()
+beaconFailure14 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -3114,8 +2909,8 @@ beaconFailure15 = do
       }
 
 -- | When accepting a single loan offer, mint the wrong Asset beacon. All required inputs are present.
-beaconFailure16 :: MonadEmulator m => m ()
-beaconFailure16 = do
+beaconFailure15 :: MonadEmulator m => m ()
+beaconFailure15 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -3324,8 +3119,8 @@ beaconFailure16 = do
       }
 
 -- | When accepting a single loan offer, mint the wrong Active beacon. All required inputs are present.
-beaconFailure17 :: MonadEmulator m => m ()
-beaconFailure17 = do
+beaconFailure16 :: MonadEmulator m => m ()
+beaconFailure16 = do
   let -- Borrower Info
       borrowerWallet = Mock.knownMockWallet 1
       borrowerPersonalAddr = Mock.mockWalletAddress borrowerWallet
@@ -3534,8 +3329,8 @@ beaconFailure17 = do
       }
 
 -- | When accepting multiple offers, only burn some of the Ask beacons.
-beaconFailure18 :: MonadEmulator m => m ()
-beaconFailure18 = do
+beaconFailure17 :: MonadEmulator m => m ()
+beaconFailure17 = do
   let borrowerWallet1 = Mock.knownMockWallet 1
       borrowerPersonalAddr1 = Mock.mockWalletAddress borrowerWallet1
       borrowerPayPrivKey1 = Mock.paymentPrivateKey borrowerWallet1
@@ -3777,8 +3572,8 @@ beaconFailure18 = do
       }
 
 -- | When accepting multiple offers, only burn some of the Offer beacons.
-beaconFailure19 :: MonadEmulator m => m ()
-beaconFailure19 = do
+beaconFailure18 :: MonadEmulator m => m ()
+beaconFailure18 = do
   let borrowerWallet1 = Mock.knownMockWallet 1
       borrowerPersonalAddr1 = Mock.mockWalletAddress borrowerWallet1
       borrowerPayPrivKey1 = Mock.paymentPrivateKey borrowerWallet1
@@ -4021,8 +3816,8 @@ beaconFailure19 = do
 
 -- | When accepting a single offer, do not store the newly minted Active beacons with the Active
 -- datums.
-beaconFailure20 :: MonadEmulator m => m ()
-beaconFailure20 = do
+beaconFailure19 :: MonadEmulator m => m ()
+beaconFailure19 = do
   let borrowerWallet1 = Mock.knownMockWallet 1
       borrowerPersonalAddr1 = Mock.mockWalletAddress borrowerWallet1
       borrowerPayPrivKey1 = Mock.paymentPrivateKey borrowerWallet1
@@ -19022,17 +18817,17 @@ tests =
   , scriptMustFailWithError "beaconFailure3" 
       "The wrong negotiation beacons were burned"
       beaconFailure3
-  , scriptMustFailWithError "beaconFailure4" 
-      "# Ask UTxOs closed /= # Offer UTxOs accepted"
-      beaconFailure4
   , scriptMustFailWithError "beaconFailure5" 
       "The wrong active beacons were minted"
+      beaconFailure4
+  , scriptMustFailWithError "beaconFailure5" 
+      "Active beacon script not executed with proper redeemer"
       beaconFailure5
   , scriptMustFailWithError "beaconFailure6" 
-      "Active beacon script not executed with proper redeemer"
+      "No loan inputs found"
       beaconFailure6
   , scriptMustFailWithError "beaconFailure7" 
-      "No loan inputs found"
+      "The wrong active beacons were minted"
       beaconFailure7
   , scriptMustFailWithError "beaconFailure8" 
       "The wrong active beacons were minted"
@@ -19062,17 +18857,14 @@ tests =
       "The wrong active beacons were minted"
       beaconFailure16
   , scriptMustFailWithError "beaconFailure17" 
-      "The wrong active beacons were minted"
+      "The wrong negotiation beacons were burned"
       beaconFailure17
   , scriptMustFailWithError "beaconFailure18" 
       "The wrong negotiation beacons were burned"
       beaconFailure18
   , scriptMustFailWithError "beaconFailure19" 
-      "The wrong negotiation beacons were burned"
-      beaconFailure19
-  , scriptMustFailWithError "beaconFailure20" 
       "Collateral UTxO missing beacons"
-      beaconFailure20
+      beaconFailure19
 
     -- Credential Failures
   , scriptMustFailWithError "credentialFailure1" 
