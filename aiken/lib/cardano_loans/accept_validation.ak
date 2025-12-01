@@ -316,8 +316,6 @@ fn get_input_info(
   Option<Address>, // The required borrower's address.
   List<RequiredCollateralOutput>,
   List<RequiredLenderOutput>,
-  Int, // Total number of offers accepted.
-  Int, // Total number of asks closed.
   Dict<AssetName,Int>, // Required active beacon tokens to mint.
   Dict<AssetName,Int> // Required negotiation beacon tokens to burn.
 ) {
@@ -331,14 +329,12 @@ fn get_input_info(
       Option<Address>,
       List<RequiredCollateralOutput>,
       List<RequiredLenderOutput>,
-      Int, 
-      Int, 
       Dict<AssetName,Int>, 
       Dict<AssetName,Int>
     )
   ) {
     let Input(out_ref,Output(Address(pay,stake) as addr,val,d,_)) = input
-    let (req_addr,req_col_outputs,req_pay_outputs,offers_accepted,asks_closed,req_mint,req_burn) = acc
+    let (req_addr,req_col_outputs,req_pay_outputs,req_mint,req_burn) = acc
 
     // Get the negotiation beacons in this UTxO and pattern match on it.
     when value.tokens(val,core.from_negotiation_id(negotiation_beacon_id)) |> dict.to_list() is {
@@ -357,7 +353,7 @@ fn get_input_info(
           )
 
           // Return this address since all loan inputs must come from the same address.
-          (Some(addr),req_col_outputs,req_pay_outputs,offers_accepted,asks_closed,req_mint,req_burn)
+          (Some(addr),req_col_outputs,req_pay_outputs,req_mint,req_burn)
         } else {
           // If it doesn't come from a loan address, it can be ignored.
           acc
@@ -387,8 +383,7 @@ fn get_input_info(
           dict.insert_with(_,tn1,-n1,utils.sum_token_values,byte.compare) |>
           dict.insert_with(_,tn2,-n2,utils.sum_token_values,byte.compare)
 
-        // Increment the number of asks closed.
-        (Some(addr),req_col_outputs, req_pay_outputs,offers_accepted, asks_closed + 1, req_mint, new_req_burn)
+        (Some(addr),req_col_outputs, req_pay_outputs, req_mint, new_req_burn)
       }
 
       // If there are three negotiation beacons, this is an Offer UTxO.
@@ -457,8 +452,6 @@ fn get_input_info(
           list.concat(req_col_outputs,[new_req_collateral_out]),
           // Add the new required lender output to the END of the required lender output list.
           list.concat(req_pay_outputs,[new_req_lender_out]),
-          offers_accepted + 1, 
-          asks_closed, 
           new_req_mint, 
           new_req_burn
         )
@@ -471,7 +464,7 @@ fn get_input_info(
     }
   }
   
-  list.foldl(inputs,(None,[],[],0,0,dict.new(),dict.new()),foo)
+  list.foldl(inputs,(None,[],[],dict.new(),dict.new()),foo)
 }
 
 // Go through the outputs and check that all required outputs are satisfied. The loan outputs are
@@ -669,7 +662,7 @@ pub fn valid_loan_acceptances(
   outputs: List<Output>,
   minted: Value
 ) -> Address {
-  let (req_addr,req_col_outputs,req_pay_outputs,offers_accepted,asks_closed,req_mint,req_burn) =
+  let (req_addr,req_col_outputs,req_pay_outputs,req_mint,req_burn) =
     get_input_info(
       negotiation_beacon_id,
       payment_observer_hash,
@@ -696,10 +689,6 @@ pub fn valid_loan_acceptances(
       expect True = error_if_false(
         @"The wrong active beacons were minted",
         acts == Some(req_mint))
-
-      expect True = error_if_false(
-        @"# Ask UTxOs closed /= # Offer UTxOs accepted",
-        asks_closed == offers_accepted)
 
       expect True = check_outputs(
         borrower_addr,
