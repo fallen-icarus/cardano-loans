@@ -138,6 +138,8 @@ cardano-loans datums payment \
   --out-file $paymentDatumFile
 
 ## Create and submit the transaction.
+### Closing the corresponding Ask UTxO is optional, but is recommended since using separate txs
+### will be more expensive.
 cardano-cli conway transaction build \
   --tx-in $offerUTxO \
   --spending-tx-in-reference 575c63eff95683a81f97e4f34fc7caedac5045bdb0c7ed79d93bb6905dcebc31#0 \

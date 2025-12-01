@@ -766,10 +766,8 @@ To see how to build the transaction using a local node, refer
 
 ## Accepting an Offer
 
-*You will also need to close an Ask UTxO using the `AcceptOffer` redeemer.* You need to close one
-Ask UTxO for every Offer UTxO accepted. The Ask UTxO and Offer UTxO do not need to have the same
-terms; they do not even need to use the same loan assets. If they use different loan assets, make
-sure you burn the loan asset beacon from both the Ask UTxO and the Offer UTxO.
+Closing an Ask UTxO for every Offer accepted is optional; however, it is cheaper to do so since the
+total tx fees will be lower.
 
 Accepting an Offer requires the following steps:
 1. Get the current slot time and convert it to POSIX time.
