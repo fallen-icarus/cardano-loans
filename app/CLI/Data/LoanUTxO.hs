@@ -146,6 +146,7 @@ prettyLoanUTxO network LoanUTxO{_utxoRef=(TxOutRef hash idx),..} =
                if null cs
                then indent 2 $ annotate (colorDull Red) "none"
                else indent 2 $ align $ vsep $ flip map cs $ \(col,rate) -> pretty col <+> "@" <+> pretty rate
+           , annotate (colorDull Cyan) "corresponding_ask:" <+> maybe "none" pretty _offerExpiration
            ]
     prettyLoanDatum (Active ActiveDatum{..}) =
       vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "Active"
