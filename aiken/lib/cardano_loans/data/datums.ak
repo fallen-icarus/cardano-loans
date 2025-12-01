@@ -1,6 +1,7 @@
 use aiken/transaction/credential.{Address}
 use aiken/time.{PosixTime}
 use aiken/transaction/value.{PolicyId,AssetName}
+use aiken/transaction.{OutputReference}
 
 use cardano_loans/data/core.{Penalty,Asset,Fraction,ScriptHash}
 
@@ -86,7 +87,10 @@ pub type LoanDatum {
     // lender when the borrower accepts the offer.
     offer_deposit: Int, 
     // An optional offer expiration time.
-    offer_expiration: Option<PosixTime> 
+    offer_expiration: Option<PosixTime>,
+    // The Ask this Offer corresponds to. It has no purpose internally to the protocol, but it is
+    // useful for frontends to connect offers to asks.
+    corresponding_ask: Option<OutputReference>
   }
 
   // Fields in common with OfferDatums are taken directly from the Offer UTxO's datum. The
