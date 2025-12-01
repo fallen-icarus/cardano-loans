@@ -733,12 +733,11 @@ validator(
         // (the borrower would first have to update their Ask UTxO in one transaction and then
         // accept the offer in the next transaction).
         //
-        // Even though Offer inputs are not compared against Ask inputs, it would be bad for the
-        // beacon querying if borrowers could accept offers but leave the Ask UTxOs open. These Ask
-        // UTxOs would continue to be broadcast to other lenders even though the borrower has
-        // already satisfied their ask. Therefore, by requiring the borrower to close the same
-        // number of asks as offers accepted, this issue is mitigated. This is why this redeemer
-        // also tightly controls what the negotiation beacon script can do in this transaction.
+        // It is not required that an Ask UTxO is closed for every Offer UTxO accepted. While this
+        // could mean that stale Ask UTxOs are left open, the minUTxOValue requirement and frontend
+        // filtering (e.g., only show Ask UTxOs less than 1 month old) should be enough to prevent
+        // excessive Ask UTxOs from spamming lenders. The benefit of this approach is that borrowers
+        // can accept unsolicited loan offers.
         //
         // The interest is applied for the first time upon immediately accepting the loan. This is
         // so that the protocol can support non-compounding interest on loans. For non-compounding
