@@ -152,6 +152,7 @@ pCreateNewOfferInfo =
         <*> pClaimPeriod
         <*> pOfferDeposit
         <*> (pOfferExpiration <|> pure Nothing)
+        <*> (pAskRef <|> pure Nothing)
 
 pCreateActiveDatum :: Parser Command
 pCreateActiveDatum = hsubparser $ mconcat
@@ -1100,3 +1101,11 @@ pCurrentConsecutiveMisses = option auto
   <> metavar "INT"
   <> help "The current number of consecutive missed payments."
   )
+
+pAskRef :: Parser (Maybe TxOutRef)
+pAskRef = Just <$> option (eitherReader readTxOutRef)
+  (  long "ask-ref"
+  <> metavar "STRING"
+  <> help "The output reference for the target ask 'tx_hash#index'."
+  )
+
