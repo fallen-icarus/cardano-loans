@@ -46,6 +46,7 @@ cardano-loans datums offer \
   --claim-period '3600 slots' \
   --offer-deposit $offerDeposit \
   --max-missed-payments 3 \
+  --ask-ref '0517795a270cf535deec2c393a70d00e5833cda0e68e20b58a261a63f71917e2#0' \
   --out-file $offerDatumFile
 
 ## Create the required redeemer.

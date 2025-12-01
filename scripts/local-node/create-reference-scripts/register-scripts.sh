@@ -64,18 +64,18 @@ cardano-cli conway stake-address registration-certificate \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli conway transaction build \
-  --tx-in bb6f2dccf504ac11c6dc1150780fd660aa19ab9d7a048a3f2c045b5dd127c011#1 \
+  --tx-in 8e781e2edcff81a31bd0c82359890036db85b7f9b7006231f96c86a5d325ab3a#2 \
   --change-address "$(cat "${walletDir}01.addr")" \
   --certificate-file $negotiationCert \
-  --certificate-tx-in-reference 6ccbd6cdff5c6305db5f249765941a79bd4fd12c1eaf451156795fbb194a5662#0 \
+  --certificate-tx-in-reference ae6b8ef8ed542129e9fa018175205416e1d550eef6fa8d352004ce0f6b1c97d7#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $negotiationRedeemer \
   --certificate-file $paymentCert \
-  --certificate-tx-in-reference 31555c4be564002ff811f9a15097991107e338a5cc9beaa10a0a037a84b36c21#0 \
+  --certificate-tx-in-reference 515c662510d18e03668c89dacda0f5230daf1625d910a8db43f715e8467bbe03#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $paymentRedeemer \
   --certificate-file $addressUpdateCert \
-  --certificate-tx-in-reference 6db101e5af2d2561add8aedbefefb5582b1830d824effa9555234b07bf50ddf9#0 \
+  --certificate-tx-in-reference bb9be6d8f99c3df7fd411f110c137d958ac7835c63f83b487d34b614b3d66187#0 \
   --certificate-plutus-script-v2 \
   --certificate-reference-tx-in-redeemer-file $addressUpdateRedeemer \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
