@@ -74,6 +74,7 @@ benchTest1 number = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -350,6 +351,7 @@ benchTest2 number = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -581,10 +583,10 @@ benchTest2 number = do
 -- Active UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 18
+  [ mustSucceed "benchTest1" $ benchTest1 17
   , mustSucceed "benchTest2" $ benchTest2 16
 
     -- Performance Increase Tests
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 19
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 18
   , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 17
   ]

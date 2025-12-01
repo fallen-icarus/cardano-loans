@@ -401,7 +401,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 47_000_000
+              , outputValue = LV.lovelaceToValue 22_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just loanScript
               }
@@ -425,7 +425,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 47_000_000
+              , outputValue = LV.lovelaceToValue 45_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just paymentObserverScript
               }
@@ -447,7 +447,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 24_000_000
+              , outputValue = LV.lovelaceToValue 25_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just addressUpdateObserverScript
               }

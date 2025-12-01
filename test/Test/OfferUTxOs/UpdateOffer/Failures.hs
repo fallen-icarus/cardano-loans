@@ -64,6 +64,7 @@ beaconFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred
@@ -82,6 +83,7 @@ beaconFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -216,6 +218,7 @@ credentialFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -234,6 +237,7 @@ credentialFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -364,6 +368,7 @@ credentialFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -382,6 +387,7 @@ credentialFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -514,6 +520,7 @@ credentialFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -532,6 +539,7 @@ credentialFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -673,6 +681,7 @@ credentialFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -691,6 +700,7 @@ credentialFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario

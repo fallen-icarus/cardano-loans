@@ -62,6 +62,7 @@ regressionTest1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -170,6 +171,7 @@ regressionTest2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -283,6 +285,7 @@ regressionTest3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred
@@ -304,6 +307,7 @@ regressionTest3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -436,6 +440,7 @@ regressionTest4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -571,6 +576,7 @@ regressionTest5 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred
@@ -592,6 +598,7 @@ regressionTest5 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -719,6 +726,7 @@ regressionTest6 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -803,6 +811,7 @@ regressionTest7 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -842,6 +851,114 @@ regressionTest7 = do
       , extraKeyWitnesses = [borrowerPubKey]
       }
 
+-- | Close an offer with a corresponding ask field.
+regressionTest8 :: MonadEmulator m => m ()
+regressionTest8 = do
+  let -- Borrower Info
+      borrowerWallet = Mock.knownMockWallet 1
+      borrowerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash borrowerWallet
+      borrowerCred = PV2.PubKeyCredential borrowerPubKey
+      loanAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash loanScript) 
+                    (Just $ PV2.StakingHash borrowerCred)
+
+      -- Lender Info
+      lenderWallet = Mock.knownMockWallet 2
+      lenderPersonalAddr = Mock.mockWalletAddress lenderWallet
+      lenderPayPrivKey = Mock.paymentPrivateKey lenderWallet
+      lenderPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash lenderWallet
+      lenderCred = PV2.PubKeyCredential lenderPubKey
+      lenderBeacon = genLenderId lenderCred
+      lenderAddr = 
+        PV2.Address (PV2.ScriptCredential $ scriptHash proxyScript) 
+                    (Just $ PV2.StakingHash lenderCred)
+
+      -- Loan Info
+      loanAsset = Asset (adaSymbol,adaToken)
+      collateral1 = Asset (testTokenSymbol,"TestToken1")
+      loanBeacon = genLoanAssetBeaconName loanAsset
+      loanDatum = unsafeCreateOfferDatum $ NewOfferInfo
+        { _lenderId = lenderCred
+        , _lenderAddress = lenderAddr
+        , _loanAsset = loanAsset
+        , _loanPrincipal = 10_000_000
+        , _epochDuration = Nothing
+        , _loanTerm = 3600
+        , _loanInterest = Fraction (1,10)
+        , _compoundingInterest = True
+        , _minPayment = 0
+        , _penalty = NoPenalty
+        , _maxConsecutiveMisses = Nothing
+        , _collateralization = [(collateral1,Fraction(1,1))]
+        , _collateralIsSwappable = False
+        , _claimPeriod = 3600
+        , _offerDeposit = 4_000_000
+        , _offerExpiration = Nothing
+        , _correspondingAsk = Just $ TxOutRef "0517795a270cf535deec2c393a70d00e5833cda0e68e20b58a261a63f71917e2" 0
+        }
+
+  -- Initialize scenario
+  References{negotiationRef,loanRef} <- initializeReferenceScripts 
+  mintTestTokens lenderWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the Offer UTxO.
+  void $ transact lenderPersonalAddr [refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = 
+                  [ ("Offer",1)
+                  , (_unAssetBeacon loanBeacon,1)
+                  , (_unLenderId lenderBeacon,1)
+                  ]
+              , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+              , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+              , mintReference = Just negotiationRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = loanAddress
+              , outputValue = utxoValue 4_000_000 $ mconcat
+                  [ PV2.singleton negotiationBeaconCurrencySymbol "Offer" 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unAssetBeacon loanBeacon) 1
+                  , PV2.singleton negotiationBeaconCurrencySymbol (_unLenderId lenderBeacon) 1
+                  , uncurry PV2.singleton (_unAsset loanAsset) 10_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum loanDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [negotiationRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
+  offerUTxOs <- txOutRefsAndDatumsAtAddress @OfferDatum loanAddress
+
+  -- Try to close the Offer UTxOs.
+  void $ transact lenderPersonalAddr [loanAddress,refScriptAddress] [lenderPayPrivKey] $
+    emptyTxParams
+      { tokens = flip map offerUTxOs $ const
+         TokenMint
+            { mintTokens = 
+                [ ("Offer",-1)
+                , (_unAssetBeacon loanBeacon,-1)
+                , (_unLenderId lenderBeacon,-1)
+                ]
+            , mintRedeemer = toRedeemer $ CreateCloseOrUpdateOffer lenderCred
+            , mintPolicy = toVersionedMintingPolicy negotiationBeaconScript
+            , mintReference = Just negotiationRef
+            }
+      , inputs = flip map offerUTxOs $ \(offerRef,_) ->
+          Input
+            { inputId = offerRef
+            , inputWitness = 
+                SpendWithPlutusReference loanRef InlineDatum (toRedeemer CloseOrUpdateOffer)
+            }
+      , referenceInputs = [negotiationRef,loanRef]
+      , extraKeyWitnesses = [lenderPubKey]
+      }
+
 -------------------------------------------------
 -- TestTree
 -------------------------------------------------
@@ -855,4 +972,5 @@ tests =
   , mustSucceed "regressionTest5" regressionTest5
   , mustSucceed "regressionTest6" regressionTest6
   , mustSucceed "regressionTest7" regressionTest7
+  , mustSucceed "regressionTest8" regressionTest8
   ]
