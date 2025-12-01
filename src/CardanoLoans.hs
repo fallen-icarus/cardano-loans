@@ -159,6 +159,8 @@ data OfferDatum = OfferDatum
   , _offerDeposit :: Integer
   -- | An optional offer expiration time.
   , _offerExpiration :: Maybe POSIXTime
+  -- | The corresponding Ask UTxO. This field is optional.
+  , _correspondingAsk :: Maybe TxOutRef
   } deriving (Generic,Show)
 
 instance ToJSON OfferDatum where
@@ -182,6 +184,7 @@ instance ToJSON OfferDatum where
            , "claim_period" .= _claimPeriod
            , "offer_deposit" .= _offerDeposit
            , "offer_expiration" .= _offerExpiration
+           , "corresponding_ask" .= _correspondingAsk
            ]
 
 data ActiveDatum = ActiveDatum
@@ -572,6 +575,8 @@ data NewOfferInfo = NewOfferInfo
   , _offerDeposit :: Integer
   -- | An optional offer expiration time.
   , _offerExpiration :: Maybe POSIXTime
+  -- | The corresponding Ask UTxO. This field is optional.
+  , _correspondingAsk :: Maybe TxOutRef
   } deriving (Show)
 
 -- | Convert the offer info to the OfferDatum without checking any invariants. This is
@@ -597,6 +602,7 @@ unsafeCreateOfferDatum NewOfferInfo{..} = OfferDatum
   , _claimPeriod = _claimPeriod
   , _offerDeposit = _offerDeposit
   , _offerExpiration = _offerExpiration
+  , _correspondingAsk = _correspondingAsk
   }
 
 data NewActiveInfo = NewActiveInfo
