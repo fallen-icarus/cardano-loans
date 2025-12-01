@@ -766,6 +766,10 @@ data LoanDatum
       , offerDeposit :: Integer
       -- | An optional offer expiration time.
       , offerExpiration :: Maybe POSIXTime
+      -- | The Ask UTxO this Offer corresponds to. This field is optional. `Cardano-Loans` does not
+      -- use this field however it is very useful to frontends since it enables them to group Asks
+      -- and Offers together, and it enables the frontend to notify the lender when the Ask changes.
+      , correspondingAsk :: Maybe TxOutRef
       }
   -- | The live terms.
   | ActiveDatum
@@ -1170,7 +1174,6 @@ For an offer acceptance to be valid, all of the following must be true:
     UTxO outputs can be created in the transaction.
     - All loan inputs (both negotiation and active) must come from the same loan address.
     - No invalid loans (i.e., those with an `ActiveDatum` but no beacons) are allowed as inputs.
-    - The number of valid Offer UTxO inputs must equal the number of valid Ask UTxO inputs.
     - All valid offers among the inputs must not be expired. The loan's start time is the
     `invalid-before` bound of the transaction. If any offers have an expiration, the
     `invalid-hereafter` bound is also required to prove they are still valid.
@@ -1234,10 +1237,15 @@ support non-compounding interest.
 - If no Offer UTxOs expire, the `invalid-hereafter` flag can be dropped from the transaction.
 
 > **IMPORTANT**  
-> Even though Offer inputs are not compared against Ask inputs, borrowers must close the same number
-> of Ask UTxOs as the number of offers they accept. This prevents open Ask UTxOs from remaining
-> on-chain after the borrower's need has been met, which would pollute beacon queries for other
-> lenders.
+> Closing Ask UTxOs when accepting Offer UTxOs is optional. It is recommended that users close Asks
+> when they accept Offers because doing so in separate txs is actually more expensive. Frontends
+> should filter out stale Asks (e.g., those older than 1 month) to prevent lenders making offers to
+> inactive borrowers. The `minUTxOValue` and this filtering should be enough to protect against
+> spamming lenders with Asks.
+>
+> There was originally a requirement to close an Ask when accepting an Offer in order to prevent
+> stale Ask UTxOs, but it prevented the ability to accept unsolicited Offers which is required for
+> certian DeFi/TradFi hybrid business models.
 
 > **NOTE**  
 > Accepting offers can be composed with other actions that do not interfere with its minting/burning
