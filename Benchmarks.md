@@ -26,10 +26,10 @@ the same parameters as the mainnet.
 | Script | Deposit |
 |:------:|:-------:|
 | loan spending script | 22 ADA |
-| negotiation beacon script | 36 ADA |
+| negotiation beacon script | 37 ADA |
 | active beacon script | 51 ADA |
-| payment observer script | 44 ADA |
-| address update observer script | 24 ADA |
+| payment observer script | 45 ADA |
+| address update observer script | 25 ADA |
 | proxy script | 4 ADA |
 
 It is recommended that users share reference scripts using something like

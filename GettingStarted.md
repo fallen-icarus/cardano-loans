@@ -626,6 +626,7 @@ cardano-loans datums offer \
   --offer-deposit 4000000 \
   --offer-expiration 1712752992000 \
   --max-missed-payments 3 \
+  --ask-ref '0517795a270cf535deec2c393a70d00e5833cda0e68e20b58a261a63f71917e2#0' \
   --payment-address lender_personal.addr \
   --out-file offer_datum.json
 ```
@@ -689,6 +690,9 @@ command to convert between slot numbers and POSIX time.
 The `payment-address` must either be a payment pubkey address or a proxy script address with a valid
 staking credential. When the offer is accepted, the `offer-deposit` and the new Key NFT will be
 deposited to this address.
+
+The `ask-ref` field is optional. It can be used to state your offer is for a specific Ask UTxO. This
+field is not used by the protocol but is useful for frontends.
 
 #### Building the transaction
 To see how to build the transaction using a local node, refer
