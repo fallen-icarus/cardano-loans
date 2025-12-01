@@ -62,6 +62,7 @@ beaconFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -160,6 +161,7 @@ beaconFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -265,6 +267,7 @@ beaconFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -371,6 +374,7 @@ beaconFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -482,6 +486,7 @@ approvalFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -592,6 +597,7 @@ approvalFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -702,6 +708,7 @@ approvalFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -788,6 +795,7 @@ spendingRedeemerFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -896,6 +904,7 @@ spendingRedeemerFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario

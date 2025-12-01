@@ -77,6 +77,7 @@ newAddressFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -359,6 +360,7 @@ newAddressFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -641,6 +643,7 @@ newAddressFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -924,6 +927,7 @@ newAddressFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -1210,6 +1214,7 @@ keyDatumFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -1490,6 +1495,7 @@ keyDatumFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -1772,6 +1778,7 @@ keyDatumFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -2054,6 +2061,7 @@ keyDatumFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -2339,6 +2347,7 @@ depositFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -2622,6 +2631,7 @@ depositFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -2905,6 +2915,7 @@ depositFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -3191,6 +3202,7 @@ approvalFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -3459,6 +3471,7 @@ approvalFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -3793,6 +3806,7 @@ loanAddressFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -4176,6 +4190,7 @@ collateralValueFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -4458,6 +4473,7 @@ collateralValueFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -4740,6 +4756,7 @@ collateralValueFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -5022,6 +5039,7 @@ collateralValueFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -5304,6 +5322,7 @@ collateralValueFailure5 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -5587,6 +5606,7 @@ collateralValueFailure6 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -5870,6 +5890,7 @@ collateralValueFailure7 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -6153,6 +6174,7 @@ collateralValueFailure8 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -6435,6 +6457,7 @@ collateralValueFailure9 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -6720,6 +6743,7 @@ datumFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -7005,6 +7029,7 @@ datumFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -7290,6 +7315,7 @@ datumFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -7574,6 +7600,7 @@ datumFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -7859,6 +7886,7 @@ datumFailure5 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -8144,6 +8172,7 @@ datumFailure6 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -8429,6 +8458,7 @@ datumFailure7 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -8714,6 +8744,7 @@ datumFailure8 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -8999,6 +9030,7 @@ datumFailure9 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -9284,6 +9316,7 @@ datumFailure10 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -9569,6 +9602,7 @@ datumFailure11 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -9854,6 +9888,7 @@ datumFailure12 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -10139,6 +10174,7 @@ datumFailure13 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -10424,6 +10460,7 @@ datumFailure14 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -10709,6 +10746,7 @@ datumFailure15 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -10994,6 +11032,7 @@ datumFailure16 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -11279,6 +11318,7 @@ datumFailure17 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -11564,6 +11604,7 @@ datumFailure18 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -11849,6 +11890,7 @@ datumFailure19 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -12134,6 +12176,7 @@ datumFailure20 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -12416,6 +12459,7 @@ datumFailure21 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -12786,6 +12830,7 @@ datumFailure23 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -13071,6 +13116,7 @@ datumFailure24 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -13358,6 +13404,7 @@ orderFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -13660,6 +13707,7 @@ orderFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -13962,6 +14010,7 @@ orderFailure3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -14283,6 +14332,7 @@ orderFailure4 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -14604,6 +14654,7 @@ orderFailure5 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -14925,6 +14976,7 @@ orderFailure6 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -15250,6 +15302,7 @@ timeFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -15532,6 +15585,7 @@ timeFailure2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -15818,6 +15872,7 @@ observerRedeemerFailure1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario

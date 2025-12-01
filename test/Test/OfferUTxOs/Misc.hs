@@ -75,6 +75,7 @@ regressionTest1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -93,6 +94,7 @@ regressionTest1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -258,6 +260,7 @@ failureTest1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -276,6 +279,7 @@ failureTest1 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -428,6 +432,7 @@ failureTest2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -446,6 +451,7 @@ failureTest2 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
@@ -560,6 +566,7 @@ failureTest3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
       loanDatum2 = unsafeCreateOfferDatum $ NewOfferInfo
         { _lenderId = lenderCred2
@@ -578,6 +585,7 @@ failureTest3 = do
         , _claimPeriod = 3600
         , _offerDeposit = 4_000_000
         , _offerExpiration = Nothing
+        , _correspondingAsk = Nothing
         }
 
   -- Initialize scenario
