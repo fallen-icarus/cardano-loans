@@ -451,18 +451,23 @@ projects:
 
 ### 1. Supercharging RealFi and Impact Investing
 
-**The Challenge:** RealFi initiatives aiming to provide capital to Microfinance Institutions (MFIs)
-often struggle with transparency and scale. It is difficult to immutably track loan performance and
-demonstrate a verifiable track record needed to attract larger pools of institutional capital.
+**The Challenge:** Real world loan-backed stablecoins, like RealFi's upcoming stablecoin, often
+struggle with transparency: holders of the stablecoin cannot trustlessly audit the health of the
+loans backing it. It is difficult to immutably track loan performance and demonstrate the
+trustlessly verifiable track record needed to attract larger pools of institutional capital.
 
 **The Synergy:** Cardano-Loans provides the essential infrastructure RealFi needs:
 
 - **Trustless Tracking:** Every loan issued by the protocol — whether to an individual or a small
-business — is recorded on-chain. The resulting on-chain credit history is immutable and transparent.
-- **Attracting Capital:** This verifiable data allows MFIs to build a global, trustless reputation.
-They can then use this track record to attract a much wider base of international lenders, and/or
-package their loans into loan-backed securities for sale on a secondary market. Either option would
-dramatically increase their access to capital.
+business — is recorded on-chain. The resulting on-chain history is immutable and trustlessly
+transparent.
+- **Attracting Capital:** This trustlessly verifiable data allows for greater confidence in RealFi's
+stablecoin which in turn will attract significantly more capital than would otherwise be possible:
+both from retail users and regulated institutions.
+
+> [!IMPORTANT]
+> No PII is ever recorded on-chain. All investors need to see are the loan terms and whether
+> payments are being made on time.
 
 ### 2. Building a True Home for BitcoinDeFi
 
