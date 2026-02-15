@@ -10,16 +10,16 @@ changed**. Each version corresponds to a unique, immutable set of smart contract
 
 ## Protocol v2 - *In Development*
 
+-   **Status:** 🟡 **LIVE but not audited**
+-   **Plutus Version:** PlutusV2
+-   **Commit Hash:** [`0b45bf8c8cbf2c931901881dfeda0c5eefd796fe`](https://github.com/fallen-icarus/cardano-loans/commit/0b45bf8c8cbf2c931901881dfeda0c5eefd796fe)
+
 #### Changes
 - Merged interest/penalty applications with payments.
 - Added early loan termination clause from too many missed payments.
 - Added ability to accept unsolicited offers.
 - Added ability to link offers to specific asks.
 - Updated how collateral value calculation is handled.
-
--   **Status:** 🟡 **LIVE but not audited**
--   **Plutus Version:** PlutusV2
--   **Commit Hash:** [`0b45bf8c8cbf2c931901881dfeda0c5eefd796fe`](https://github.com/fallen-icarus/cardano-loans/commit/0b45bf8c8cbf2c931901881dfeda0c5eefd796fe)
 
 ---
 
