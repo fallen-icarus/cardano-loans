@@ -19,7 +19,7 @@ changed**. Each version corresponds to a unique, immutable set of smart contract
 
 -   **Status:** 🟡 **LIVE but not audited**
 -   **Plutus Version:** PlutusV2
--   **Commit Hash:** `TODO`
+-   **Commit Hash:** [`0b45bf8c8cbf2c931901881dfeda0c5eefd796fe`](https://github.com/fallen-icarus/cardano-loans/commit/0b45bf8c8cbf2c931901881dfeda0c5eefd796fe)
 
 ---
 
