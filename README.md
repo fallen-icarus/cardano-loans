@@ -24,6 +24,7 @@ securities and other advanced products.
 - [Ecosystem Synergies and Strategic Impact](#ecosystem-synergies-and-strategic-impact)
 - [Adoption Strategy: Targeting Sophisticated Lenders as the Catalyst for a Grassroots Credit Market](#adoption-strategy-targeting-sophisticated-lenders-as-the-catalyst-for-a-grassroots-credit-market)
 - [Specification](#specification)
+- [Audit History](#audit-history)
 - [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Conclusion](#conclusion)
 
@@ -1510,6 +1511,21 @@ more easily sell their loan bonds or participate in securitization, as their abi
 is transparently demonstrated on-chain.
 
 </details>
+
+## Audit History
+
+The [protocol versions](./VERSIONS.md) have undergone the following security audits:
+
+### Protocol v2
+
+> [!WARNING]
+> This protocol version has not been audited yet.
+
+### Protocol v1
+
+| Date | Auditor | Report |
+|:--:|:--:|:--:|
+| October 2025 | Cypher Enterprises | [View Full Report][5] |
 
 ## Benchmarks and Fee Estimations (YMMV)
 
